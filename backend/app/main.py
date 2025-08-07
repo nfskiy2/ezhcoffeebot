@@ -1,179 +1,268 @@
 import json
 import os
-from . import auth, bot
+import asyncio
+import logging
+from fastapi import FastAPI, Request, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from flask import Flask, request
-from flask_cors import CORS
-from telebot.types import LabeledPrice
+from typing import Any, Optional
+import contextlib
+# from functools import lru_cache # <--- ЭТУ СТРОКУ УДАЛИТЬ ИЛИ ЗАКОММЕНТИРОВАТЬ!
 
-# Load environment variables from .env files.
-# Typicall environment variables are set on the OS level,
-# but for development purposes it may be handy to set them
-# in the .env file directly.
+
+# Импорты компонентов модернизированного бэкенда
+from . import auth
+# Импортируем функции из bot.py
+# initialize_bot_app теперь НЕ async
+# setup_webhook больше не импортируется сюда, так как он вызывается из отдельного скрипта set_webhook.py
+from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH
+from .database import engine, SessionLocal
+from .models import Base, Category, MenuItem
+from .schemas import CafeInfoSchema, CategorySchema, MenuItemSchema, OrderRequest
+from telegram import Update, LabeledPrice, Bot # Импортируем Update, LabeledPrice, Bot
+from telegram.ext import Application # Импортируем Application для типизации
+
 load_dotenv()
 
+# Получаем переменные окружения, необходимые для FastAPI и CORS
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+APP_URL = os.getenv('APP_URL')
+DEV_APP_URL = os.getenv('DEV_APP_URL')
+DEV_MODE = os.getenv('DEV_MODE') is not None
+DEV_TUNNEL_URL = os.getenv('DEV_TUNNEL_URL') # URL Dev Tunnel для CORS
+
+# Настройка логирования для main.py
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-app = Flask(__name__)
-# Handle paths like '/info/' and '/info' as the same.
-app.url_map.strict_slashes = False
-
-# List of allowed origins. The production 'APP_URL' is added by default,
-# the development `DEV_APP_URL` is added if it and `DEV_MODE` variable is present.
-allowed_origins = [os.getenv('APP_URL')]
-
-if os.getenv('DEV_MODE') is not None:
-    allowed_origins.append(os.getenv('DEV_APP_URL'))
-    bot.enable_debug_logging()
-        
-CORS(app, origins=list(filter(lambda o: o is not None, allowed_origins)))
+# --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ ХРАНЕНИЯ Application и Bot ---
+# Они будут инициализированы в lifespan и доступны в эндпоинтах.
+_application_instance: Optional[Application] = None
+_bot_instance: Optional[Bot] = None
 
 
-
-@app.route(bot.WEBHOOK_PATH, methods=['POST'])
-def bot_webhook():
-    """Entry points for Bot update sent via Telegram API.
-      You may find more info looking into process_update method.
+# --- LIFESPAN EVENT HANDLER (Инициализация Application и Bot здесь) ---
+@contextlib.asynccontextmanager
+async def lifespan(app: FastAPI):
     """
-    bot.process_update(request.get_json())
-    return { 'message': 'OK' }
-        
-@app.route('/info')
-def info():
-    """API endpoint for providing info about the cafe.
-    
-    Returns:
-      JSON data from data/info.json file or error message with 404 code if not found.
+    Обработчик событий жизненного цикла приложения FastAPI.
+    Выполняется при запуске и завершении работы приложения.
     """
+    logger.info("FastAPI lifespan startup event triggered.")
+
+    # Логика startup
+    Base.metadata.create_all(bind=engine) # Создаем таблицы в БД
+    logger.info("Database tables checked/created.")
+
+    # --- ИНИЦИАЛИЗАЦИЯ TELEGRAM BOT В LIFESPAN И СОХРАНЕНИЕ В app.state ---
+    global _application_instance, _bot_instance # Объявляем, что будем работать с глобальными переменными
+    _application_instance = initialize_bot_app() # <-- initialize_bot_app теперь НЕ async
+    _bot_instance = _application_instance.bot
+
+    logger.info("Telegram Bot application initialized.")
+    await _application_instance.initialize() # Явная АСИНХРОННАЯ инициализация Application
+    logger.info("Telegram Bot Application fully initialized.")
+
+    # Установка вебхука происходит в set_webhook.py, здесь он не нужен.
+    # await setup_webhook(_application_instance) # Если set_webhook.py удален, можно использовать здесь
+    # logger.info("Webhook setup function called from lifespan.")
+
+    logger.info("FastAPI startup complete. Yielding control to application.")
+
+    yield # <-- Здесь приложение начинает обрабатывать запросы
+
+    # --- SHUTDOWN LOGIC: Очистка асинхронных клиентов httpx ---
+    logger.info("FastAPI lifespan shutdown event triggered.")
+    if _application_instance is not None:
+        try:
+            logger.info("Closing Telegram Bot Application...")
+            await _application_instance.shutdown() # <-- ОЧЕНЬ ВАЖНО: Вызов shutdown()
+            logger.info("Telegram Bot Application closed.")
+        except Exception as e:
+            logger.error(f"Error during Telegram Bot Application shutdown: {e}")
+
+    logger.info("FastAPI lifespan shutdown complete.")
+
+
+# Инициализация FastAPI приложения
+# LIFESPAN передается в конструктор
+app = FastAPI(lifespan=lifespan)
+
+
+# Настройка CORS middleware (должна идти ПОСЛЕ инициализации app)
+allowed_origins = [APP_URL]
+if DEV_MODE and DEV_APP_URL:
+    allowed_origins.append(DEV_APP_URL)
+if DEV_TUNNEL_URL:
+    allowed_origins.append(DEV_TUNNEL_URL)
+
+allowed_origins = [url for url in allowed_origins if url is not None]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"], # Разрешаем все методы (GET, POST и т.д.)
+    allow_headers=["*"], # Разрешаем все заголовки
+)
+
+
+# Dependency для получения сессии базы данных
+def get_db_session():
+    db = SessionLocal()
     try:
-        return json_data('data/info.json')
-    except FileNotFoundError:
-        return { 'message': 'Could not find info data.' }, 404
+        yield db
+    finally:
+        db.close()
 
-@app.route('/categories')
-def categories():
-    """API endpoint for providing available cafe categories.
-    
-    Returns:
-      JSON data from data/categories.json file or error message with 404 code if not found.
-    """
+
+# --- Dependency для получения объекта Bot ---
+# Используем ее для внедрения объекта Bot в эндпоинты
+# ЭТОТ СПОСОБ РАБОТЫ СО СТАТУСОМ ГЛОБАЛЬНОГО БОТА
+def get_bot_instance(request: Request) -> Bot:
+    """Возвращает экземпляр Bot из глобальной переменной _bot_instance."""
+    # Используем глобальную переменную _bot_instance, которая инициализируется в lifespan
+    if _bot_instance is None:
+        logger.error("Bot instance is not initialized! Lifespan startup likely failed or not complete.")
+        raise HTTPException(status_code=500, detail="Bot service is not ready.")
+    return _bot_instance
+
+
+# --- Dependency для получения объекта Application ---
+# Используем ее для внедрения объекта Application (например, для process_update)
+def get_application_instance(request: Request) -> Application:
+    """Возвращает экземпляр Application из глобальной переменной _application_instance."""
+    # Используем глобальную переменную _application_instance, которая инициализируется в lifespan
+    if _application_instance is None:
+        logger.error("Application instance is not initialized! Lifespan startup likely failed or not complete.")
+        raise HTTPException(status_code=500, detail="Bot application not initialized.")
+    return _application_instance
+
+
+# --- API эндпоинты ---
+# Все эндпоинты должны быть определены ЗДЕСЬ
+
+@app.get("/")
+async def read_root():
+    return {"message": "Welcome to Laurel Cafe API!"}
+
+@app.post(WEBHOOK_PATH)
+async def bot_webhook(
+    request: Request,
+    bot_instance: Bot = Depends(get_bot_instance), # Внедряем Bot
+    application_instance: Application = Depends(get_application_instance) # Внедряем Application
+):
+    """Принимает обновления от Telegram API через вебхук."""
     try:
-        return json_data('data/categories.json')
-    except FileNotFoundError:
-        return { 'message': 'Could not find categories data.' }, 404
+        update_json = await request.json()
+        update = Update.de_json(update_json, bot_instance)
+        # Process update directly on application instance
+        await application_instance.process_update(update)
+        return {"message": "OK"}
+    except Exception as e:
+        logger.error(f"Error processing webhook update: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error processing update.")
 
-@app.route('/menu/<category_id>')
-def category_menu(category_id: str):
-    """API endpoint for providing menu list of specified category.
-    
-    Args:
-      category_id: Looking menu category ID.
 
-    Returns:
-      JSON data from one of data/menu/<category_id>.json file or error message with 404 code if not found.
-    """
+@app.get("/info", response_model=CafeInfoSchema)
+def get_cafe_info():
+    """API endpoint for providing info about the cafe."""
     try:
-        return json_data(f'data/menu/{category_id}.json')
+        with open('data/info.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
     except FileNotFoundError:
-        return { 'message': f'Could not find `{category_id}` category data.' }, 404
+        logger.error("Info data file not found.")
+        raise HTTPException(status_code=404, detail="Could not find info data.")
+    except json.JSONDecodeError:
+         logger.error("Error decoding info data file.")
+         raise HTTPException(status_code=500, detail="Error reading info data.")
 
-@app.route('/menu/details/<menu_item_id>')
-def menu_item_details(menu_item_id: str):
-    """API endpoint for providing menu item details.
-    
-    Args:
-      menu_item_id: Looking menu item ID.
 
-    Returns:
-      JSON data from one of data/menu/<category_id>.json file or error message with 404 code if not found.
-    """
+@app.get("/categories", response_model=list[CategorySchema])
+def get_categories(db: Session = Depends(get_db_session)):
+    """API endpoint for providing available cafe categories."""
     try:
-        data_folder_path = 'data/menu'
-        for data_file in os.listdir(data_folder_path):
-            menu_items = json_data(f'{data_folder_path}/{data_file}')
-            desired_menu_item = next((menu_item for menu_item in menu_items if menu_item['id'] == menu_item_id), None)
-            if desired_menu_item is not None:
-                return desired_menu_item
-        return { 'message': f'Could not menu item data with `{menu_item_id}` ID.' }, 404
-    except FileNotFoundError:
-        return { 'message': f'Could not menu item data with `{menu_item_id}` ID.' }, 404
+        categories = db.query(Category).all()
+        return categories
+    except Exception as e:
+        logger.error(f"Error fetching categories from DB: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error fetching categories.")
 
-@app.route('/order', methods=['POST'])
-def create_order():
-    """API endpoint for creating an order. This method performs the following tasks:
-        - Validation of the initData received from the Telegram Mini App.
-        - Conversion of cart items into LabeledPrice objects for further submitting to Telegram API.
-      As a result, we get an invoiceUrl that can be used to start the payment process in our Mini App.
-      See: https://core.telegram.org/bots/webapps#initializing-mini-apps (Telegram.WebApp.openInvoice method).
-    
-      Example of request body:
-        {
-            "_auth": "<init_data_for_validation>",
-            "cartItems": [
-                {
-                    "cafeItem": {
-                        "name": "Burger"
-                    },
-                    "variant": {
-                        "name": "Small",
-                        "cost": 100
-                    },
-                    "quantity": 3
-                }
-            ]
-        }
 
-      Please note: This method is the appropriate place to create an order ID and save it to some persistance storage.
-      You can pass it then as invoice_payload parameter when creating invoiceUrl to further update the order status, and,
-      after successful payment, get the collected information about the order items (this information is not stored by Telegram).
-    """
-    request_data = request.get_json()
+@app.get("/menu/{category_id}", response_model=list[MenuItemSchema])
+def get_category_menu(category_id: str, db: Session = Depends(get_db_session)):
+    """API endpoint for providing menu list of specified category."""
+    try:
+        category = db.query(Category).filter(Category.id == category_id).first()
+        if not category:
+            logger.warning(f"Category '{category_id}' not found.")
+            raise HTTPException(status_code=404, detail=f"Could not find '{category_id}' category data.")
+        return category.menu_items
+    except Exception as e:
+        logger.error(f"Error fetching menu for category {category_id} from DB: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error fetching menu data.")
 
-    auth_data = request_data.get('_auth')
-    if auth_data is None or not auth.validate_auth_data(bot.BOT_TOKEN, auth_data):
-        return { 'message': 'Request data should contain auth data.' }, 401
 
-    order_items = request_data.get('cartItems')
-    if order_items is None:
-        return { 'message': 'Cart Items are not provided.' }, 400
+@app.get("/menu/details/{menu_item_id}", response_model=MenuItemSchema)
+def get_menu_item_details(menu_item_id: str, db: Session = Depends(get_db_session)):
+    """API endpoint for providing menu item details."""
+    try:
+        menu_item = db.query(MenuItem).filter(MenuItem.id == menu_item_id).first()
+        if not menu_item:
+            logger.warning(f"Menu item with ID '{menu_item_id}' not found.")
+            raise HTTPException(status_code=404, detail=f"Could not find menu item data with '{menu_item_id}' ID.")
+        return menu_item
+    except Exception as e:
+        logger.error(f"Error fetching menu item {menu_item_id} details from DB: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error fetching menu item details.")
+
+
+@app.post("/order")
+async def create_order( # Асинхронный эндпоинт
+    order_data: OrderRequest,
+    request: Request,
+    db: Session = Depends(get_db_session),
+    bot_instance: Bot = Depends(get_bot_instance)
+):
+    logger.info("Received order request.")
+
+    if not auth.validate_auth_data(BOT_TOKEN, order_data.auth_data):
+        logger.warning("Invalid auth data received in order request.")
+        raise HTTPException(status_code=401, detail="Invalid auth data.")
+    logger.info("Auth data validated.")
+
+    if not order_data.cart_items:
+        logger.warning("Cart Items are not provided.")
+        raise HTTPException(status_code=400, detail="Cart Items are not provided.")
+    logger.info(f"Received {len(order_data.cart_items)} items in cart.")
 
     labeled_prices = []
-    for order_item in order_items:
-        name = order_item['cafeItem']['name']
-        variant = order_item['variant']['name']
-        cost = order_item['variant']['cost']
-        quantity = order_item['quantity']
-        price = int(cost) * int(quantity)
-        labeled_price = LabeledPrice(
-            label=f'{name} ({variant}) x{quantity}',
-            amount=price
-        )
-        labeled_prices.append(labeled_price)
+    for item in order_data.cart_items:
+        try:
+            cost_in_minimal_unit = int(item.variant.cost)
+            quantity = item.quantity
+            price = cost_in_minimal_unit * quantity
 
-    invoice_url = bot.create_invoice_link(
-        prices=labeled_prices
-    )
+            labeled_price = LabeledPrice( # LabeledPrice from telegram
+                label=f'{item.cafe_item.name} ({item.variant.name}) x{quantity}',
+                amount=price
+            )
+            labeled_prices.append(labeled_price)
+        except ValueError:
+             logger.error(f"Invalid cost or quantity value for item {item.cafe_item.id}.")
+             raise HTTPException(status_code=400, detail="Invalid item data.")
+        except Exception as e:
+            logger.error(f"Error processing item {item.cafe_item.id}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Error processing order items.")
+
+    invoice_url = await create_invoice_link(prices=labeled_prices, bot_instance=bot_instance)
+
+    if invoice_url is None:
+        logger.error("Failed to get invoice URL from bot.")
+        raise HTTPException(status_code=500, detail="Could not create invoice.")
+
+    logger.info(f"Invoice URL created for order: {invoice_url}")
 
     return { 'invoiceUrl': invoice_url }
-
-def json_data(data_file_path: str):
-    """Extracts data from the JSON file.
-
-    Args:
-      data_file_path: Path to desired JSON file.
-
-    Returns:
-      Data from the desired JSON file (as dict).
-
-    Raises:
-      FileNotFoundError if desired file doesn't exist.
-    """
-    if os.path.exists(data_file_path):
-        with open(data_file_path, 'r') as data_file:
-            return json.load(data_file)
-    else:
-        raise FileNotFoundError()
-    
-
-
-bot.refresh_webhook()
