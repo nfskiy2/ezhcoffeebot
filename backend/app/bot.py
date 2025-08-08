@@ -153,6 +153,10 @@ def create_invoice_link(prices: list[LabeledPrice], bot_instance: Bot) -> str | 
     if not PAYMENT_PROVIDER_TOKEN:
          logger.error("PAYMENT_PROVIDER_TOKEN is not set! Cannot create invoice link.")
          return None
+    
+    logger.info(f"Attempting to create invoice link.")
+    logger.info(f"PAYMENT_PROVIDER_TOKEN being used: {PAYMENT_PROVIDER_TOKEN}")
+    logger.info(f"Prices being sent: {[p.to_dict() for p in prices]}") # Для наглядности, преобразуем LabeledPrice в dict
 
     try:
         return bot_instance.create_invoice_link(
@@ -160,7 +164,7 @@ def create_invoice_link(prices: list[LabeledPrice], bot_instance: Bot) -> str | 
             description='Отличный выбор! Еще пара шагов, и приступим к готовке ;)',
             payload='orderID',
             provider_token=PAYMENT_PROVIDER_TOKEN,
-            currency='USD',
+            currency='RUB',
             prices=prices,
             need_name=True,
             need_phone_number=True,

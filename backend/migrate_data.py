@@ -90,6 +90,11 @@ def migrate():
     for filename in os.listdir(menu_data_path):
         if filename.endswith('.json'):
             category_id = filename.replace('.json', '')
+            # Пропускаем файл popular.json, так как он не является категорией
+            if category_id == 'popular': # <-- ДОБАВЛЕНО ЭТО УСЛОВИЕ
+                print(f"Skipping {filename} as it's not a menu category.") # Опционально: информационное сообщение
+                continue # <-- Пропускаем итерацию для этого файла
+
             category = db.query(Category).filter(Category.id == category_id).first()
             if not category:
                  print(f"Warning: Category {category_id} not found for file {filename}. Skipping menu items.")
@@ -109,7 +114,7 @@ def migrate():
                             variants=item_data['variants']
                         )
                         db.add(menu_item)
-        db.commit()
+        db.commit() # commit должен быть вне внутреннего цикла, но внутри внешнего, как сейчас.
         print(f"Menu items for category '{category_id}' migrated.")
 
 

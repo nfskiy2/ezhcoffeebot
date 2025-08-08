@@ -58,7 +58,11 @@ async def lifespan(app: FastAPI):
 
     # --- ИНИЦИАЛИЗАЦИЯ TELEGRAM BOT В LIFESPAN И СОХРАНЕНИЕ В app.state ---
     global _application_instance, _bot_instance # Объявляем, что будем работать с глобальными переменными
-    _application_instance = initialize_bot_app() # <-- initialize_bot_app теперь НЕ async
+    _application_instance = await initialize_bot_app() 
+
+    logger.info(f"Type of _application_instance after await: {type(_application_instance)}")
+    logger.info(f"Is _application_instance an Application instance? {isinstance(_application_instance, Application)}")
+    
     _bot_instance = _application_instance.bot
 
     logger.info("Telegram Bot application initialized.")
