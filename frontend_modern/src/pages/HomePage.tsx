@@ -1,15 +1,11 @@
-// frontend_modern/src/pages/HomePage.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 // Импортируем функцию API
-import { getCafeInfo, getCategories, getCategoryMenu } from '../api'; // Добавляем getCategoryMenu
-// Импортируем типы
-import type { CafeInfoSchema, CategorySchema, MenuItemSchema } from '../api/types'; // Добавляем MenuItemSchema
-// Импортируем хук корзины
+import { getCafeInfo, getCategories, getCategoryMenu } from '../api'; 
+import type { CafeInfoSchema, CategorySchema, MenuItemSchema } from '../api/types'; 
 import { useCart } from '../store/cart';
-// Импортируем компонент для карточки товара
-import MenuItemCard from '../components/MenuItemCard'; // Добавляем импорт MenuItemCard
+import MenuItemCard from '../components/MenuItemCard'; 
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
@@ -17,7 +13,7 @@ const HomePage: React.FC = () => {
 
     const [cafeInfo, setCafeInfo] = useState<CafeInfoSchema | null>(null);
     const [categories, setCategories] = useState<CategorySchema[]>([]);
-    const [popularItems, setPopularItems] = useState<MenuItemSchema[]>([]); // НОВОЕ СОСТОЯНИЕ для популярных товаров
+    const [popularItems, setPopularItems] = useState<MenuItemSchema[]>([]); 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -27,30 +23,23 @@ const HomePage: React.FC = () => {
             setError(null);
 
             try {
-                console.log("Attempting to load home page data...");
-                const [infoData, categoriesData, popularData] = await Promise.all([ // Добавляем popularData
+                const [infoData, categoriesData, popularData] = await Promise.all([ 
                     getCafeInfo(),
                     getCategories(),
-                    getCategoryMenu('popular') // НОВЫЙ ВЫЗОВ API для популярных товаров (эндпоинт /menu/popular)
+                    getCategoryMenu('popular') 
                 ]);
 
-                console.log("Cafe Info data received:", infoData);
-                console.log("Categories data received:", categoriesData);
-                console.log("Popular items data received:", popularData); // Логирование
 
-                if (Array.isArray(categoriesData) && Array.isArray(popularData)) { // Проверяем оба массива
+                if (Array.isArray(categoriesData) && Array.isArray(popularData)) { 
                     setCafeInfo(infoData);
                     setCategories(categoriesData);
-                    setPopularItems(popularData); // Сохраняем популярные товары
-                    console.log("Data successfully loaded and set.");
+                    setPopularItems(popularData); 
                 } else {
                     const errorMessage = "API did not return an array for categories or popular items.";
-                    console.error(errorMessage, categoriesData, popularData);
                     setError(errorMessage);
                 }
 
             } catch (err: any) {
-                console.error("Failed to load home page data (catch block):", err);
                 setError(err.message || "Failed to load data.");
             } finally {
                 setLoading(false);
@@ -78,11 +67,9 @@ const HomePage: React.FC = () => {
                 console.log(`MainButton shown for home page with ${cartItemCount} items.`);
             } else {
                 tg.MainButton.hide();
-                console.log("MainButton hidden on home page (no items in cart).");
             }
 
             return () => {
-                console.log("HomePage cleanup: removing MainButton handler.");
                 if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
                     const tg = window.Telegram.WebApp;
                     tg.MainButton.offClick(handleMainButtonClick);
@@ -90,8 +77,6 @@ const HomePage: React.FC = () => {
             };
         }
     }, [handleMainButtonClick, getItemCount, items]);
-
-    // ... (jsx для loading и error остается без изменений) ...
 
     return (
         <section>
@@ -141,7 +126,6 @@ const HomePage: React.FC = () => {
                 <h3 id="cafe-section-categories-title" className={`cafe-section-title ${loading ? "shimmer" : ""}`}>Categories</h3>
                 <div id="cafe-categories" className="cafe-section-horizontal">
                     {loading ? (
-                        // Шиммер-плейсхолдеры для категорий
                         <>
                             <div className="cafe-category-container shimmer" style={{ minWidth: '56px', height: '56px', borderRadius: '16px' }}></div>
                             <div className="cafe-category-container shimmer" style={{ minWidth: '56px', height: '56px', borderRadius: '16px' }}></div>
@@ -155,7 +139,6 @@ const HomePage: React.FC = () => {
                                 key={category.id}
                                 className="cafe-category-container"
                                 onClick={() => {
-                                    console.log("Navigating to category:", category.id);
                                     navigate(`/category/${category.id}`);
                                 }}
                                 style={{ backgroundColor: category.backgroundColor || '#ccc' }}
@@ -173,7 +156,6 @@ const HomePage: React.FC = () => {
                 <h3 id="cafe-section-popular-title" className={`cafe-section-title ${loading ? "shimmer" : ""}`}>Popular</h3>
                 <div id="cafe-section-popular" className="cafe-section-horizontal">
                     {loading ? (
-                        // Шиммер-плейсхолдеры для популярных товаров
                         <>
                             <div className="cafe-item-container">
                                 <div className="cafe-item-image shimmer" style={{ width: '100%', height: 'calc((100vw - 16px * 3) / 2 * 3 / 4)' }}></div>
@@ -192,7 +174,6 @@ const HomePage: React.FC = () => {
                             </div>
                         </>
                     ) : (
-                        // РЕАЛЬНОЕ ОТОБРАЖЕНИЕ ПОПУЛЯРНЫХ ТОВАРОВ
                         Array.isArray(popularItems) && popularItems.length > 0 ? (
                             popularItems.map(item => (
                                 <MenuItemCard key={item.id} item={item} />

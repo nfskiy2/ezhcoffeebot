@@ -1,22 +1,11 @@
-// frontend_modern/src/pages/CartPage.tsx
 import React, { useEffect, useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-import Lottie from 'lottie-react'; // Импортируем Lottie для анимации
-
-// Импортируем хук для использования контекста корзины
+import Lottie from 'lottie-react'; 
 import { useCart } from '../store/cart';
-// Импортируем вспомогательную утилиту
 import { toDisplayCost } from '../utils/currency';
-
-// Импортируем функцию API для создания заказа
 import { createOrder, getCafeSettings } from '../api';
-
-// Импортируем JSON анимации
 import emptyCartAnimation from '../assets/lottie/empty-cart.json'; 
-
 import { TelegramSDK } from '../telegram/telegram';
-
-import { useSnackbar } from '../components/Snackbar'; // Импортируем useSnackbar
+import { useSnackbar } from '../components/Snackbar'; 
 
 const CartPage: React.FC = () => {
     const { items, increaseQuantity, decreaseQuantity, getItemCount, getTotalCost, clearCart } = useCart();
@@ -30,8 +19,6 @@ const CartPage: React.FC = () => {
                 const settings = await getCafeSettings();
                 setMinOrderAmount(settings.min_order_amount);
             } catch (err) {
-                console.error("Failed to load cafe settings:", err);
-                // Можно показать ошибку пользователю, если не удалось загрузить настройки
                 showSnackbar("Failed to load cafe settings. Please try again.", { style: 'error' });
             }
         };
@@ -42,7 +29,6 @@ const CartPage: React.FC = () => {
     const handleCheckout = async () => {
         const totalCost = getTotalCost(items);
 
-        // Проверка минимальной суммы заказа перед отправкой
         if (minOrderAmount > 0 && totalCost < minOrderAmount) {
             showSnackbar(
                 `Order total is too low. Minimum order is ${toDisplayCost(minOrderAmount)}.`,
@@ -53,7 +39,6 @@ const CartPage: React.FC = () => {
         }
 
         if (isSubmitting || getItemCount(items) === 0) {
-            console.warn("Checkout already in progress or cart is empty.");
             return;
         }
 
@@ -61,12 +46,10 @@ const CartPage: React.FC = () => {
             const initData = TelegramSDK.getInitData();
 
             if (!initData) {
-                console.error("Telegram initData is missing. Cannot create order.");
                 TelegramSDK.showAlert("Error: Telegram user data is not available.");
                 return;
             }
 
-            console.log("Creating order with initData:", initData);
             TelegramSDK.setMainButtonLoading(true);
             setIsSubmitting(true);
 
@@ -77,10 +60,8 @@ const CartPage: React.FC = () => {
                 };
 
                 const response = await createOrder(orderData);
-                console.log("Order created successfully. Received invoice URL:", response.invoiceUrl);
 
                 TelegramSDK.openInvoice(response.invoiceUrl, (status) => {
-                    console.log("Invoice status:", status);
                     if (status === 'paid') {
                         TelegramSDK.notificationOccurred('success');
                         clearCart();
@@ -97,7 +78,6 @@ const CartPage: React.FC = () => {
                 });
 
             } catch (err: any) {
-                console.error("Failed to create order:", err);
                 TelegramSDK.notificationOccurred('error');
                 // Если ошибка от бэкенда из-за минимальной суммы, покажем её
                 if (err.message && err.message.includes("Order total is too low")) {
@@ -109,8 +89,6 @@ const CartPage: React.FC = () => {
                 setIsSubmitting(false);
             }
         } else {
-            console.warn("Telegram Web App SDK is not available. Cannot proceed with checkout.");
-            // Для тестирования в браузере
             showSnackbar("Telegram Web App SDK is not available. Cannot proceed with checkout.", { style: 'error' });
         }
     };
@@ -142,14 +120,11 @@ const CartPage: React.FC = () => {
                     tg.MainButton.disable();
                 }
 
-                console.log(`MainButton shown for cart page with ${totalCount} items. Active: ${isButtonActive}. Current total: ${totalCost}, Min required: ${minOrderAmount}`);
             } else {
                 tg.MainButton.hide();
-                console.log("MainButton hidden on cart page (cart is empty).");
             }
 
             return () => {
-                console.log("CartPage cleanup: removing MainButton handler.");
                 if (window.Telegram && window.Telegram.WebApp) {
                     const tg = window.Telegram.WebApp;
                     tg.MainButton.offClick(handleCheckout);

@@ -79,14 +79,12 @@ const DetailsPage: React.FC = () => {
 
     const handleAddToCart = useCallback(() => {
         if (menuItem && selectedVariant && quantity > 0) {
-            console.log(`Adding item ${menuItem.name} (${selectedVariant.name}) x${quantity} to cart.`);
             addItem(menuItem, selectedVariant, quantity);
             setQuantity(1);
 
             showSnackbar('Successfully added to cart!', { style: 'success', backgroundColor: 'var(--success-color)' });
             TelegramSDK.notificationOccurred('success'); // Использование TelegramSDK
         } else {
-            console.warn("Cannot add item to cart: missing item, variant, or quantity is zero.");
             showSnackbar('Could not add item to cart. Please select an option.', { style: 'warning' });
         }
     }, [menuItem, selectedVariant, quantity, addItem, showSnackbar]);

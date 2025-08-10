@@ -61,14 +61,11 @@ const CategoryPage: React.FC = () => {
                  tg.MainButton.setText(buttonText).show();
                  tg.MainButton.onClick(handleMainButtonClick);
                  tg.MainButton.enable();
-                 console.log(`MainButton shown for category page with ${cartItemCount} items.`);
              } else {
                  tg.MainButton.hide();
-                  console.log("MainButton hidden on category page (no items in cart).");
              }
 
              return () => {
-                 console.log("CategoryPage cleanup: removing MainButton handler.");
                  if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
                       const tg = window.Telegram.WebApp;
                      tg.MainButton.offClick(handleMainButtonClick);

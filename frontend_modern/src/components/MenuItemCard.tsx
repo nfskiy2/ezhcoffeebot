@@ -14,7 +14,6 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item }) => {
         <button
             className="cafe-item-container"
             onClick={() => {
-                console.log("Navigating to item details:", item.id);
                 navigate(`/details/${item.id}`);
             }}
         >
