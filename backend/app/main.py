@@ -19,7 +19,7 @@ from . import auth
 from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH
 from .database import engine, SessionLocal
 from .models import Base, Category, MenuItem
-from .schemas import CafeInfoSchema, CategorySchema, MenuItemSchema, OrderRequest
+from .schemas import CafeInfoSchema, CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema
 from telegram import Update, LabeledPrice, Bot # Импортируем Update, LabeledPrice, Bot
 from telegram.ext import Application # Импортируем Application для типизации
 
@@ -27,10 +27,13 @@ load_dotenv()
 
 # Получаем переменные окружения, необходимые для FastAPI и CORS
 BOT_TOKEN = os.getenv('BOT_TOKEN')
+PAYMENT_PROVIDER_TOKEN = os.getenv('PAYMENT_PROVIDER_TOKEN')
 APP_URL = os.getenv('APP_URL')
 DEV_APP_URL = os.getenv('DEV_APP_URL')
 DEV_MODE = os.getenv('DEV_MODE') is not None
 DEV_TUNNEL_URL = os.getenv('DEV_TUNNEL_URL') # URL Dev Tunnel для CORS
+MIN_ORDER_AMOUNT_STR = os.getenv('MIN_ORDER_AMOUNT')
+MIN_ORDER_AMOUNT = int(MIN_ORDER_AMOUNT_STR) if MIN_ORDER_AMOUNT_STR else 0
 
 # Настройка логирования для main.py
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -194,7 +197,24 @@ def get_categories(db: Session = Depends(get_db_session)):
         logger.error(f"Error fetching categories from DB: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error fetching categories.")
 
-
+@app.get("/menu/popular", response_model=list[MenuItemSchema])
+def get_popular_menu():
+    """API endpoint for providing a list of popular menu items."""
+    try:
+        # Читаем данные напрямую из файла popular.json
+        with open('data/menu/popular.json', 'r', encoding='utf-8') as f:
+            popular_items_data = json.load(f)
+        return popular_items_data
+    except FileNotFoundError:
+        logger.error("Popular menu data file not found.")
+        raise HTTPException(status_code=404, detail="Could not find popular menu data.")
+    except json.JSONDecodeError:
+        logger.error("Error decoding popular menu data file.")
+        raise HTTPException(status_code=500, detail="Error reading popular menu data.")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred while fetching popular menu: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error fetching popular menu data.")
+    
 @app.get("/menu/{category_id}", response_model=list[MenuItemSchema])
 def get_category_menu(category_id: str, db: Session = Depends(get_db_session)):
     """API endpoint for providing menu list of specified category."""
@@ -222,9 +242,14 @@ def get_menu_item_details(menu_item_id: str, db: Session = Depends(get_db_sessio
         logger.error(f"Error fetching menu item {menu_item_id} details from DB: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error fetching menu item details.")
 
+@app.get("/settings", response_model=CafeSettingsSchema)
+def get_cafe_settings():
+    """API endpoint for providing cafe settings like minimum order amount."""
+    # В будущем эти настройки могут загружаться из базы данных
+    return CafeSettingsSchema(min_order_amount=MIN_ORDER_AMOUNT)
 
 @app.post("/order")
-async def create_order( # Асинхронный эндпоинт
+async def create_order(
     order_data: OrderRequest,
     request: Request,
     db: Session = Depends(get_db_session),
@@ -243,15 +268,17 @@ async def create_order( # Асинхронный эндпоинт
     logger.info(f"Received {len(order_data.cart_items)} items in cart.")
 
     labeled_prices = []
+    total_amount_in_minimal_units = 0
     for item in order_data.cart_items:
         try:
             cost_in_minimal_unit = int(item.variant.cost)
             quantity = item.quantity
-            price = cost_in_minimal_unit * quantity
+            price_for_item = cost_in_minimal_unit * quantity
+            total_amount_in_minimal_units += price_for_item
 
-            labeled_price = LabeledPrice( # LabeledPrice from telegram
+            labeled_price = LabeledPrice(
                 label=f'{item.cafe_item.name} ({item.variant.name}) x{quantity}',
-                amount=price
+                amount=price_for_item
             )
             labeled_prices.append(labeled_price)
         except ValueError:
@@ -260,6 +287,16 @@ async def create_order( # Асинхронный эндпоинт
         except Exception as e:
             logger.error(f"Error processing item {item.cafe_item.id}: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail="Error processing order items.")
+
+    logger.info(f"Total order amount in minimal units: {total_amount_in_minimal_units}")
+
+    # ДОБАВЛЯЕМ ПРОВЕРКУ НА МИНИМАЛЬНУЮ СУММУ ЗАКАЗА
+    if MIN_ORDER_AMOUNT > 0 and total_amount_in_minimal_units < MIN_ORDER_AMOUNT:
+        logger.warning(f"Order total {total_amount_in_minimal_units} is less than min_order_amount {MIN_ORDER_AMOUNT}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Order total is too low. Minimum order amount is {MIN_ORDER_AMOUNT} in minimal units."
+        )
 
     invoice_url = await create_invoice_link(prices=labeled_prices, bot_instance=bot_instance)
 

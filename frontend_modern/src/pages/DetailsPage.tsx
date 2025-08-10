@@ -1,21 +1,18 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 
-// Импортируем функцию API
 import { getMenuItemDetails } from '../api';
-// Импортируем типы
 import type { MenuItemSchema, MenuItemVariantSchema } from '../api/types';
-
-// Импортируем вспомогательную утилиту
 import { toDisplayCost } from '../utils/currency';
-
-// Импортируем хук корзины
 import { useCart } from '../store/cart';
+import { useSnackbar } from '../components/Snackbar'; // НОВЫЙ ИМПОРТ для Snackbar
+import { TelegramSDK } from '../telegram/telegram'; 
 
 
 const DetailsPage: React.FC = () => {
     const { itemId } = useParams<{ itemId: string }>();
     const { addItem } = useCart();
+    const { showSnackbar } = useSnackbar(); // Получаем функцию showSnackbar из контекста
 
     const [menuItem, setMenuItem] = useState<MenuItemSchema | null>(null);
     const [loading, setLoading] = useState(true);
@@ -41,9 +38,9 @@ const DetailsPage: React.FC = () => {
                     setMenuItem(item);
                     setSelectedVariant(item.variants[0]);
                 } else if (item) {
-                     const errorMessage = `No variants found for item ${itemId}.`;
-                     setError(errorMessage);
-                     setMenuItem(item);
+                    const errorMessage = `No variants found for item ${itemId}.`;
+                    setError(errorMessage);
+                    setMenuItem(item);
                 } else {
                     const errorMessage = `API did not return valid data for item ${itemId}.`;
                     setError(errorMessage);
@@ -59,61 +56,66 @@ const DetailsPage: React.FC = () => {
 
     }, [itemId]);
 
-
     const handleSelectVariant = (variant: MenuItemVariantSchema) => {
         setSelectedVariant(variant);
         setQuantity(1);
+        TelegramSDK.impactOccurred('light'); // Использование TelegramSDK
     };
 
     const handleIncreaseQuantity = () => {
         setQuantity(prevQuantity => prevQuantity + 1);
+        TelegramSDK.impactOccurred('light'); // Использование TelegramSDK
     };
 
     const handleDecreaseQuantity = () => {
-        setQuantity(prevQuantity => Math.max(1, prevQuantity - 1));
+        setQuantity(prevQuantity => {
+            if (prevQuantity > 1) {
+                TelegramSDK.impactOccurred('light'); // Использование TelegramSDK
+                return prevQuantity - 1;
+            }
+            return 1;
+        });
     };
 
     const handleAddToCart = useCallback(() => {
         if (menuItem && selectedVariant && quantity > 0) {
             console.log(`Adding item ${menuItem.name} (${selectedVariant.name}) x${quantity} to cart.`);
             addItem(menuItem, selectedVariant, quantity);
-            setQuantity(1); // Сбрасываем количество после добавления
-             // Можно добавить haptic feedback или snackbar
-             if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.HapticFeedback) {
-                 window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-             }
-        } else {
-             console.warn("Cannot add item to cart: missing item, variant, or quantity is zero.");
-        }
-    }, [menuItem, selectedVariant, quantity, addItem]);
+            setQuantity(1);
 
+            showSnackbar('Successfully added to cart!', { style: 'success', backgroundColor: 'var(--success-color)' });
+            TelegramSDK.notificationOccurred('success'); // Использование TelegramSDK
+        } else {
+            console.warn("Cannot add item to cart: missing item, variant, or quantity is zero.");
+            showSnackbar('Could not add item to cart. Please select an option.', { style: 'warning' });
+        }
+    }, [menuItem, selectedVariant, quantity, addItem, showSnackbar]);
 
     useEffect(() => {
-         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
-              const tg = window.Telegram.WebApp;
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
+            const tg = window.Telegram.WebApp;
 
-              if (menuItem && selectedVariant && quantity > 0) {
-                   const currentTotalCost = parseInt(selectedVariant.cost, 10) * quantity;
-                   const displayText = `ADD TO CART • ${toDisplayCost(currentTotalCost)}`;
+            if (menuItem && selectedVariant && quantity > 0) {
+                const currentTotalCost = parseInt(selectedVariant.cost, 10) * quantity;
+                const displayText = `ADD TO CART • ${toDisplayCost(currentTotalCost)}`;
 
-                   tg.MainButton.setText(displayText).show();
-                   tg.MainButton.onClick(handleAddToCart);
-                   tg.MainButton.enable();
-               } else {
-                   tg.MainButton.hide();
-                   tg.MainButton.offClick(handleAddToCart);
-               }
-         }
+                tg.MainButton.setText(displayText).show();
+                tg.MainButton.onClick(handleAddToCart);
+                tg.MainButton.enable();
+            } else {
+                tg.MainButton.hide();
+                tg.MainButton.offClick(handleAddToCart);
+            }
+        }
 
-         return () => {
-             if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
-                  const tg = window.Telegram.WebApp;
-                 tg.MainButton.hide();
-                 tg.MainButton.offClick(handleAddToCart);
-             }
-         };
+        return () => {
+            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
+                const tg = window.Telegram.WebApp;
+                tg.MainButton.hide();
+                tg.MainButton.offClick(handleAddToCart);
+            }
+        };
     }, [menuItem, selectedVariant, quantity, handleAddToCart]);
-
 
     if (loading) {
         return <div>Loading item details for {itemId}...</div>;
@@ -134,7 +136,7 @@ const DetailsPage: React.FC = () => {
                 <div className="cafe-item-details-title-container">
                     <h1 id="cafe-item-details-name">{menuItem.name}</h1>
                     {selectedVariant && (
-                         <p id="cafe-item-details-selected-variant-weight" className="cafe-item-details-selected-variant-weight small">{selectedVariant.weight}</p>
+                        <p id="cafe-item-details-selected-variant-weight" className="cafe-item-details-selected-variant-weight small">{selectedVariant.weight}</p>
                     )}
                 </div>
                 <p id="cafe-item-details-description" className="cafe-item-details-description small">{menuItem.description}</p>
@@ -152,21 +154,11 @@ const DetailsPage: React.FC = () => {
                         ))}
                     </div>
                     {selectedVariant && (
-                         <h2 id="cafe-item-details-selected-variant-price" className="cafe-item-details-selected-variant-price">
-                             {toDisplayCost(parseInt(selectedVariant.cost, 10))}
-                         </h2>
+                        <h2 id="cafe-item-details-selected-variant-price" className="cafe-item-details-selected-variant-price">
+                            {toDisplayCost(parseInt(selectedVariant.cost, 10))}
+                        </h2>
                     )}
                 </div>
-            </div>
-
-            {/* --- ВРЕМЕННАЯ КНОПКА ДЛЯ ТЕСТИРОВАНИЯ В БРАУЗЕРЕ --- */}
-            <div style={{ padding: '20px', textAlign: 'center' }}>
-                <button
-                    style={{ padding: '10px 20px', fontSize: '16px', cursor: 'pointer', backgroundColor: '#609F6D', color: 'white', border: 'none', borderRadius: '8px' }}
-                    onClick={handleAddToCart}
-                >
-                    Add to Cart (Test)
-                </button>
             </div>
 
             <div className="cafe-item-details-quantity-selector-container">
