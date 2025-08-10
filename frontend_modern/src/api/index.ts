@@ -2,20 +2,20 @@
 import axios from 'axios';
 // Импортируйте типы данных, которые будут соответствовать вашим Pydantic схемам на бэкенде
 // Мы создадим эти типы позже, пока используйте any или определите базовые типы
-import type { CafeInfoSchema, CategorySchema, MenuItemSchema, OrderRequest } from './types'; // Создайте файл types.ts позже
+import type { CafeInfoSchema, CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema } from './types'; 
 
 // Получаем базовый URL бэкенда из переменных окружения Vite
 // VITE_API_BASE_URL должен быть определен в вашем .env файле в корне фронтенда
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Если переменная окружения не установлена (например, в standalone режиме)
-if (!API_BASE_URL) {
-  console.error("VITE_API_BASE_URL is not set in environment variables!");
-  // Можно выбросить ошибку или использовать заглушку URL
-  // throw new Error("VITE_API_BASE_URL is not set!");
-} else {
-    console.log(`API Base URL: ${API_BASE_URL}`);
-}
+// // Если переменная окружения не установлена (например, в standalone режиме)
+// if (!API_BASE_URL) {
+//   console.error("VITE_API_BASE_URL is not set in environment variables!");
+//   // Можно выбросить ошибку или использовать заглушку URL
+//   // throw new Error("VITE_API_BASE_URL is not set!");
+// } else {
+//     console.log(`API Base URL: ${API_BASE_URL}`);
+// }
 
 
 // Создаем экземпляр клиента axios с базовым URL
@@ -28,16 +28,16 @@ const apiClient = axios.create({
 
 // --- Функции для взаимодействия с API бэкенда ---
 
-// Получить информацию о кафе
-export const getCafeInfo = async (): Promise<CafeInfoSchema> => {
-  try {
-    const response = await apiClient.get<CafeInfoSchema>('/info');
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching cafe info:", error);
-    throw error; // Пробросить ошибку для обработки в UI
-  }
-};
+// // Получить информацию о кафе
+// export const getCafeInfo = async (): Promise<CafeInfoSchema> => {
+//   try {
+//     const response = await apiClient.get<CafeInfoSchema>('/info');
+//     return response.data;
+//   } catch (error) {
+//     console.error("Error fetching cafe info:", error);
+//     throw error; // Пробросить ошибку для обработки в UI
+//   }
+// };
 
 // Получить список категорий
 export const getCategories = async (): Promise<CategorySchema[]> => {
@@ -86,5 +86,15 @@ export const createOrder = async (orderData: OrderRequest): Promise<{ invoiceUrl
          throw new Error(error.response.data.detail); // Пробросить специфическое сообщение
     }
     throw error; // Пробросить общую ошибку
+  }
+};
+
+export const getCafeSettings = async (): Promise<CafeSettingsSchema> => {
+  try {
+    const response = await apiClient.get<CafeSettingsSchema>('/settings');
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching cafe settings:", error);
+    throw error;
   }
 };

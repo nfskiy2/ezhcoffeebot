@@ -9,184 +9,191 @@ import { useCart } from '../store/cart';
 import { toDisplayCost } from '../utils/currency';
 
 // Импортируем функцию API для создания заказа
-import { createOrder } from '../api';
+import { createOrder, getCafeSettings } from '../api';
 
 // Импортируем JSON анимации
 import emptyCartAnimation from '../assets/lottie/empty-cart.json'; 
 
+import { TelegramSDK } from '../telegram/telegram';
+
+import { useSnackbar } from '../components/Snackbar'; // Импортируем useSnackbar
 
 const CartPage: React.FC = () => {
-    // const navigate = useNavigate();
-    const { items, increaseQuantity, decreaseQuantity, getItemCount, getTotalCost, clearCart } = useCart(); // Получаем функции и состояние из контекста
+    const { items, increaseQuantity, decreaseQuantity, getItemCount, getTotalCost, clearCart } = useCart();
+    const { showSnackbar } = useSnackbar(); // Использование Snackbar
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [minOrderAmount, setMinOrderAmount] = useState<number>(0);
 
-    const [isSubmitting, setIsSubmitting] = useState(false); // Состояние для блокировки кнопки при отправке
-
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                const settings = await getCafeSettings();
+                setMinOrderAmount(settings.min_order_amount);
+            } catch (err) {
+                console.error("Failed to load cafe settings:", err);
+                // Можно показать ошибку пользователю, если не удалось загрузить настройки
+                showSnackbar("Failed to load cafe settings. Please try again.", { style: 'error' });
+            }
+        };
+        loadSettings();
+    }, [showSnackbar]);
 
     // --- Логика оформления заказа (вызывается по клику на MainButton) ---
     const handleCheckout = async () => {
-        if (isSubmitting || getItemCount(items) === 0) {
-             console.warn("Checkout already in progress or cart is empty.");
-             return; // Предотвращаем повторное нажатие
+        const totalCost = getTotalCost(items);
+
+        // Проверка минимальной суммы заказа перед отправкой
+        if (minOrderAmount > 0 && totalCost < minOrderAmount) {
+            showSnackbar(
+                `Order total is too low. Minimum order is ${toDisplayCost(minOrderAmount)}.`,
+                { style: 'warning' }
+            );
+            TelegramSDK.notificationOccurred('warning');
+            return;
         }
 
-         // Получаем initData из Telegram Web App SDK
-         if (window.Telegram && window.Telegram.WebApp) {
-             const tg = window.Telegram.WebApp;
-             const initData = tg.initData;
+        if (isSubmitting || getItemCount(items) === 0) {
+            console.warn("Checkout already in progress or cart is empty.");
+            return;
+        }
 
-             if (!initData) {
-                 console.error("Telegram initData is missing. Cannot create order.");
-                 // В реальном приложении, возможно, показать ошибку пользователю
-                  // tg.showAlert("Error: Telegram user data is not available.");
-                 return;
-             }
+        if (window.Telegram && window.Telegram.WebApp) {
+            const initData = TelegramSDK.getInitData();
 
-             console.log("Creating order with initData:", initData);
-             tg.MainButton.showProgress(true); // Показать индикатор загрузки на кнопке
-             setIsSubmitting(true);
+            if (!initData) {
+                console.error("Telegram initData is missing. Cannot create order.");
+                TelegramSDK.showAlert("Error: Telegram user data is not available.");
+                return;
+            }
 
-             try {
-                 // Формируем данные для запроса к бэкенду
-                 const orderData = {
-                     _auth: initData, // Отправляем initData для валидации на бэкенде
-                     cartItems: items, // Отправляем массив товаров из корзины
-                 };
+            console.log("Creating order with initData:", initData);
+            TelegramSDK.setMainButtonLoading(true);
+            setIsSubmitting(true);
 
-                 // Вызываем функцию API для создания заказа
-                 const response = await createOrder(orderData);
-                 console.log("Order created successfully. Received invoice URL:", response.invoiceUrl);
+            try {
+                const orderData = {
+                    _auth: initData,
+                    cartItems: items,
+                };
 
-                 // Открываем инвойс для оплаты
-                 tg.openInvoice(response.invoiceUrl, (status) => {
-                     console.log("Invoice status:", status);
-                     // Обрабатываем статус после закрытия окна инвойса
-                     if (status === 'paid') {
-                         // Если оплата прошла успешно
-                          tg.HapticFeedback.notificationOccurred('success'); // Тактильный отклик
-                         // Очищаем корзину
-                         clearCart();
-                         // Закрываем Mini App
-                         tg.close();
-                     } else if (status === 'failed') {
-                         // Если оплата не удалась
-                          tg.HapticFeedback.notificationOccurred('error');
-                           tg.showAlert("Payment failed. Please try again.");
-                     } else { // 'cancelled' или 'pending'
-                         // Если пользователь отменил оплату
-                          tg.HapticFeedback.notificationOccurred('warning');
-                           tg.showAlert("Your order has been cancelled.");
-                     }
-                     // Скрываем индикатор загрузки на кнопке и разблокируем ее
-                     tg.MainButton.hideProgress();
-                     setIsSubmitting(false);
-                 });
+                const response = await createOrder(orderData);
+                console.log("Order created successfully. Received invoice URL:", response.invoiceUrl);
 
-             } catch (err: any) {
-                 console.error("Failed to create order:", err);
-                  tg.HapticFeedback.notificationOccurred('error');
-                  tg.showAlert(err.message || "Failed to create order. Please try again later.");
-                 // Скрываем индикатор загрузки на кнопке и разблокируем ее
-                  tg.MainButton.hideProgress();
-                  setIsSubmitting(false);
-             }
+                TelegramSDK.openInvoice(response.invoiceUrl, (status) => {
+                    console.log("Invoice status:", status);
+                    if (status === 'paid') {
+                        TelegramSDK.notificationOccurred('success');
+                        clearCart();
+                        TelegramSDK.close();
+                    } else if (status === 'failed') {
+                        TelegramSDK.notificationOccurred('error');
+                        TelegramSDK.showAlert("Payment failed. Please try again.");
+                    } else { // 'cancelled' или 'pending'
+                        TelegramSDK.notificationOccurred('warning');
+                        TelegramSDK.showAlert("Your order has been cancelled.");
+                    }
+                    TelegramSDK.setMainButtonLoading(false);
+                    setIsSubmitting(false);
+                });
 
-         } else {
-              console.warn("Telegram Web App SDK is not available. Cannot proceed with checkout.");
-               // Показать ошибку, что приложение должно быть запущено в Telegram
-         }
+            } catch (err: any) {
+                console.error("Failed to create order:", err);
+                TelegramSDK.notificationOccurred('error');
+                // Если ошибка от бэкенда из-за минимальной суммы, покажем её
+                if (err.message && err.message.includes("Order total is too low")) {
+                    showSnackbar(err.message, { style: 'error' });
+                } else {
+                    TelegramSDK.showAlert(err.message || "Failed to create order. Please try again later.");
+                }
+                TelegramSDK.setMainButtonLoading(false);
+                setIsSubmitting(false);
+            }
+        } else {
+            console.warn("Telegram Web App SDK is not available. Cannot proceed with checkout.");
+            // Для тестирования в браузере
+            showSnackbar("Telegram Web App SDK is not available. Cannot proceed with checkout.", { style: 'error' });
+        }
     };
 
 
-    // --- Хук useEffect для управления Telegram MainButton ("CHECKOUT") ---
     useEffect(() => {
-         if (window.Telegram && window.Telegram.WebApp) {
-              const tg = window.Telegram.WebApp;
-              const totalCount = getItemCount(items);
-              const totalCost = getTotalCost(items);
+        if (window.Telegram && window.Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            const totalCount = getItemCount(items);
+            const totalCost = getTotalCost(items);
 
-             if (totalCount > 0) {
-                 // Если в корзине есть товары, показываем кнопку "Оформить заказ"
-                 const buttonText = `CHECKOUT • ${toDisplayCost(totalCost)}`;
-                 tg.MainButton.setText(buttonText).show();
-                 tg.MainButton.onClick(handleCheckout);
-                 // Если заказ не отправляется, кнопка активна
-                 if (!isSubmitting) {
-                     tg.MainButton.enable();
-                 } else {
-                      tg.MainButton.disable(); // Блокируем кнопку во время отправки
-                 }
-                  console.log(`MainButton shown for cart page with ${totalCount} items.`);
-             } else {
-                 // Если корзина пуста, скрываем кнопку
-                 tg.MainButton.hide();
-                  console.log("MainButton hidden on cart page (cart is empty).");
-             }
+            if (totalCount > 0) {
+                let buttonText = `CHECKOUT • ${toDisplayCost(totalCost)}`;
+                let isButtonActive = true;
 
-             // Очистка при уходе со страницы
-             return () => {
-                 console.log("CartPage cleanup: removing MainButton handler.");
-                 if (window.Telegram && window.Telegram.WebApp) {
-                      const tg = window.Telegram.WebApp;
-                      // Удаляем обработчик клика
-                     tg.MainButton.offClick(handleCheckout);
-                 }
-             };
-         }
-         // Зависит от getItemCount, getTotalCost (которые зависят от items) и isSubmitting
-    }, [getItemCount, getTotalCost, handleCheckout, isSubmitting]);
+                
+                if (minOrderAmount > 0 && totalCost < minOrderAmount) {
+                    const amountNeeded = minOrderAmount - totalCost;
+                    buttonText = `ADD ${toDisplayCost(amountNeeded)} TO CHECKOUT • MIN: ${toDisplayCost(minOrderAmount)}`;
+                    isButtonActive = false; // Деактивируем кнопку, если сумма слишком мала
+                }
 
+                tg.MainButton.setText(buttonText).show();
+                tg.MainButton.onClick(handleCheckout);
 
-    // --- JSX для отображения содержимого страницы ---
+                if (isButtonActive && !isSubmitting) {
+                    tg.MainButton.enable();
+                } else {
+                    tg.MainButton.disable();
+                }
+
+                console.log(`MainButton shown for cart page with ${totalCount} items. Active: ${isButtonActive}. Current total: ${totalCost}, Min required: ${minOrderAmount}`);
+            } else {
+                tg.MainButton.hide();
+                console.log("MainButton hidden on cart page (cart is empty).");
+            }
+
+            return () => {
+                console.log("CartPage cleanup: removing MainButton handler.");
+                if (window.Telegram && window.Telegram.WebApp) {
+                    const tg = window.Telegram.WebApp;
+                    tg.MainButton.offClick(handleCheckout);
+                }
+            };
+        }
+    }, [getItemCount, getTotalCost, handleCheckout, isSubmitting, minOrderAmount, items]); // minOrderAmount добавлен в зависимости
+
     return (
-         <section className="cart-items-container"> {/* Используем класс контейнера */}
-             <h2>Your Cart</h2>
+        <section className="cart-items-container">
+            <h2>Your Cart</h2>
 
-             {/* Проверяем, пуста ли корзина */}
-             {items.length === 0 ? (
-                 // Если корзина пуста, показываем анимацию и сообщение
-                 <div id="cart-empty-placeholder" className="cart-empty-placeholder">
-                     {/* Используем Lottie компонент */}
-                     <Lottie
-                         animationData={emptyCartAnimation} // JSON анимации
-                         loop={true}
-                         style={{ width: 150, height: 150 }} // Пример размера
-                     />
-                     <h3>Your cart is empty</h3>
-                     <p>It's time to order something delicious!</p>
-                 </div>
-             ) : (
-                 // Если в корзине есть товары, отображаем их список
-                 <div id="cart-items">
-                     {items.map(item => (
-                         // Отображаем каждый товар в корзине
-                         <div key={`${item.cafeItem.id}-${item.variant.id}`} className="cart-item-container">
-                             {/* Изображение товара */}
-                             <img id="cart-item-image" className="cart-item-image" src={item.cafeItem.image} alt={item.cafeItem.name}/>
-                             {/* Информация о товаре */}
-                             <div className="cart-item-info-container">
-                                  {/* Название */}
-                                 <h6 id="cart-item-name" className="cart-item-name">{item.cafeItem.name}</h6>
-                                 {/* Выбранный вариант */}
-                                 <p id="cart-item-description" className="small cart-item-description">{item.variant.name}</p>
-                                  {/* Стоимость этого товара (цена за шт * количество) */}
-                                 <div id="cart-item-cost" className="cart-item-cost">
-                                     {toDisplayCost(parseInt(item.variant.cost, 10) * item.quantity)}
-                                 </div>
-                             </div>
-                             {/* Элементы управления количеством */}
-                             <div className="cart-item-quantity-container">
-                                 {/* Кнопка уменьшения количества */}
-                                 <button id="cart-item-quantity-decrement" className="material-symbols-rounded icon-button small" onClick={() => decreaseQuantity(item.cafeItem.id, item.variant.id)}>remove</button>
-                                 {/* Текущее количество */}
-                                 <div id="cart-item-quantity" className="cart-item-quantity">{item.quantity}</div>
-                                 {/* Кнопка увеличения количества */}
-                                 <button id="cart-item-quantity-increment" className="material-symbols-rounded icon-button small" onClick={() => increaseQuantity(item.cafeItem.id, item.variant.id)}>add</button>
-                             </div>
-                         </div>
-                     ))}
-                 </div>
-             )}
-         </section>
+            {items.length === 0 ? (
+                <div id="cart-empty-placeholder" className="cart-empty-placeholder">
+                    <Lottie
+                        animationData={emptyCartAnimation}
+                        loop={true}
+                        style={{ width: 150, height: 150 }}
+                    />
+                    <h3>Your cart is empty</h3>
+                    <p>It's time to order something delicious!</p>
+                </div>
+            ) : (
+                <div id="cart-items">
+                    {items.map(item => (
+                        <div key={`${item.cafeItem.id}-${item.variant.id}`} className="cart-item-container">
+                            <img id="cart-item-image" className="cart-item-image" src={item.cafeItem.image} alt={item.cafeItem.name}/>
+                            <div className="cart-item-info-container">
+                                <h6 id="cart-item-name" className="cart-item-name">{item.cafeItem.name}</h6>
+                                <p id="cart-item-description" className="small cart-item-description">{item.variant.name}</p>
+                                <div id="cart-item-cost" className="cart-item-cost">
+                                    {toDisplayCost(parseInt(item.variant.cost, 10) * item.quantity)}
+                                </div>
+                            </div>
+                            <div className="cart-item-quantity-container">
+                                <button id="cart-item-quantity-decrement" className="material-symbols-rounded icon-button small" onClick={() => decreaseQuantity(item.cafeItem.id, item.variant.id)}>remove</button>
+                                <div id="cart-item-quantity" className="cart-item-quantity">{item.quantity}</div>
+                                <button id="cart-item-quantity-increment" className="material-symbols-rounded icon-button small" onClick={() => increaseQuantity(item.cafeItem.id, item.variant.id)}>add</button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </section>
     );
 };
 

@@ -592,9 +592,11 @@ p.small {
 
 /* Common (effect, animations, etc.) */
 
+/* Common (effect, animations, etc.) */
+
 .snackbar {
     display: block;
-    position: fixed;
+    position: fixed; /* Изменяем на fixed, чтобы Snackbar был поверх всего и не зависел от прокрутки */
     bottom: 16px;
     left: 0;
     right: 0;
@@ -602,12 +604,22 @@ p.small {
     font-family: 'Rubik', sans-serif;
     font-size: 14px;
     color: var(--on-accent-color);
-    background-color: var(--accent-color);
+    background-color: var(--accent-color); /* По умолчанию будет акцентный цвет, но можно переопределять */
     padding: 16px 24px;
     border-radius: 16px;
-    z-index: 3;
-    opacity: 0;
-    transform: scale(0.24);
+    z-index: 1000; /* Высокий z-index, чтобы был поверх всего */
+    opacity: 0; /* Начальное состояние: невидимый */
+    transform: scale(0.8); /* Начальное состояние: уменьшенный */
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out; /* Плавный переход */
+    pointer-events: none; /* Чтобы не блокировал клики под собой, пока не видим */
+    text-align: center; /* Центрируем текст */
+}
+
+/* Классы для анимации появления/исчезновения */
+.snackbar.show {
+    opacity: 1;
+    transform: scale(1);
+    pointer-events: all;
 }
 
 .ripple {
@@ -625,10 +637,38 @@ p.small {
     animation-timing-function: linear;
     background: linear-gradient(to right, var(--shimmer-color-1) 8%, var(--shimmer-color-2) 18%, var(--shimmer-color-1) 33%);
     background-size: 1200px 100%;
-    color: transparent;
-    opacity: .075;
+    color: transparent; /* Делает текст прозрачным, чтобы видеть только фон */
+    opacity: .075; /* Добавьте, если хотите, чтобы шиммер был более прозрачным */
 }
-  
+
+@-webkit-keyframes shimmer {
+    0% {
+        background-position: -100% 0;
+    }
+    100% {
+        background-position: 100% 0;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -1200px 0;
+    }
+    100% {
+        background-position: 1200px 0;
+    }
+}.shimmer {
+    animation-duration: 2.2s;
+    animation-fill-mode: forwards;
+    animation-iteration-count: infinite;
+    animation-name: shimmer;
+    animation-timing-function: linear;
+    background: linear-gradient(to right, var(--shimmer-color-1) 8%, var(--shimmer-color-2) 18%, var(--shimmer-color-1) 33%);
+    background-size: 1200px 100%;
+    color: transparent; /* Делает текст прозрачным, чтобы видеть только фон */
+    opacity: .075; /* Добавьте, если хотите, чтобы шиммер был более прозрачным */
+}
+
 @-webkit-keyframes shimmer {
     0% {
         background-position: -100% 0;
@@ -655,6 +695,6 @@ p.small {
 }
 
 .cafe-section-column .cafe-item-container {
-    width: 100%;
-    max-width: none; /* Убирает ограничение ширины, если оно было */
+  width: 100%;
+  max-width: none; /* Убирает ограничение ширины, если оно было */
 }

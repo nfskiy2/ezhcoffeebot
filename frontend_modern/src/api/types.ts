@@ -78,3 +78,7 @@ export interface CartState {
     items: CartItem[];
     // Можно добавить другие поля, например, общая стоимость, количество позиций
 }
+
+export interface CafeSettingsSchema {
+    min_order_amount: number;
+}
