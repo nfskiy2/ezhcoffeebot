@@ -18,7 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
-  backend: # <--- ВОТ ЭТОТ СЕРВИС НУЖНО ДОБАВИТЬ
+  backend:
     build: ./backend # Указываем Docker собрать образ из папки backend
     container_name: laurel_cafe_backend # Имя контейнера (опционально)
     depends_on: # Зависит от сервиса db
