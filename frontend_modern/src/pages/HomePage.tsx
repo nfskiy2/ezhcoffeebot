@@ -6,6 +6,7 @@ import { getCafeInfo, getCategories, getCategoryMenu } from '../api';
 import type { CafeInfoSchema, CategorySchema, MenuItemSchema } from '../api/types'; 
 import { useCart } from '../store/cart';
 import MenuItemCard from '../components/MenuItemCard'; 
+import { getContrastingTextColor } from '../utils/colorUtils'; 
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
@@ -144,7 +145,13 @@ const HomePage: React.FC = () => {
                                 style={{ backgroundColor: category.backgroundColor || '#ccc' }}
                             >
                                 <img id="cafe-category-icon" className="cafe-category-icon" src={category.icon} alt={category.name + " icon"}/>
-                                <div id="cafe-category-name" className="cafe-category-name">{category.name}</div>
+                                <div
+                                    id="cafe-category-name"
+                                    className="cafe-category-name"
+                                    style={{ color: getContrastingTextColor(category.backgroundColor || '#ccc') }}
+                                >
+                                    {category.name}
+                                </div>
                             </button>
                         ))
                     )}
