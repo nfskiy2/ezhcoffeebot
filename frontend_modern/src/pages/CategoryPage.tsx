@@ -1,16 +1,20 @@
 // frontend_modern/src/pages/CategoryPage.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import * as React from 'react'; // Use * as React
+import { useEffect, useState, useCallback } from 'react'; // Explicitly import hooks
 import { useParams, useNavigate } from 'react-router-dom';
 
-import { getCategoryMenu } from '../api';
+import { getCafeCategoryMenu } from '../api';
 import type { MenuItemSchema } from '../api/types';
 import { useCart } from '../store/cart';
-import MenuItemCard from '../components/MenuItemCard'; // Убедимся, что MenuItemCard импортирован
+import MenuItemCard from '../components/MenuItemCard';
+import { useCafe } from '../store/cafe'; // Keep useCafe for context access
+import { logger } from '../utils/logger'; // Import logger
 
 const CategoryPage: React.FC = () => {
-    const { categoryId } = useParams<{ categoryId: string }>();
+    const { cafeId, categoryId } = useParams<{ cafeId: string; categoryId: string }>();
     const navigate = useNavigate();
     const { items, getItemCount } = useCart();
+    const { selectedCafe } = useCafe(); // Keep selectedCafe if you want to display cafe name for context
 
     const [menuItems, setMenuItems] = useState<MenuItemSchema[]>([]);
     const [loading, setLoading] = useState(true);
@@ -18,8 +22,9 @@ const CategoryPage: React.FC = () => {
 
     useEffect(() => {
         const loadMenu = async () => {
-            if (!categoryId) {
-                setError("Category ID is missing in URL.");
+            if (!cafeId || !categoryId) {
+                logger.error("Cafe ID or Category ID is missing in URL.");
+                setError("Cafe ID or Category ID is missing in URL.");
                 setLoading(false);
                 return;
             }
@@ -28,14 +33,16 @@ const CategoryPage: React.FC = () => {
             setError(null);
 
             try {
-                const items = await getCategoryMenu(categoryId);
+                const items = await getCafeCategoryMenu(cafeId, categoryId);
                 if (Array.isArray(items)) {
                     setMenuItems(items);
                 } else {
-                    const errorMessage = `API did not return an array for menu in category ${categoryId}.`;
+                    const errorMessage = `API did not return an array for menu in category ${categoryId} for cafe ${cafeId}.`;
+                    logger.error(errorMessage);
                     setError(errorMessage);
                 }
             } catch (err: any) {
+                logger.error("Failed to load menu:", err);
                 setError(err.message || "Failed to load menu.");
             } finally {
                 setLoading(false);
@@ -44,45 +51,38 @@ const CategoryPage: React.FC = () => {
 
         loadMenu();
 
-    }, [categoryId]);
-
+    }, [cafeId, categoryId]); // Dependencies: cafeId and categoryId
 
     const handleMainButtonClick = useCallback(() => {
         navigate('/cart');
     }, [navigate]);
 
-
     useEffect(() => {
-         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
-              const tg = window.Telegram.WebApp;
-              const cartItemCount = getItemCount(items);
+        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
+            const tg = window.Telegram.WebApp;
+            const cartItemCount = getItemCount(items);
 
-             if (cartItemCount > 0) {
-                 const buttonText = `MY CART • ${cartItemCount} POSITION${cartItemCount > 1 ? 'S' : ''}`;
-                 tg.MainButton.setText(buttonText).show();
-                 tg.MainButton.onClick(handleMainButtonClick);
-                 tg.MainButton.enable();
-                 // console.log(`MainButton shown for category page with ${cartItemCount} items.`); // Удаляем console.log
-             } else {
-                 tg.MainButton.hide();
-                 // console.log("MainButton hidden on category page (no items in cart)."); // Удаляем console.log
-             }
+            if (cartItemCount > 0) {
+                const buttonText = `MY CART • ${cartItemCount} POSITION${cartItemCount > 1 ? 'S' : ''}`;
+                tg.MainButton.setText(buttonText).show();
+                tg.MainButton.onClick(handleMainButtonClick);
+                tg.MainButton.enable();
+            } else {
+                tg.MainButton.hide();
+            }
 
-             return () => {
-                 // console.log("CategoryPage cleanup: removing MainButton handler."); // Удаляем console.log
-                 if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
-                      const tg = window.Telegram.WebApp;
-                     tg.MainButton.offClick(handleMainButtonClick);
-                 }
-             };
-         }
+            return () => {
+                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
+                    const tg = window.Telegram.WebApp;
+                    tg.MainButton.offClick(handleMainButtonClick);
+                }
+            };
+        }
     }, [handleMainButtonClick, getItemCount, items]);
 
-
     if (loading) {
-        // Здесь можно использовать шиммер-плейсхолдеры для двух колонок, как на главной
         return (
-            <section className="cafe-section-vertical"> {/* Используем vertical для двух колонок */}
+            <section className="cafe-section-vertical">
                 <div className="cafe-item-container">
                     <div className="cafe-item-image shimmer" style={{ width: '100%', height: 'calc((100vw - 16px * 3) / 2 * 3 / 4)' }}></div>
                     <h6 className="cafe-item-name shimmer" style={{ minWidth: '80%', marginTop: '8px' }}></h6>
@@ -112,13 +112,11 @@ const CategoryPage: React.FC = () => {
     }
 
     return (
-        <section>
-            {/* УДАЛЯЕМ ЗАГОЛОВОК "Menu for {categoryId}" */}
-            {/* <h2>Menu for {categoryId}</h2> */}
-            <div id="cafe-category" className="cafe-section-vertical"> {/* ИЗМЕНЯЕМ КЛАСС НА cafe-section-vertical */}
+         <section>
+            <div id="cafe-category" className="cafe-section-vertical">
                 {Array.isArray(menuItems) && menuItems.map(item => (
-                     // Используем MenuItemCard для отображения элементов
-                     <MenuItemCard key={item.id} item={item} />
+                     // cafeId! is safe here because of the initial check in useEffect
+                     <MenuItemCard key={item.id} item={item} cafeId={cafeId!} />
                 ))}
                  {Array.isArray(menuItems) && menuItems.length === 0 && !loading && !error && <p>No items found in this category.</p>}
             </div>

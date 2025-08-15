@@ -1,9 +1,18 @@
+// frontend_modern/src/api/index.ts
 import axios from 'axios';
-import type { CafeInfoSchema, CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema } from './types'; 
+import type { CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema } from './types'; // Removed CafeInfoSchema
+import { logger } from '../utils/logger'; // Import logger
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-// Создаем экземпляр клиента axios с базовым URL
+if (!API_BASE_URL) {
+  logger.error("VITE_API_BASE_URL is not set in environment variables!");
+  // In a real app, you might throw an error or use a fallback URL
+  // throw new Error("VITE_API_BASE_URL is not set!");
+} else {
+    logger.log(`API Base URL: ${API_BASE_URL}`);
+}
+
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -11,66 +20,92 @@ const apiClient = axios.create({
   },
 });
 
-// Получить информацию о кафе
-export const getCafeInfo = async (): Promise<CafeInfoSchema> => {
+// NEW: Get list of all cafes
+export const getAllCafes = async (): Promise<CafeSchema[]> => {
   try {
-    const response = await apiClient.get<CafeInfoSchema>('/info');
+    const response = await apiClient.get<CafeSchema[]>('/cafes');
     return response.data;
   } catch (error) {
-    throw error; // Пробросить ошибку для обработки в UI
-  }
-};
-
-// Получить список категорий
-export const getCategories = async (): Promise<CategorySchema[]> => {
-  try {
-    const response = await apiClient.get<CategorySchema[]>('/categories');
-    return response.data;
-  } catch (error) {
+    logger.error("Error fetching all cafes:", error);
     throw error;
   }
 };
 
-// Получить меню по категории
-export const getCategoryMenu = async (categoryId: string): Promise<MenuItemSchema[]> => {
+// NEW: Get info about a specific cafe
+export const getCafeById = async (cafeId: string): Promise<CafeSchema> => {
   try {
-    const response = await apiClient.get<MenuItemSchema[]>(`/menu/${categoryId}`);
+    const response = await apiClient.get<CafeSchema>(`/cafes/${cafeId}`);
     return response.data;
   } catch (error) {
+    logger.error(`Error fetching cafe info for ${cafeId}:`, error);
     throw error;
   }
 };
 
-// Получить детали пункта меню
-export const getMenuItemDetails = async (itemId: string): Promise<MenuItemSchema> => {
+// UPDATED: Get list of categories for a specific cafe
+export const getCafeCategories = async (cafeId: string): Promise<CategorySchema[]> => {
   try {
-    const response = await apiClient.get<MenuItemSchema>(`/menu/details/${itemId}`);
+    const response = await apiClient.get<CategorySchema[]>(`/cafes/${cafeId}/categories`);
     return response.data;
   } catch (error) {
+    logger.error(`Error fetching categories for cafe ${cafeId}:`, error);
     throw error;
   }
 };
 
-// Создать заказ (отправить корзину на бэкенд)
-// В ответ ожидаем URL инвойса от Telegram
-export const createOrder = async (orderData: OrderRequest): Promise<{ invoiceUrl: string }> => {
+// UPDATED: Get menu by category for a specific cafe
+export const getCafeCategoryMenu = async (cafeId: string, categoryId: string): Promise<MenuItemSchema[]> => {
   try {
-    const response = await apiClient.post<{ invoiceUrl: string }>('/order', orderData);
+    const response = await apiClient.get<MenuItemSchema[]>(`/cafes/${cafeId}/menu/${categoryId}`);
     return response.data;
   } catch (error) {
-    // Если ошибка от бэкенда содержит детали (например, HTTPException)
-    if (axios.isAxiosError(error) && error.response && error.response.data && error.response.data.detail) {
-         throw new Error(error.response.data.detail); // Пробросить специфическое сообщение
+    logger.error(`Error fetching menu for category ${categoryId} of cafe ${cafeId}:`, error);
+    throw error;
+  }
+};
+
+// UPDATED: Get details of a menu item for a specific cafe
+export const getCafeMenuItemDetails = async (cafeId: string, itemId: string): Promise<MenuItemSchema> => {
+  try {
+    const response = await apiClient.get<MenuItemSchema>(`/cafes/${cafeId}/menu/details/${itemId}`);
+    return response.data;
+  } catch (error) {
+    logger.error(`Error fetching details for item ${itemId} of cafe ${cafeId}:`, error);
+    throw error;
+  }
+};
+
+// UPDATED: Get cafe settings for a specific cafe
+export const getCafeSettings = async (cafeId: string): Promise<CafeSettingsSchema> => {
+    try {
+        const response = await apiClient.get<CafeSettingsSchema>(`/cafes/${cafeId}/settings`);
+        return response.data;
+    } catch (error) {
+        logger.error(`Error fetching settings for cafe ${cafeId}:`, error);
+        throw error;
     }
-    throw error; // Пробросить общую ошибку
+};
+
+// UPDATED: Create an order for a specific cafe
+export const createOrder = async (cafeId: string, orderData: OrderRequest): Promise<{ invoiceUrl: string }> => {
+  try {
+    const response = await apiClient.post<{ invoiceUrl: string }>(`/cafes/${cafeId}/order`, orderData);
+    return response.data;
+  } catch (error) {
+    logger.error("Error creating order:", error);
+    if (axios.isAxiosError(error) && error.response && error.response.data && error.response.data.detail) {
+         throw new Error(error.response.data.detail);
+    }
+    throw error;
   }
 };
 
-export const getCafeSettings = async (): Promise<CafeSettingsSchema> => {
+export const getCafePopularMenu = async (cafeId: string): Promise<MenuItemSchema[]> => {
   try {
-    const response = await apiClient.get<CafeSettingsSchema>('/settings');
+    const response = await apiClient.get<MenuItemSchema[]>(`/cafes/${cafeId}/popular`);
     return response.data;
   } catch (error) {
+    logger.error(`Error fetching popular menu for cafe ${cafeId}:`, error);
     throw error;
   }
 };

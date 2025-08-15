@@ -1,39 +1,75 @@
-from sqlalchemy import Column, Integer, String, Float, JSON, ForeignKey
+# backend/app/models.py
+from sqlalchemy import (
+    Column, Integer, String, Float, JSON, ForeignKey,
+    PrimaryKeyConstraint, ForeignKeyConstraint 
+)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
 Base = declarative_base()
 
+class Cafe(Base):
+    __tablename__ = 'cafes'
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    cover_image = Column(String)
+    logo_image = Column(String)
+    kitchen_categories = Column(String)
+    rating = Column(String)
+    cooking_time = Column(String)
+    status = Column(String)
+    opening_hours = Column(String)
+    min_order_amount = Column(Integer, default=0)
+
+    categories = relationship("Category", back_populates="cafe")
+
+# ОБНОВЛЕННАЯ МОДЕЛЬ: Category с составным первичным ключом
 class Category(Base):
     __tablename__ = 'categories'
 
-    id = Column(String, primary_key=True)
+    # Составной первичный ключ по id и cafe_id
+    id = Column(String, nullable=False) # Больше не primary_key=True здесь
+    cafe_id = Column(String, ForeignKey('cafes.id'), nullable=False)
+    # Определяем составной первичный ключ
+    __table_args__ = (PrimaryKeyConstraint('id', 'cafe_id'),) # <--- ДОБАВЬТЕ ЭТУ СТРОКУ
+
     icon = Column(String)
     name = Column(String)
-    background_color = Column(String) # Может быть полезно
+    background_color = Column(String)
 
+    cafe = relationship("Cafe", back_populates="categories")
     menu_items = relationship("MenuItem", back_populates="category")
 
+
+# ОБНОВЛЕННАЯ МОДЕЛЬ: MenuItem с составным первичным ключом (id, cafe_id)
 class MenuItem(Base):
     __tablename__ = 'menu_items'
+    
+    id = Column(String, nullable=False)
+    cafe_id = Column(String, ForeignKey('cafes.id'), nullable=False)
+    category_id = Column(String, nullable=False) # Привязка к категории (без ForeignKeyConstraint здесь)
+    # Определяем составной первичный ключ
+    __table_args__ = (
+        PrimaryKeyConstraint('id', 'cafe_id'),
+        ForeignKeyConstraint( # <--- Вот где используется
+            ['category_id', 'cafe_id'], # Колонки в MenuItem
+            ['categories.id', 'categories.cafe_id'] # Колонки в Categories, на которые ссылаемся
+        ),
+    )
 
-    id = Column(String, primary_key=True)
-    category_id = Column(String, ForeignKey('categories.id'))
     image = Column(String)
     name = Column(String)
     description = Column(String)
-    variants = Column(JSON) # Храним варианты как JSON массив внутри записи
+    variants = Column(JSON)
 
-    category = relationship("Category", back_populates="menu_items")
+    # Устанавливаем отношение с Category.
+    # primaryjoin гарантирует, что мы связываем MenuItem с Category, принадлежащей той же кофейне.
+    category = relationship(
+        "Category",
+        primaryjoin="and_(MenuItem.category_id == Category.id, MenuItem.cafe_id == Category.cafe_id)",
+        back_populates="menu_items"
+    )
+    # ИСПРАВЛЕНИЕ: Добавляем overlaps
+    cafe = relationship("Cafe", backref="menu_items_by_cafe", overlaps="category,menu_items")
 
-# Возможно, модель для info (проще одну запись или хардкод, но для примера):
-# class CafeInfo(Base):
-#     __tablename__ = 'cafe_info'
-#     id = Column(Integer, primary_key=True) # Нужен PK
-#     cover_image = Column(String)
-#     logo_image = Column(String)
-#     name = Column(String)
-#     kitchen_categories = Column(String)
-#     rating = Column(String)
-#     cooking_time = Column(String)
-#     status = Column(String)

@@ -75,11 +75,23 @@ async def handle_pre_checkout_query(update: Update, context: CallbackContext) ->
          logger.warning("Received pre-checkout query update with missing data.")
          return
 
-    logger.info(f"Received pre-checkout query from user_id: {update.pre_checkout_query.from_user.id}")
+    query_id = update.pre_checkout_query.id
+    user_id = update.pre_checkout_query.from_user.id
+    logger.info(f"Received pre-checkout query (ID: {query_id}) from user_id: {user_id}")
+
     try:
+        start_time = asyncio.get_event_loop().time() # Засекаем время
         await update.pre_checkout_query.answer(ok=True)
+        end_time = asyncio.get_event_loop().time() # Засекаем время
+        logger.info(f"Answered pre-checkout query (ID: {query_id}) successfully in {end_time - start_time:.3f} seconds.")
     except TelegramError as e:
-        logger.error(f"Failed to answer pre-checkout query: {e}")
+        logger.error(f"Failed to answer pre-checkout query (ID: {query_id}): {e}")
+        # Возможно, здесь стоит добавить небольшую задержку перед retry или logging.
+        # Но для PreCheckoutQuery, если первый раз не получилось, то второй раз уже не имеет смысла
+        # т.к. Telegram уже отменил.
+    except Exception as e:
+        logger.error(f"Unexpected error answering pre-checkout query (ID: {query_id}): {e}")
+
 
 
 async def handle_start_command(update: Update, context: CallbackContext) -> None:

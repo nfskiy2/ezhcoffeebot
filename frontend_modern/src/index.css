@@ -340,6 +340,7 @@ section {
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
+    line-clamp: 2; /* Add this */
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
 }
@@ -352,6 +353,7 @@ section {
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
+    line-clamp: 2; /* Add this */
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
 }
@@ -654,3 +656,4 @@ section {
     width: 100%;
     max-width: 400px;
 }
+

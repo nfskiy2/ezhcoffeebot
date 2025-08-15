@@ -1,95 +1,90 @@
+# backend/app/schemas.py
 from pydantic import BaseModel, Field
-from typing import List, Dict, Any, Optional
+from typing import List, Any, Optional
 
-# Используйте LabeledPrice из библиотеки python-telegram-bot, а не создавайте свою схему с таким же именем, если только это не нужно для специфичной валидации.
-# from telegram import LabeledPrice # Импортируйте LabeledPrice из telegram в bot.py/main.py при работе с инвойсами.
-# Если вам нужна Pydantic схема для валидации данных в теле запроса /order,
-# где вы получаете список LabeledPrice (что необычно, обычно это список ваших OrderItem),
-# то схема для LabeledPrice может выглядеть так:
-# class LabeledPriceSchema(BaseModel):
-#     label: str
-#     amount: int
-
-
-class CafeInfoSchema(BaseModel):
-    # Используйте Field(alias="...") для соответствия snake_case в Python и camelCase/другому в JSON
-    cover_image: str = Field(..., alias="coverImage")
-    logo_image: str = Field(..., alias="logoImage")
+# Схема для Cafe
+class CafeSchema(BaseModel):
+    id: str
     name: str
-    kitchen_categories: str = Field(..., alias="kitchenCategories")
-    rating: str
-    cooking_time: str = Field(..., alias="cookingTime")
-    status: str
+    cover_image: Optional[str] = Field(alias="coverImage") # Для camelCase conversion
+    logo_image: Optional[str] = Field(alias="logoImage")   # Для camelCase conversion
+    kitchen_categories: Optional[str] = Field(alias="kitchenCategories")
+    rating: Optional[str] = None
+    cooking_time: Optional[str] = Field(alias="cookingTime")
+    status: Optional[str] = None
+    opening_hours: Optional[str] = Field(alias="openingHours") # Новое поле
+    min_order_amount: Optional[int] = Field(alias="minOrderAmount") # Новое поле
 
     class Config:
-        populate_by_name = True # Позволяет Pydantic маппить имена по alias
+        populate_by_name = True
+        from_attributes = True
 
+# Схема для Category
 class CategorySchema(BaseModel):
     id: str
-    icon: str
+    cafe_id: str # Привязка к кофейне
+    icon: Optional[str] = None
+    name: Optional[str] = None
+    background_color: Optional[str] = Field(alias="backgroundColor")
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
+
+# Схема для MenuItemVariant (варианты блюд)
+class MenuItemVariantSchema(BaseModel):
+    id: str
     name: str
-    background_color: str = Field(..., alias="backgroundColor")
+    cost: str # Стоимость в минимальных единицах, как строка (например, "1199")
+    weight: Optional[str] = None
+
+# Схема для MenuItem (элемент меню)
+class MenuItemSchema(BaseModel):
+    id: str
+    cafe_id: str
+    category_id: str
+    image: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    variants: List[MenuItemVariantSchema] = [] # Варианты теперь типизированы
+
+    class Config:
+        from_attributes = True
+
+# Схема для настроек кафе (мин. сумма заказа)
+class CafeSettingsSchema(BaseModel):
+    min_order_amount: int
+
+# --- Схемы для заказа (OrderRequest) ---
+
+# Внутренняя схема для cafe_item в CartItemRequest
+class OrderItemCafeItem(BaseModel):
+    id: str
+    name: Optional[str] = None # Имя для метки
+    image: Optional[str] = None # Изображение для корзины на фронтенде (может не передаваться в order request)
+
+# Внутренняя схема для variant в CartItemRequest
+class OrderItemVariant(BaseModel):
+    id: str
+    name: Optional[str] = None
+    cost: Optional[str] = None # Стоимость, которую фронтенд может передать (бэкенд все равно перепроверит)
+
+# Схема для элемента корзины в запросе заказа
+class CartItemRequest(BaseModel):
+    cafe_item: OrderItemCafeItem = Field(alias="cafeItem")
+    variant: OrderItemVariant
+    quantity: int
+    category_id: str # НОВОЕ ПОЛЕ: id категории, чтобы бэкенд мог проверить принадлежность
+
+    class Config:
+        populate_by_name = True # Позволяет использовать cafeItem вместо cafe_item при парсинге
+
+
+class OrderRequest(BaseModel):
+    # ИСПРАВЛЕНИЕ: Имя поля auth, alias="_auth"
+    auth: str  # <--- ИСПРАВЛЕНО: Имя поля без подчеркивания. Alias для поля JSON
+    cart_items: List[CartItemRequest] 
 
     class Config:
         populate_by_name = True
 
-# Схема для варианта пункта меню (как они хранятся в JSON или будут в БД JSON поле)
-class MenuItemVariantSchema(BaseModel):
-    id: str
-    name: str
-    cost: str # Или int, если храните в копейках/центах как число
-    weight: str # Или int/float в зависимости от данных
-
-# Это схема для данных, которые БЭКЕНД ОТДАЕТ (MenuItemSchema)
-class MenuItemVariantSchema(BaseModel):
-    id: str
-    name: str
-    cost: str # Или int, если храните в копейках/центах как число
-    weight: str
-
-# Схема для пункта меню (для эндпоинтов GET /menu/*)
-class MenuItemSchema(BaseModel):
-    id: str
-    image: str
-    name: str
-    description: str
-    variants: List[MenuItemVariantSchema]
-
-# Схемы для валидации тела POST запроса /order
-# Эти схемы описывают структуру данных, которую фронтенд отправляет при заказе
-class OrderItemCafeItem(BaseModel):
-    id: str
-    name: str 
-    image: str 
-
-class OrderItemVariant(BaseModel): # Упрощенная схема для варианта в запросе
-    id: str
-    name: str 
-    cost: str 
-
-class CartItemRequest(BaseModel): # Схема для одного элемента в массиве cartItems
-    cafe_item: OrderItemCafeItem = Field(..., alias="cafeItem")
-    variant: OrderItemVariant
-    quantity: int # Количество, должно быть числом
-
-    class Config:
-         populate_by_name = True # Позволяет использовать alias "cafeItem"
-
-
-class OrderRequest(BaseModel): # Схема для всего тела запроса /order
-    # Измените имя поля на auth_data и используйте alias="_auth"
-    auth_data: str = Field(..., alias="_auth") # <-- ИЗМЕНЕНИЕ ЗДЕСЬ! Переименовано в auth_data
-    cart_items: List[CartItemRequest] = Field(..., alias="cartItems")
-
-    class Config:
-        populate_by_name = True # Позволяет использовать alias "cafeItem", "cartItems"
-
-class CafeSettingsSchema(BaseModel):
-    min_order_amount: int # Минимальная сумма заказа в минимальных единицах валюты
-    # В будущем здесь могут быть другие настройки
-
-# Если вы определили LabeledPrice в schemas.py для использования в качестве типа ответа,
-# хотя FastAPI эндпоинт /order возвращает {"invoiceUrl": "..."}, а не список LabeledPrice:
-# class LabeledPrice(BaseModel): # <-- Переименуйте, чтобы не конфликтовать с telegram.LabeledPrice
-#    label: str
-#    amount: int

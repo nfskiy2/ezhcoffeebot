@@ -1,18 +1,22 @@
-import React, { useEffect, useState, useCallback } from 'react';
+// frontend_modern/src/pages/DetailsPage.tsx
+import React, { useEffect, useState, useCallback } from 'react'; // ОБЯЗАТЕЛЬНО ИМПОРТИРУЕМ React
 import { useParams } from 'react-router-dom';
 
-import { getMenuItemDetails } from '../api';
+import { getCafeMenuItemDetails } from '../api';
 import type { MenuItemSchema, MenuItemVariantSchema } from '../api/types';
+import type { CartItem } from '../store/cart'; // ИМПОРТИРУЕМ CartItem из cart.tsx
 import { toDisplayCost } from '../utils/currency';
 import { useCart } from '../store/cart';
-import { useSnackbar } from '../components/Snackbar'; // НОВЫЙ ИМПОРТ для Snackbar
-import { TelegramSDK } from '../telegram/telegram'; 
+import { useSnackbar } from '../components/Snackbar';
+import { TelegramSDK } from '../telegram/telegram';
+import { useCafe } from '../store/cafe';
+import { logger } from '../utils/logger';
 
-
-const DetailsPage: React.FC = () => {
-    const { itemId } = useParams<{ itemId: string }>();
+const DetailsPage: React.FC = () => { // ВОЗВРАЩАЕМ React.FC
+    const { cafeId, itemId } = useParams<{ cafeId: string; itemId: string }>();
     const { addItem } = useCart();
-    const { showSnackbar } = useSnackbar(); // Получаем функцию showSnackbar из контекста
+    const { showSnackbar } = useSnackbar();
+    const { selectedCafe } = useCafe();
 
     const [menuItem, setMenuItem] = useState<MenuItemSchema | null>(null);
     const [loading, setLoading] = useState(true);
@@ -23,8 +27,9 @@ const DetailsPage: React.FC = () => {
 
     useEffect(() => {
         const loadDetails = async () => {
-            if (!itemId) {
-                setError("Item ID is missing in URL.");
+            if (!cafeId || !itemId) {
+                logger.error("Cafe ID or Item ID is missing in URL.");
+                setError("Cafe ID or Item ID is missing in URL.");
                 setLoading(false);
                 return;
             }
@@ -33,19 +38,20 @@ const DetailsPage: React.FC = () => {
             setError(null);
 
             try {
-                const item = await getMenuItemDetails(itemId);
+                const item = await getCafeMenuItemDetails(cafeId, itemId);
                 if (item && Array.isArray(item.variants) && item.variants.length > 0) {
                     setMenuItem(item);
                     setSelectedVariant(item.variants[0]);
                 } else if (item) {
-                    const errorMessage = `No variants found for item ${itemId}.`;
-                    setError(errorMessage);
+                    logger.warn(`No variants found for item ${itemId} of cafe ${cafeId}.`);
                     setMenuItem(item);
                 } else {
-                    const errorMessage = `API did not return valid data for item ${itemId}.`;
+                    const errorMessage = `API did not return valid data for item ${itemId} of cafe ${cafeId}.`;
+                    logger.error(errorMessage);
                     setError(errorMessage);
                 }
             } catch (err: any) {
+                logger.error("Failed to load item details:", err);
                 setError(err.message || "Failed to load item details.");
             } finally {
                 setLoading(false);
@@ -54,40 +60,59 @@ const DetailsPage: React.FC = () => {
 
         loadDetails();
 
-    }, [itemId]);
+    }, [cafeId, itemId]);
 
-    const handleSelectVariant = (variant: MenuItemVariantSchema) => {
+    const handleSelectVariant = useCallback((variant: MenuItemVariantSchema) => {
         setSelectedVariant(variant);
         setQuantity(1);
-        TelegramSDK.impactOccurred('light'); // Использование TelegramSDK
-    };
+        TelegramSDK.impactOccurred('light');
+    }, []);
 
-    const handleIncreaseQuantity = () => {
+    const handleIncreaseQuantity = useCallback(() => {
         setQuantity(prevQuantity => prevQuantity + 1);
-        TelegramSDK.impactOccurred('light'); // Использование TelegramSDK
-    };
+        TelegramSDK.impactOccurred('light');
+    }, []);
 
-    const handleDecreaseQuantity = () => {
+    const handleDecreaseQuantity = useCallback(() => {
         setQuantity(prevQuantity => {
             if (prevQuantity > 1) {
-                TelegramSDK.impactOccurred('light'); // Использование TelegramSDK
+                TelegramSDK.impactOccurred('light');
                 return prevQuantity - 1;
             }
             return 1;
         });
-    };
+    }, []);
 
     const handleAddToCart = useCallback(() => {
         if (menuItem && selectedVariant && quantity > 0) {
-            addItem(menuItem, selectedVariant, quantity);
-            setQuantity(1);
+            if (selectedCafe) {
+                const cartItemToAdd: CartItem = {
+                    cafeItem: {
+                        id: menuItem.id,
+                        name: menuItem.name || 'Unknown Item',
+                        image: menuItem.image || '/icons/icon-transparent.svg',
+                    },
+                    variant: {
+                        id: selectedVariant.id,
+                        name: selectedVariant.name,
+                        cost: selectedVariant.cost,
+                    },
+                    quantity: quantity,
+                    cafeId: selectedCafe.id,
+                    categoryId: menuItem.category_id,
+                };
+                addItem(cartItemToAdd);
+                setQuantity(1);
 
-            showSnackbar('Successfully added to cart!', { style: 'success', backgroundColor: 'var(--success-color)' });
-            TelegramSDK.notificationOccurred('success'); // Использование TelegramSDK
+                showSnackbar('Successfully added to cart!', { style: 'success', backgroundColor: 'var(--success-color)' });
+                TelegramSDK.notificationOccurred('success');
+            } else {
+                showSnackbar('Please select a cafe first.', { style: 'warning' });
+            }
         } else {
-            showSnackbar('Could not add item to cart. Please select an option.', { style: 'warning' });
+            showSnackbar('Could not add item to cart. Please select an option and quantity.', { style: 'warning' });
         }
-    }, [menuItem, selectedVariant, quantity, addItem, showSnackbar]);
+    }, [menuItem, selectedVariant, quantity, addItem, showSnackbar, selectedCafe]);
 
     useEffect(() => {
         if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
@@ -116,7 +141,29 @@ const DetailsPage: React.FC = () => {
     }, [menuItem, selectedVariant, quantity, handleAddToCart]);
 
     if (loading) {
-        return <div>Loading item details for {itemId}...</div>;
+        return (
+            <section className="cafe-item-details-container">
+                <img id="cafe-item-details-image" className="cover shimmer" src="/icons/icon-transparent.svg" alt="Loading"/>
+                <div className="cafe-item-details-title-container">
+                    <h1 id="cafe-item-details-name" className="shimmer" style={{minWidth: '60%'}}></h1>
+                    <p id="cafe-item-details-selected-variant-weight" className="shimmer" style={{minWidth: '30%'}}></p>
+                </div>
+                <p id="cafe-item-details-description" className="cafe-item-details-description shimmer" style={{minHeight: '3em', minWidth: '90%'}}></p>
+                <h3 id="cafe-item-details-section-title" className="cafe-item-details-section-title shimmer" style={{minWidth: '50%'}}></h3>
+                <div className="cafe-item-details-section-price">
+                    <div id="cafe-item-details-variants" className="cafe-item-details-variants">
+                        <button className="cafe-item-details-variant shimmer" style={{minWidth: '60px'}}></button>
+                        <button className="cafe-item-details-variant shimmer" style={{minWidth: '80px'}}></button>
+                    </div>
+                    <h2 id="cafe-item-details-selected-variant-price" className="shimmer" style={{minWidth: '30px'}}></h2>
+                </div>
+                <div className="cafe-item-details-quantity-selector-container">
+                    <button className="material-symbols-rounded icon-button shimmer" style={{opacity: 0.1}}>remove</button>
+                    <h2 className="cafe-item-details-quantity-selector-value shimmer" style={{minWidth: '40px'}}></h2>
+                    <button className="material-symbols-rounded icon-button shimmer" style={{opacity: 0.1}}>add</button>
+                </div>
+            </section>
+        );
     }
 
     if (error) {
@@ -130,7 +177,7 @@ const DetailsPage: React.FC = () => {
     return (
         <section className="cafe-item-details-container">
             <div className="cafe-item-details-content">
-                <img id="cafe-item-details-image" className="cover" src={menuItem.image} alt={menuItem.name}/>
+                <img id="cafe-item-details-image" className="cover" src={menuItem.image || "/icons/icon-transparent.svg"} alt={menuItem.name || 'Menu Item'}/>
                 <div className="cafe-item-details-title-container">
                     <h1 id="cafe-item-details-name">{menuItem.name}</h1>
                     {selectedVariant && (

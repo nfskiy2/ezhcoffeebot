@@ -1,198 +1,164 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'; 
-// Импортируем типы данных для корзины и пунктов меню
-import type { CartItem, MenuItemSchema, MenuItemVariantSchema } from '../api/types'; // Убедитесь, что типы импортируются правильно
+// frontend_modern/src/store/cart.tsx
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { logger } from '../utils/logger';
 
-// Импортируем вспомогательную функцию для форматирования стоимости (если нужна в геттере, хотя лучше форматировать при отображении)
-// import { toDisplayCost } from '../utils/currency';
-
-
-// Ключ для сохранения корзины в localStorage
-const LOCAL_STORAGE_KEY = 'laurel_cafe_cart';
-
-// Интерфейс для контекста корзины
-interface CartContextType {
-    items: CartItem[]; // Список элементов в корзине
-    addItem: (cafeItem: MenuItemSchema, variant: MenuItemVariantSchema, quantity: number) => void; // Функция для добавления/обновления товара
-    increaseQuantity: (itemId: string, variantId: string, quantityToIncrease?: number) => void; // Увеличить количество существующего товара
-    decreaseQuantity: (itemId: string, variantId: string, quantityToDecrease?: number) => void; // Уменьшить количество или удалить
-    removeItem: (itemId: string, variantId: string) => void; // Удалить товар
-    clearCart: () => void; // Очистить корзину
-    getItemCount: (items: CartItem[]) => number; // Общее количество позиций (сумма quantity)
-    getTotalCost: (items: CartItem[]) => number; // Общая стоимость корзины (в минимальных единицах)
-    // Можно добавить другие полезные функции, например, getItem(id, variantId)
+// ЭКСПОРТИРУЕМ CartItem, чтобы он был доступен для других модулей
+export interface CartItem {
+    cafeItem: {
+        id: string;
+        name: string;
+        image?: string;
+    };
+    variant: {
+        id: string;
+        name: string;
+        cost: string;
+    };
+    quantity: number;
+    cafeId: string;
+    categoryId: string;
 }
 
-// Создаем контекст с дефолтными значениями (которые будут переопределены провайдером)
-// Используем `undefined` и проверяем его в хуке useCart
+const LOCAL_STORAGE_KEY = 'laurel_cafe_cart';
+
+interface CartContextType {
+    items: CartItem[];
+    addItem: (newItem: CartItem) => void;
+    increaseQuantity: (itemId: string, variantId: string, quantityToIncrease?: number) => void;
+    decreaseQuantity: (itemId: string, variantId: string, quantityToDecrease?: number) => void;
+    removeItem: (itemId: string, variantId: string) => void;
+    clearCart: () => void;
+    getItemCount: (items: CartItem[]) => number;
+    getTotalCost: (items: CartItem[]) => number;
+}
+
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-// Создаем провайдер контекста.
-// Объявляем как обычную функцию React, БЕЗ export здесь в начале
-function CartProvider({ children }: { children: React.ReactNode }) { // <-- Изменен синтаксис
-    // Состояние корзины
+export const useCart = () => {
+    const context = useContext(CartContext);
+    if (!context) {
+        throw new Error('useCart must be used within a CartProvider');
+    }
+    return context;
+};
+
+export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-    // --- Хук для загрузки корзины из localStorage при инициализации ---
-    // Выполняется один раз при первом рендере провайдера
     useEffect(() => {
+        logger.log("Attempting to load cart from localStorage...");
         try {
             const savedCart = localStorage.getItem(LOCAL_STORAGE_KEY);
             if (savedCart) {
-                // Парсим JSON. Добавляем проверку на валидность структуры
-                const parsedCart: unknown = JSON.parse(savedCart); // Парсим как unknown сначала
-                 // Проверяем, что это массив и элементы похожи на CartItem
+                const parsedCart: unknown = JSON.parse(savedCart);
                 if (
                     Array.isArray(parsedCart) &&
                     parsedCart.every(item =>
                         item &&
                         typeof item === 'object' &&
-                        typeof item.quantity === 'number' && item.quantity >= 0 && // количество должно быть числом >= 0
-                        item.cafeItem && typeof item.cafeItem === 'object' && typeof item.cafeItem.id === 'string' && typeof item.cafeItem.name === 'string' && typeof item.cafeItem.image === 'string' &&
-                        item.variant && typeof item.variant === 'object' && typeof item.variant.id === 'string' && typeof item.variant.name === 'string' && typeof item.variant.cost === 'string' // cost может быть строкой
+                        typeof item.quantity === 'number' && item.quantity >= 0 &&
+                        item.cafeItem && typeof item.cafeItem === 'object' && typeof item.cafeItem.id === 'string' && typeof item.cafeItem.name === 'string' &&
+                        ('image' in item.cafeItem ? typeof item.cafeItem.image === 'string' : true) &&
+                        item.variant && typeof item.variant === 'object' && typeof item.variant.id === 'string' && typeof item.variant.name === 'string' && typeof item.variant.cost === 'string' &&
+                        'cafeId' in item && typeof item.cafeId === 'string' &&
+                        'categoryId' in item && typeof item.categoryId === 'string'
                     )
                 ) {
-                    setCartItems(parsedCart as CartItem[]); // Утверждаем тип после проверки
+                    logger.log("Cart loaded from localStorage.");
+                    setCartItems(parsedCart as CartItem[]);
                 } else {
-                    setCartItems([]); // Начинаем с пустой корзины, если данные некорректны
+                    logger.warn("Invalid data in localStorage for cart. Starting with empty cart.");
+                    setCartItems([]);
                 }
             } else {
-                setCartItems([]); // Начинаем с пустой корзины, если ничего нет в localStorage
+                logger.log("No cart found in localStorage. Starting with empty cart.");
+                setCartItems([]);
             }
         } catch (e) {
-             setCartItems([]); // В случае ошибки парсинга или другой ошибки, начинаем с пустой корзины
+            logger.error("Failed to load cart from localStorage:", e);
+            setCartItems([]);
         }
-    }, []); // Пустой массив зависимостей: выполняется только один раз при монтировании провайдера
+    }, []);
 
-    // --- Хук для сохранения корзины в localStorage при изменении ---
-    // Выполняется при каждом изменении состояния cartItems (после его инициализации)
     useEffect(() => {
-         // Проверяем, что состояние не является undefined или null (после загрузки)
+        logger.log("Cart state changed. Attempting to save to localStorage...", cartItems);
         if (cartItems !== undefined && cartItems !== null) {
             try {
                 localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cartItems));
+                logger.log("Cart saved to localStorage.");
             } catch (e) {
-                // В реальном приложении можно уведомить пользователя
+                logger.error("Failed to save cart to localStorage:", e);
             }
         }
-    }, [cartItems]); // Зависит от cartItems: выполняется при каждом изменении состояния корзины
+    }, [cartItems]);
 
-
-    // --- Функции для управления корзиной (используем useCallback) ---
-    // Оборачиваем функции в useCallback, чтобы они имели стабильную ссылку,
-    // что важно для зависимостей других хуков и для оптимизации.
-
-    const addItem = useCallback((cafeItem: MenuItemSchema, variant: MenuItemVariantSchema, quantity: number) => {
-        if (quantity <= 0) {
-             return; // Не добавляем товары с некорректным количеством
+    const addItem = useCallback((newItem: CartItem) => {
+        if (newItem.quantity <= 0) {
+            logger.warn("Attempted to add item with quantity 0 or less.");
+            return;
         }
-        // Создаем новый элемент корзины с нужными полями
-        const newItem: CartItem = {
-            cafeItem: {
-                id: cafeItem.id,
-                name: cafeItem.name,
-                image: cafeItem.image,
-            },
-            variant: {
-                id: variant.id,
-                name: variant.name,
-                cost: variant.cost, // Цена в минимальных единицах (строка или число)
-            },
-            quantity: quantity, // Количество, которое добавляем
-        };
-
         setCartItems(prevItems => {
-            // Ищем, существует ли уже товар с таким же ID пункта меню и варианта
             const existingItemIndex = prevItems.findIndex(
-                item => item.cafeItem.id === newItem.cafeItem.id && item.variant.id === newItem.variant.id
+                item => item.cafeId === newItem.cafeId &&
+                        item.cafeItem.id === newItem.cafeItem.id &&
+                        item.variant.id === newItem.variant.id
             );
-
             if (existingItemIndex > -1) {
-                // Если товар существует, создаем обновленный массив с увеличенным количеством
-                const updatedItems = [...prevItems]; // Копируем массив для иммутабельности
+                const updatedItems = [...prevItems];
                 updatedItems[existingItemIndex] = {
-                     ...updatedItems[existingItemIndex], // Копируем существующий элемент
-                     quantity: updatedItems[existingItemIndex].quantity + newItem.quantity // Увеличиваем количество
+                    ...updatedItems[existingItemIndex],
+                    quantity: updatedItems[existingItemIndex].quantity + newItem.quantity
                 };
-                return updatedItems; // Возвращаем новый массив для обновления состояния
+                logger.log(`Increased quantity for item ${newItem.cafeItem.name} (${newItem.variant.name}) in cafe ${newItem.cafeId}. New quantity: ${updatedItems[existingItemIndex].quantity}`);
+                return updatedItems;
             } else {
-                // Если товар новый, добавляем его в конец массива
-                return [...prevItems, newItem]; // Возвращаем новый массив с добавленным элементом
+                logger.log(`Added new item to cart: ${newItem.cafeItem.name} (${newItem.variant.name}) in cafe ${newItem.cafeId} x${newItem.quantity}. Category: ${newItem.categoryId}`);
+                return [...prevItems, newItem];
             }
         });
-    }, []); // Нет зависимостей, так как используем функцию обновления состояния prevItems => ...
+    }, []);
 
+    const increaseQuantity = useCallback((itemId: string, variantId: string, quantityToIncrease: number = 1) => {
+        if (quantityToIncrease <= 0) return;
+        setCartItems(prevItems => prevItems.map(item => {
+            if (item.cafeItem.id === itemId && item.variant.id === variantId) {
+                logger.log(`Increasing quantity for item ${item.cafeItem.name} (${item.variant.name}).`);
+                return { ...item, quantity: item.quantity + quantityToIncrease };
+            }
+            return item;
+        }));
+    }, []);
 
-    // Увеличить количество существующего товара по ID и ID варианта
-     const increaseQuantity = useCallback((itemId: string, variantId: string, quantityToIncrease: number = 1) => {
-         if (quantityToIncrease <= 0) return; // Не увеличиваем на некорректное количество
-         setCartItems(prevItems => {
-             const updatedItems = prevItems.map(item => {
-                 if (item.cafeItem.id === itemId && item.variant.id === variantId) {
-                     return { ...item, quantity: item.quantity + quantityToIncrease }; // Возвращаем обновленный элемент
-                 }
-                 return item; // Возвращаем элемент без изменений
-             });
-             return updatedItems; // Возвращаем новый массив
-         });
-     }, []); // Нет зависимостей
+    const decreaseQuantity = useCallback((itemId: string, variantId: string, quantityToDecrease: number = 1) => {
+        if (quantityToDecrease <= 0) return;
+        setCartItems(prevItems => {
+            const updatedItems = prevItems.map(item => {
+                if (item.cafeItem.id === itemId && item.variant.id === variantId) {
+                    logger.log(`Decreasing quantity for item ${item.cafeItem.name} (${item.variant.name}).`);
+                    const newQuantity = item.quantity - quantityToDecrease;
+                    return { ...item, quantity: Math.max(0, newQuantity) };
+                }
+                return item;
+            });
+            return updatedItems.filter(item => item.quantity > 0);
+        });
+    }, []);
 
-
-    // Уменьшить количество существующего товара по ID и ID варианта
-     const decreaseQuantity = useCallback((itemId: string, variantId: string, quantityToDecrease: number = 1) => {
-          if (quantityToDecrease <= 0) return; // Не уменьшаем на некорректное количество
-         setCartItems(prevItems => {
-             const updatedItems = prevItems.map(item => {
-                 if (item.cafeItem.id === itemId && item.variant.id === variantId) {
-                     const newQuantity = item.quantity - quantityToDecrease;
-                     // Если количество становится <= 0, возвращаем элемент с quantity: 0 для фильтрации
-                     return { ...item, quantity: Math.max(0, newQuantity) }; // Убедимся, что не уходим в минус
-                 }
-                 return item; // Возвращаем элемент без изменений
-             });
-             // Фильтруем товары с количеством === 0, создавая новый массив
-             return updatedItems.filter(item => item.quantity > 0);
-         });
-     }, []); // Нет зависимостей
-
-
-    // Удалить товар по ID и ID варианта
     const removeItem = useCallback((itemId: string, variantId: string) => {
         setCartItems(prevItems => {
-             // Фильтруем, оставляя только те товары, которые НЕ соответствуют удаляемому
-             const updatedItems = prevItems.filter(
+            const updatedItems = prevItems.filter(
                 item => !(item.cafeItem.id === itemId && item.variant.id === variantId)
-             );
-             return updatedItems; // Возвращаем новый массив
-         });
-     }, []); // Нет зависимостей
+            );
+            logger.log(`Removed item with ID ${itemId} and variant ${variantId}.`);
+            return updatedItems;
+        });
+    }, []);
 
-
-    // Очистить корзину
     const clearCart = useCallback(() => {
-        setCartItems([]); // Устанавливаем пустой массив
-    }, []); // Нет зависимостей
+        setCartItems([]);
+        logger.log("Cart cleared.");
+    }, []);
 
-
-    // --- Вспомогательные геттеры (используем useCallback для мемоизации, но основная выгода в зависимости от cartItems) ---
-
-    // Получить общее количество позиций (сумма quantity всех товаров)
-    const getItemCount = (items: CartItem[]) => { 
-        return items.reduce((total, item) => total + item.quantity, 0);
-    };
-
-    const getTotalCost = (items: CartItem[]) => { // <-- Теперь принимает items
-        return items.reduce((total, item) => {
-            const itemCost = parseInt(item.variant.cost, 10);
-            if (isNaN(itemCost)) {
-                 return total;
-            }
-            return total + itemCost * item.quantity;
-        }, 0);
-    };
-
-    // Объект контекста, предоставляющий состояние и функции
-    // Этот объект создается заново при каждом рендере провайдера,
-    // но функции внутри него имеют стабильные ссылки благодаря useCallback.
     const contextValue: CartContextType = {
         items: cartItems,
         addItem,
@@ -200,27 +166,24 @@ function CartProvider({ children }: { children: React.ReactNode }) { // <-- Из
         decreaseQuantity,
         removeItem,
         clearCart,
-        getItemCount: getItemCount, 
-        getTotalCost: getTotalCost, 
+        getItemCount, // ИСПРАВЛЕНО
+        getTotalCost,
     };
 
     return (
-        // Здесь используются теги <div>
         <CartContext.Provider value={contextValue}>
             {children}
         </CartContext.Provider>
     );
-} 
-
-// --- Хук для использования контекста корзины ---
-// Позволяет компонентам-потомкам получать доступ к значениям контекста
-export const useCart = () => {
-    const context = useContext(CartContext);
-    // Проверяем, что хук используется внутри компонента, обернутого в CartProvider
-    if (context === undefined) {
-        throw new Error('useCart must be used within a CartProvider');
-    }
-    return context; // Возвращаем объект с items и функциями
 };
 
-export { CartProvider }; 
+function getTotalCost(items: CartItem[]): number {
+    return items.reduce((total, item) => {
+        const cost = parseFloat(item.variant.cost);
+        return total + (isNaN(cost) ? 0 : cost * item.quantity);
+    }, 0);
+}
+
+function getItemCount(items: CartItem[]): number {
+    return items.reduce((total, item) => total + item.quantity, 0);
+}

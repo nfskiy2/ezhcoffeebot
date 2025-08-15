@@ -2,26 +2,21 @@ import json
 import os
 import asyncio
 import logging
-from fastapi import FastAPI, Request, Depends, HTTPException
+from fastapi import FastAPI, Request, Depends, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-from typing import Any, Optional
-import contextlib
-# from functools import lru_cache # <--- ЭТУ СТРОКУ УДАЛИТЬ ИЛИ ЗАКОММЕНТИРОВАТЬ!
-
+from typing import Any, Optional, List # <--- ДОБАВЬТЕ List ЗДЕСЬ
+import contextlib # <--- ДОБАВЬТЕ ЭТУ СТРОКУ
 
 # Импорты компонентов модернизированного бэкенда
 from . import auth
-# Импортируем функции из bot.py
-# initialize_bot_app теперь НЕ async
-# setup_webhook больше не импортируется сюда, так как он вызывается из отдельного скрипта set_webhook.py
 from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH
 from .database import engine, SessionLocal
-from .models import Base, Category, MenuItem
-from .schemas import CafeInfoSchema, CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema
-from telegram import Update, LabeledPrice, Bot # Импортируем Update, LabeledPrice, Bot
-from telegram.ext import Application # Импортируем Application для типизации
+from .models import Base, Category, MenuItem, Cafe
+from .schemas import CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema
+from telegram import Update, LabeledPrice, Bot
+from telegram.ext import Application
 
 load_dotenv()
 
@@ -150,6 +145,28 @@ def get_application_instance(request: Request) -> Application:
 
 # --- API эндпоинты ---
 # Все эндпоинты должны быть определены ЗДЕСЬ
+@app.get("/cafes", response_model=List[CafeSchema])
+def get_all_cafes(db: Session = Depends(get_db_session)):
+    """API endpoint for providing a list of all available cafes."""
+    try:
+        cafes = db.query(Cafe).all()
+        return cafes
+    except Exception as e:
+        logger.error(f"Error fetching all cafes from DB: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error fetching cafes.")
+
+# НОВЫЙ ЭНДПОИНТ: Получение информации о конкретной кофейне
+@app.get("/cafes/{cafe_id}", response_model=CafeSchema)
+def get_cafe_by_id(cafe_id: str, db: Session = Depends(get_db_session)):
+    """API endpoint for providing info about a specific cafe."""
+    try:
+        cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+        if not cafe:
+            raise HTTPException(status_code=404, detail=f"Cafe '{cafe_id}' not found.")
+        return cafe
+    except Exception as e:
+        logger.error(f"Error fetching cafe {cafe_id} from DB: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error fetching cafe info.")
 
 @app.get("/")
 async def read_root():
@@ -172,81 +189,182 @@ async def bot_webhook(
         logger.error(f"Error processing webhook update: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error processing update.")
 
-
-@app.get("/info", response_model=CafeInfoSchema)
-def get_cafe_info():
-    """API endpoint for providing info about the cafe."""
+@app.get("/cafes/{cafe_id}/categories", response_model=List[CategorySchema])
+def get_categories_by_cafe(cafe_id: str, db: Session = Depends(get_db_session)):
+    """API endpoint for providing available cafe categories for a specific cafe."""
     try:
-        with open('data/info.json', 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        logger.error("Info data file not found.")
-        raise HTTPException(status_code=404, detail="Could not find info data.")
-    except json.JSONDecodeError:
-         logger.error("Error decoding info data file.")
-         raise HTTPException(status_code=500, detail="Error reading info data.")
-
-
-@app.get("/categories", response_model=list[CategorySchema])
-def get_categories(db: Session = Depends(get_db_session)):
-    """API endpoint for providing available cafe categories."""
-    try:
-        categories = db.query(Category).all()
-        return categories
+        cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+        if not cafe:
+            raise HTTPException(status_code=404, detail=f"Cafe '{cafe_id}' not found.")
+        return cafe.categories
     except Exception as e:
-        logger.error(f"Error fetching categories from DB: {e}", exc_info=True)
+        logger.error(f"Error fetching categories for cafe {cafe_id} from DB: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error fetching categories.")
-
-@app.get("/menu/popular", response_model=list[MenuItemSchema])
-def get_popular_menu():
-    """API endpoint for providing a list of popular menu items."""
+    
+# НОВЫЙ ЭНДПОИНТ: Получение популярных товаров для конкретной кофейни
+@app.get("/cafes/{cafe_id}/popular", response_model=List[MenuItemSchema])
+def get_popular_menu_by_cafe(cafe_id: str, db: Session = Depends(get_db_session)):
+    """API endpoint for providing popular menu items for a specific cafe."""
     try:
-        # Читаем данные напрямую из файла popular.json
-        with open('data/menu/popular.json', 'r', encoding='utf-8') as f:
-            popular_items_data = json.load(f)
-        return popular_items_data
-    except FileNotFoundError:
-        logger.error("Popular menu data file not found.")
-        raise HTTPException(status_code=404, detail="Could not find popular menu data.")
-    except json.JSONDecodeError:
-        logger.error("Error decoding popular menu data file.")
-        raise HTTPException(status_code=500, detail="Error reading popular menu data.")
+        cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+        if not cafe:
+            raise HTTPException(status_code=404, detail=f"Cafe '{cafe_id}' not found.")
+
+        # Улучшенная логика: берем первые 3 товара из первой категории, если она есть
+        if cafe.categories:
+            first_category = cafe.categories[0]
+            popular_items = db.query(MenuItem).filter(
+                MenuItem.category_id == first_category.id,
+                MenuItem.cafe_id == cafe_id
+            ).limit(3).all()
+            return popular_items
+        else:
+            return []  # Возвращаем пустой список, если у кофейни нет категорий
+
     except Exception as e:
-        logger.error(f"An unexpected error occurred while fetching popular menu: {e}", exc_info=True)
+        logger.error(f"Error fetching popular menu for cafe {cafe_id} from DB: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error fetching popular menu data.")
     
-@app.get("/menu/{category_id}", response_model=list[MenuItemSchema])
-def get_category_menu(category_id: str, db: Session = Depends(get_db_session)):
-    """API endpoint for providing menu list of specified category."""
+# ОБНОВЛЕННЫЙ ЭНДПОИНТ: Получение меню для конкретной категории и кофейни
+@app.get("/cafes/{cafe_id}/menu/{category_id}", response_model=List[MenuItemSchema])
+def get_category_menu_by_cafe(
+    cafe_id: str,
+    category_id: str,
+    db: Session = Depends(get_db_session)
+):
+    """API endpoint for providing menu list of specified category for a specific cafe."""
     try:
-        category = db.query(Category).filter(Category.id == category_id).first()
+        # Эта логика теперь будет использоваться для реальных категорий
+        category = db.query(Category).filter(Category.id == category_id, Category.cafe_id == cafe_id).first()
         if not category:
-            logger.warning(f"Category '{category_id}' not found.")
-            raise HTTPException(status_code=404, detail=f"Could not find '{category_id}' category data.")
+            raise HTTPException(status_code=404, detail=f"Could not find '{category_id}' category data for cafe '{cafe_id}'.")
         return category.menu_items
     except Exception as e:
-        logger.error(f"Error fetching menu for category {category_id} from DB: {e}", exc_info=True)
+        logger.error(f"Error fetching menu for category {category_id} of cafe {cafe_id} from DB: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error fetching menu data.")
 
-
-@app.get("/menu/details/{menu_item_id}", response_model=MenuItemSchema)
-def get_menu_item_details(menu_item_id: str, db: Session = Depends(get_db_session)):
-    """API endpoint for providing menu item details."""
+# ОБНОВЛЕННЫЙ ЭНДПОИНТ: Получение деталей пункта меню для конкретной кофейни/категории
+@app.get("/cafes/{cafe_id}/menu/details/{menu_item_id}", response_model=MenuItemSchema)
+def get_menu_item_details_by_cafe(
+    cafe_id: str,
+    menu_item_id: str,
+    db: Session = Depends(get_db_session)
+):
+    """API endpoint for providing menu item details for a specific cafe."""
     try:
-        menu_item = db.query(MenuItem).filter(MenuItem.id == menu_item_id).first()
+        # Ищем MenuItem по его ID и убеждаемся, что он принадлежит нужной кофейне
+        # Используем .cafe для прямой связи
+        menu_item = db.query(MenuItem).filter(
+            MenuItem.id == menu_item_id,
+            MenuItem.cafe_id == cafe_id # <--- Проверяем cafe_id напрямую
+        ).first()
+
         if not menu_item:
-            logger.warning(f"Menu item with ID '{menu_item_id}' not found.")
-            raise HTTPException(status_code=404, detail=f"Could not find menu item data with '{menu_item_id}' ID.")
+            raise HTTPException(status_code=404, detail=f"Could not find menu item data with '{menu_item_id}' ID for cafe '{cafe_id}'.")
         return menu_item
     except Exception as e:
-        logger.error(f"Error fetching menu item {menu_item_id} details from DB: {e}", exc_info=True)
+        logger.error(f"Error fetching menu item {menu_item_id} details for cafe {cafe_id} from DB: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error fetching menu item details.")
 
-@app.get("/settings", response_model=CafeSettingsSchema)
-def get_cafe_settings():
-    """API endpoint for providing cafe settings like minimum order amount."""
-    # В будущем эти настройки могут загружаться из базы данных
-    return CafeSettingsSchema(min_order_amount=MIN_ORDER_AMOUNT)
+# НОВЫЙ ЭНДПОИНТ: Получение настроек кофейни (включая мин. сумму)
+@app.get("/cafes/{cafe_id}/settings", response_model=CafeSettingsSchema)
+def get_cafe_settings_by_id(cafe_id: str, db: Session = Depends(get_db_session)):
+    """API endpoint for providing cafe settings for a specific cafe."""
+    try:
+        cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+        if not cafe:
+            raise HTTPException(status_code=404, detail=f"Cafe '{cafe_id}' not found.")
+        return CafeSettingsSchema(min_order_amount=cafe.min_order_amount)
+    except Exception as e:
+        logger.error(f"Error fetching settings for cafe {cafe_id} from DB: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error fetching cafe settings.")
+
+
+# ОБНОВЛЕННЫЙ ЭНДПОИНТ: /order теперь принимает cafe_id
+@app.post("/cafes/{cafe_id}/order")
+async def create_order(
+    cafe_id: str,
+    order_data: OrderRequest,
+    request: Request,
+    db: Session = Depends(get_db_session),
+    bot_instance: Bot = Depends(get_bot_instance)
+):
+    logger.info(f"Received order request for cafe: {cafe_id}.")
+
+    cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
+    if not cafe:
+        raise HTTPException(status_code=404, detail=f"Cafe '{cafe_id}' not found for order.")
+    min_order_amount = cafe.min_order_amount
+
+    if not auth.validate_auth_data(BOT_TOKEN, order_data.auth_data):
+        logger.warning("Invalid auth data received in order request.")
+        raise HTTPException(status_code=401, detail="Invalid auth data.")
+    logger.info("Auth data validated.")
+
+    if not order_data.cart_items:
+        logger.warning("Cart Items are not provided.")
+        raise HTTPException(status_code=400, detail="Cart Items are not provided.")
+    logger.info(f"Received {len(order_data.cart_items)} items in cart.")
+
+    labeled_prices = []
+    total_amount_in_minimal_units = 0
+    for item in order_data.cart_items:
+        try:
+            # Проверяем, что товар существует и принадлежит категории, которая принадлежит этой кофейне
+            db_menu_item = db.query(MenuItem).filter(
+                MenuItem.id == item.cafe_item.id,
+                MenuItem.cafe_id == cafe_id, # <--- Проверка cafe_id напрямую
+                MenuItem.category_id == item.category_id # <--- Проверка category_id
+            ).first()
+
+            if not db_menu_item:
+                logger.warning(f"Item {item.cafe_item.id} not found or does not belong to cafe {cafe_id}.")
+                raise HTTPException(status_code=400, detail=f"Item {item.cafe_item.id} not found or invalid for this cafe.")
+
+            # Убеждаемся, что вариант выбранного товара соответствует вариантам из БД
+            # Это очень важная валидация, иначе злоумышленник может подделать цену
+            # Находим соответствующий вариант из db_menu_item.variants
+            db_variant = next((v for v in db_menu_item.variants if v['id'] == item.variant.id), None)
+            if not db_variant:
+                logger.warning(f"Variant {item.variant.id} not found for item {item.cafe_item.id} or invalid.")
+                raise HTTPException(status_code=400, detail="Invalid item variant selected.")
+
+            # Используем цену из БД, а не из запроса фронтенда!
+            cost_in_minimal_unit = int(db_variant['cost'])
+            quantity = item.quantity
+            price_for_item = cost_in_minimal_unit * quantity
+            total_amount_in_minimal_units += price_for_item
+
+            labeled_price = LabeledPrice(
+                label=f'{item.cafe_item.name} ({item.variant.name}) x{quantity}',
+                amount=price_for_item
+            )
+            labeled_prices.append(labeled_price)
+        except ValueError:
+             logger.error(f"Invalid cost or quantity value for item {item.cafe_item.id}.")
+             raise HTTPException(status_code=400, detail="Invalid item data.")
+        except Exception as e:
+            logger.error(f"Error processing item {item.cafe_item.id}: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail="Error processing order items.")
+
+    logger.info(f"Total order amount in minimal units: {total_amount_in_minimal_units}")
+
+    if min_order_amount > 0 and total_amount_in_minimal_units < min_order_amount:
+        logger.warning(f"Order total {total_amount_in_minimal_units} is less than min_order_amount {min_order_amount}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Order total is too low. Minimum order amount is {min_order_amount} in minimal units."
+        )
+
+    invoice_url = await create_invoice_link(prices=labeled_prices, bot_instance=bot_instance)
+
+    if invoice_url is None:
+        logger.error("Failed to get invoice URL from bot.")
+        raise HTTPException(status_code=500, detail="Could not create invoice.")
+
+    logger.info(f"Invoice URL created for order: {invoice_url}")
+
+    return { 'invoiceUrl': invoice_url }
 
 @app.post("/order")
 async def create_order(

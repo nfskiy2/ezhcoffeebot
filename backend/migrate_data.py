@@ -1,61 +1,44 @@
+# backend/migrate_data.py
 import json
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.models import Base, Category, MenuItem # Убедитесь, что путь правильный
+from app.models import Base, Category, MenuItem, Cafe
 from urllib.parse import urlparse
 
-# Настройки подключения к БД (используйте .env или хардкод для скрипта миграции)
-# from dotenv import load_dotenv
-# load_dotenv()
-# DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:password@localhost:5432/laurel_cafe_db")
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Добавим проверку, что переменная установлена
 if not DATABASE_URL:
     print("Error: DATABASE_URL environment variable is not set!")
-    exit(1) # Выходим с ошибкой, если переменная не установлена
+    exit(1)
 
-# Парсим URL для извлечения параметров
 parsed_url = urlparse(DATABASE_URL)
 
-# Формируем словарь параметров для psycopg2
 db_params = {
     "database": parsed_url.path.lstrip("/"),
     "user": parsed_url.username,
     "password": parsed_url.password,
     "host": parsed_url.hostname,
     "port": parsed_url.port,
-    "client_encoding": "utf8" # <-- Добавляем эту строку
+    "client_encoding": "utf8"
 }
 
-# --- Диагностический вывод ---
 print("-" * 20)
 print(f"Attempting to connect with URL: {DATABASE_URL}")
-print(f"Parsed parameters:")
-print(f"  Scheme: {parsed_url.scheme}")
-print(f"  Path: {parsed_url.path}")
-print(f"  Username: {parsed_url.username}")
-print(f"  Password: {parsed_url.password}") # Осторожно с выводом пароля!
-print(f"  Hostname: {parsed_url.hostname}")
-print(f"  Port: {parsed_url.port}")
-print(f"Parameters passed to connect_args: {db_params}")
+print(f"Parsed parameters: {db_params}")
 print("-" * 20)
-# --- Конец диагностического вывода ---
 
-
-# Создаем движок, передавая параметры явно через connect_args
 engine = create_engine(
-    f"postgresql://", # Minimal DSN string just specifying the dialect
-    connect_args=db_params # Pass the extracted parameters here
+    f"postgresql://",
+    connect_args=db_params
 )
 
 print("SQLAlchemy engine created. Attempting to create tables...")
 
-# Создаем таблицы, если они не существуют. Ошибка происходит здесь.
+# Создаем таблицы, если они не существуют
 Base.metadata.create_all(engine)
 
-print("Tables created successfully.") # Эта строка не будет достигнута, если create_all падает
+print("Tables created successfully.")
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -67,46 +50,119 @@ def get_db():
         db.close()
 
 def migrate():
-    db = next(get_db()) # Получаем сессию БД
+    db = next(get_db())
 
-    # Миграция категорий
-    with open('data/categories.json', 'r', encoding='utf-8') as f:
-        categories_data = json.load(f)
-        for cat_data in categories_data:
-            existing_cat = db.query(Category).filter(Category.id == cat_data['id']).first()
+    # --- 1. МИГРАЦИЯ ДАННЫХ КОФЕЕН (CAFE) ---
+    print("Migrating cafes...")
+    print("Migrating cafes...")
+    cafes_data = [
+        {
+            "id": "laurel_main",
+            "name": "Laurel Cafe (Main Branch)",
+            "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+            "logoImage": "icons/logo-laurel.svg",
+            "kitchenCategories": "American Barbeque, Dinner, Italian",
+            "rating": "4.3 (212)",
+            "cookingTime": "5-15 mins",
+            "status": "Open",
+            "openingHours": "Mon-Sun: 9AM-9PM",
+            "minOrderAmount": 10000
+        },
+        {
+            "id": "laurel_coffee_only",
+            "name": "Laurel Coffee Express",
+            "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+            "logoImage": "icons/logo-laurel.svg",
+            "kitchenCategories": "Coffee, Desserts",
+            "rating": "4.8 (98)",
+            "cookingTime": "2-5 mins",
+            "status": "Open",
+            "openingHours": "Mon-Fri: 7AM-7PM, Sat-Sun: 8AM-5PM",
+            "minOrderAmount": 5000
+        }
+    ]
+
+    for cafe_data in cafes_data:
+        existing_cafe = db.query(Cafe).filter(Cafe.id == cafe_data['id']).first()
+        if not existing_cafe:
+            cafe = Cafe(
+                id=cafe_data['id'],
+                name=cafe_data['name'],
+                cover_image=cafe_data['coverImage'],
+                logo_image=cafe_data['logoImage'],
+                kitchen_categories=cafe_data['kitchenCategories'],
+                rating=cafe_data['rating'],
+                cooking_time=cafe_data['cookingTime'],
+                status=cafe_data['status'],
+                opening_hours=cafe_data['openingHours'],
+                min_order_amount=cafe_data['minOrderAmount']
+            )
+            db.add(cafe)
+    db.commit()
+    print("Cafes migrated.")
+
+    # --- 2. МИГРАЦИЯ КАТЕГОРИЙ И ПУНКТОВ МЕНЮ (Category & MenuItem) ---
+    menu_data_path = 'data/menu'
+    categories_data_path = 'data/categories.json'
+
+    with open(categories_data_path, 'r', encoding='utf-8') as f:
+        all_categories = json.load(f)
+
+    cafe_category_mapping = {
+        "laurel_main": ["burgers", "pizza", "pasta", "ice-cream", "coffee"],
+        "laurel_coffee_only": ["coffee"]
+    }
+
+    # Перебираем каждую кофейню и добавляем её категории и пункты меню
+    for cafe_id, category_ids_for_cafe in cafe_category_mapping.items():
+        print(f"Migrating categories and menu items for cafe: {cafe_id}")
+        for category_id in category_ids_for_cafe:
+            cat_data = next((c for c in all_categories if c['id'] == category_id), None)
+            if not cat_data:
+                print(f"Warning: Category data for '{category_id}' not found in categories.json. Skipping.")
+                continue
+
+            # Добавляем категорию для этой кофейни
+            # Проверяем по составному ключу (id, cafe_id)
+            existing_cat = db.query(Category).filter(
+                Category.id == category_id,
+                Category.cafe_id == cafe_id
+            ).first()
             if not existing_cat:
                 category = Category(
                     id=cat_data['id'],
+                    cafe_id=cafe_id,
                     icon=cat_data['icon'],
                     name=cat_data['name'],
                     background_color=cat_data['backgroundColor']
                 )
                 db.add(category)
-    db.commit()
-    print("Categories migrated.")
+                # db.flush() # Удаляем flush, коммит будет позже
 
-    # Миграция пунктов меню
-    menu_data_path = 'data/menu'
-    for filename in os.listdir(menu_data_path):
-        if filename.endswith('.json'):
-            category_id = filename.replace('.json', '')
-            # Пропускаем файл popular.json, так как он не является категорией
-            if category_id == 'popular': # <-- ДОБАВЛЕНО ЭТО УСЛОВИЕ
-                print(f"Skipping {filename} as it's not a menu category.") # Опционально: информационное сообщение
-                continue # <-- Пропускаем итерацию для этого файла
+            # Миграция пунктов меню для этой категории и кофейни
+            menu_filename = f"{category_id}.json"
+            menu_file_path = os.path.join(menu_data_path, menu_filename)
 
-            category = db.query(Category).filter(Category.id == category_id).first()
-            if not category:
-                 print(f"Warning: Category {category_id} not found for file {filename}. Skipping menu items.")
-                 continue
+            if not os.path.exists(menu_file_path):
+                print(f"Warning: Menu file {menu_file_path} not found. Skipping menu items for this category.")
+                continue
 
-            with open(os.path.join(menu_data_path, filename), 'r', encoding='utf-8') as f:
+            if category_id == 'popular': # Пропускаем popular.json
+                print(f"Skipping {menu_filename} as it's not a menu category.")
+                continue
+
+            with open(menu_file_path, 'r', encoding='utf-8') as f:
                 menu_items_data = json.load(f)
                 for item_data in menu_items_data:
-                    existing_item = db.query(MenuItem).filter(MenuItem.id == item_data['id']).first()
+                    # Проверяем по составному ключу (id, cafe_id)
+                    existing_item = db.query(MenuItem).filter(
+                        MenuItem.id == item_data['id'],
+                        MenuItem.cafe_id == cafe_id # <--- Проверка по cafe_id
+                    ).first()
                     if not existing_item:
                         menu_item = MenuItem(
                             id=item_data['id'],
+                            cafe_id=cafe_id, # <--- Привязываем MenuItem к кофейне
                             category_id=category_id,
                             image=item_data['image'],
                             name=item_data['name'],
@@ -114,9 +170,8 @@ def migrate():
                             variants=item_data['variants']
                         )
                         db.add(menu_item)
-        db.commit() # commit должен быть вне внутреннего цикла, но внутри внешнего, как сейчас.
-        print(f"Menu items for category '{category_id}' migrated.")
-
+        db.commit() # Коммит после каждой кофейни
+        print(f"Finished migrating categories and menu items for cafe: {cafe_id}")
 
     db.close()
     print("Migration completed successfully!")
