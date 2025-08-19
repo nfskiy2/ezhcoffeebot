@@ -1,8 +1,7 @@
 // frontend_modern/src/App.tsx
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { logger } from './utils/logger';
-import { TelegramSDK } from './telegram/telegram';
 
 // Import pages
 import HomePage from './pages/HomePage';

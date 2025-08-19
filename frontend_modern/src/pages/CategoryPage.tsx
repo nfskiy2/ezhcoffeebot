@@ -7,14 +7,13 @@ import { getCafeCategoryMenu } from '../api';
 import type { MenuItemSchema } from '../api/types';
 import { useCart } from '../store/cart';
 import MenuItemCard from '../components/MenuItemCard';
-import { useCafe } from '../store/cafe'; // Keep useCafe for context access
+// import { useCafe } from '../store/cafe'; // Keep useCafe for context access
 import { logger } from '../utils/logger'; // Import logger
 
 const CategoryPage: React.FC = () => {
     const { cafeId, categoryId } = useParams<{ cafeId: string; categoryId: string }>();
     const navigate = useNavigate();
     const { items, getItemCount } = useCart();
-    const { selectedCafe } = useCafe(); // Keep selectedCafe if you want to display cafe name for context
 
     const [menuItems, setMenuItems] = useState<MenuItemSchema[]>([]);
     const [loading, setLoading] = useState(true);
