@@ -92,22 +92,36 @@ async def lifespan(app: FastAPI):
 # LIFESPAN передается в конструктор
 app = FastAPI(lifespan=lifespan)
 
+#--- Настройка CORS ---
+allowed_origins = []
 
-# Настройка CORS middleware (должна идти ПОСЛЕ инициализации app)
-allowed_origins = [APP_URL]
-if DEV_MODE and DEV_APP_URL:
-    allowed_origins.append(DEV_APP_URL)
-if DEV_TUNNEL_URL:
-    allowed_origins.append(DEV_TUNNEL_URL)
+# 1. URL фронтенда в продакшене
+APP_URL = os.getenv('APP_URL')
+if APP_URL:
+    allowed_origins.append(APP_URL)
 
-allowed_origins = [url for url in allowed_origins if url is not None]
+# 2. URL для локальной разработки
+DEV_MODE = os.getenv('DEV_MODE') is not None
+if DEV_MODE:
+    DEV_APP_URL = os.getenv('DEV_APP_URL')
+    if DEV_APP_URL:
+        allowed_origins.append(DEV_APP_URL)
+
+# Регулярное выражение для Dev Tunnels
+DEV_TUNNELS_REGEX = r"https://p7h48g5g-[0-9]+\.inc1\.devtunnels\.ms"
+
+logger.info(f"Allowed CORS origins: {allowed_origins}")
+logger.info(f"Allowed CORS regex: {DEV_TUNNELS_REGEX}")
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins, # Разрешаем конкретные URL
+    allow_origin_regex=DEV_TUNNELS_REGEX, # Разрешаем любые порты на devtunnels
     allow_credentials=True,
-    allow_methods=["*"], # Разрешаем все методы (GET, POST и т.д.)
-    allow_headers=["*"], # Разрешаем все заголовки
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
 )
 
 

@@ -1,7 +1,7 @@
 # backend/app/models.py
 from sqlalchemy import (
-    Column, Integer, String, Float, JSON, ForeignKey,
-    PrimaryKeyConstraint, ForeignKeyConstraint 
+    Column, Integer, String, JSON, ForeignKey,
+    PrimaryKeyConstraint, ForeignKeyConstraint
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -23,6 +23,8 @@ class Cafe(Base):
     min_order_amount = Column(Integer, default=0)
 
     categories = relationship("Category", back_populates="cafe")
+    menu_items = relationship("MenuItem", back_populates="cafe", overlaps="category")
+
 
 # ОБНОВЛЕННАЯ МОДЕЛЬ: Category с составным первичным ключом
 class Category(Base):
@@ -71,5 +73,4 @@ class MenuItem(Base):
         back_populates="menu_items"
     )
     # ИСПРАВЛЕНИЕ: Добавляем overlaps
-    cafe = relationship("Cafe", backref="menu_items_by_cafe", overlaps="category,menu_items")
-
+    cafe = relationship("Cafe", back_populates="menu_items", overlaps="category") # Добавляем overlaps здесь
