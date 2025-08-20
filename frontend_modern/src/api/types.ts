@@ -1,12 +1,11 @@
 // frontend_modern/src/api/types.ts
 import type { CartItem } from '../store/cart';
 
-// --- Схемы данных, соответствующие моделям SQLAlchemy ---
 export interface CafeSchema {
     id: string;
     name: string;
-    coverImage?: string; // camelCase
-    logoImage?: string;   // camelCase
+    coverImage?: string;
+    logoImage?: string;
     kitchenCategories?: string;
     rating?: string;
     cookingTime?: string;
@@ -41,9 +40,8 @@ export interface MenuItemSchema {
 }
 
 export interface CafeSettingsSchema {
-    min_order_amount: number;
+    minOrderAmount: number;
 }
-
 
 // --- Схемы для тела запроса /order ---
 export interface OrderItemCafeItem {
@@ -67,5 +65,5 @@ export interface CartItemRequest {
 // Главная схема запроса заказа (соответствует backend/app/schemas.py)
 export interface OrderRequest {
     auth: string;
-    cart_items: CartItem[]; // Используем CartItem напрямую
+    cartItems: CartItemRequest[]; // <--- ИСПОЛЬЗУЕМ camelCase
 }

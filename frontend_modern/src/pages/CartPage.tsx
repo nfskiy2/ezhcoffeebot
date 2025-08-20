@@ -1,7 +1,7 @@
 // frontend_modern/src/pages/CartPage.tsx
 import React, { useEffect, useState, useCallback } from 'react'; // ОБЯЗАТЕЛЬНО ИМПОРТИРУЕМ React
 import Lottie from 'lottie-react';
-import type { OrderRequest } from '../api/types';
+import type { OrderRequest, CartItemRequest } from '../api/types';
 
 import { useCart } from '../store/cart';
 import { toDisplayCost } from '../utils/currency';
@@ -24,7 +24,7 @@ const CartPage: React.FC = () => { // ВОЗВРАЩАЕМ React.FC
             if (!selectedCafe) return;
             try {
                 const settings = await getCafeSettings(selectedCafe.id);
-                setMinOrderAmount(settings.min_order_amount);
+                setMinOrderAmount(settings.minOrderAmount);
             } catch (err) {
                 logger.error("Failed to load cafe settings:", err);
                 showSnackbar("Failed to load cafe settings. Please try again.", { style: 'error' });
@@ -67,9 +67,23 @@ const CartPage: React.FC = () => { // ВОЗВРАЩАЕМ React.FC
             setIsSubmitting(true);
 
             try {
+                const cartItemsForRequest: CartItemRequest[] = items.map(item => ({
+                    cafeItem: {
+                        id: item.cafeItem.id,
+                        name: item.cafeItem.name,
+                    },
+                    variant: {
+                        id: item.variant.id,
+                        name: item.variant.name,
+                        cost: item.variant.cost,
+                    },
+                    quantity: item.quantity,
+                    categoryId: item.categoryId,
+                }));
+                
                 const orderData: OrderRequest = {
                     auth: initData,
-                    cart_items: items,
+                    cartItems: cartItemsForRequest,
                 };
 
                 const response = await createOrder(selectedCafe.id, orderData);
