@@ -389,7 +389,7 @@ async def create_order(
 ):
     logger.info("Received order request.")
 
-    if not auth.validate_auth_data(BOT_TOKEN, order_data.auth): 
+    if not auth.validate_auth_data(BOT_TOKEN, order_data.auth):
         logger.warning("Invalid auth data received in order request.")
         raise HTTPException(status_code=401, detail="Invalid auth data.")
     logger.info("Auth data validated.")
