@@ -1,6 +1,7 @@
 # backend/app/schemas.py
 from pydantic import BaseModel, Field
 from typing import List, Any, Optional
+from pydantic.alias_generators import to_camel # НОВЫЙ ИМПОРТ
 
 class CafeSchema(BaseModel):
     id: str
@@ -16,6 +17,8 @@ class CafeSchema(BaseModel):
 
     class Config:
         from_attributes = True
+        alias_generator = to_camel
+        populate_by_name = True
 
 class CategorySchema(BaseModel):
     id: str
@@ -26,6 +29,8 @@ class CategorySchema(BaseModel):
 
     class Config:
         from_attributes = True
+        alias_generator = to_camel
+        populate_by_name = True
 
 class MenuItemVariantSchema(BaseModel):
     id: str

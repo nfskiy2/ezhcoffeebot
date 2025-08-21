@@ -1,5 +1,5 @@
 // frontend_modern/src/api/types.ts
-import type { CartItem } from '../store/cart';
+// import type { CartItem } from '../store/cart';
 
 export interface CafeSchema {
     id: string;
