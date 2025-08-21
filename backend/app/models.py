@@ -1,8 +1,10 @@
 # backend/app/models.py
 from sqlalchemy import (
     Column, Integer, String, JSON, ForeignKey,
-    PrimaryKeyConstraint, ForeignKeyConstraint
+    PrimaryKeyConstraint, ForeignKeyConstraint, DateTime, func
 )
+import uuid # Для генерации уникальных ID
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 
@@ -25,6 +27,21 @@ class Cafe(Base):
     categories = relationship("Category", back_populates="cafe")
     menu_items = relationship("MenuItem", back_populates="cafe", overlaps="category")
 
+class Order(Base):
+    __tablename__ = 'orders'
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4) # Уникальный ID заказа
+    cafe_id = Column(String, ForeignKey('cafes.id'), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    # Сохраняем данные о пользователе и заказе как JSON
+    user_info = Column(JSON) # { "name": "...", "phone_number": "...", "shipping_address": "..." }
+    cart_items = Column(JSON) # [ { "cafeItem": {...}, "variant": {...}, "quantity": ... }, ... ]
+    total_amount = Column(Integer) # Общая сумма в минимальных единицах
+    currency = Column(String(3))
+    telegram_payment_charge_id = Column(String, unique=True, nullable=True) # ID платежа от Telegram
+    status = Column(String, default='pending') # Статусы: pending, paid, failed
+
+    cafe = relationship("Cafe")
 
 # ОБНОВЛЕННАЯ МОДЕЛЬ: Category с составным первичным ключом
 class Category(Base):

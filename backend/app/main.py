@@ -14,10 +14,11 @@ import contextlib
 from . import auth
 from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH
 from .database import engine, SessionLocal
-from .models import Base, Category, MenuItem, Cafe
+from .models import Base, Category, MenuItem, Cafe, Order
 from .schemas import CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema
 from telegram import Update, LabeledPrice, Bot
 from telegram.ext import Application
+from urllib.parse import parse_qs
 
 load_dotenv()
 
@@ -275,10 +276,42 @@ async def create_order(
             status_code=400,
             detail=f"Order total is too low. Minimum order amount is {min_order_amount} in minimal units."
         )
+    
+    user_info_dict = {}
+    try:
+        # initData - это URL-encoded строка, парсим ее
+        parsed_auth_data = parse_qs(order_data.auth)
+        if 'user' in parsed_auth_data:
+            user_data_json = parsed_auth_data['user'][0]
+            user_info_dict = json.loads(user_data_json)
+    except Exception as e:
+        logger.error(f"Could not parse user info from initData: {e}")
+        # Не блокируем заказ, если не удалось распарсить, но логируем
 
-    invoice_url = await create_invoice_link(prices=labeled_prices, bot_instance=bot_instance)
-    if invoice_url is None:
-        logger.error("Failed to get invoice URL from bot.")
-        raise HTTPException(status_code=500, detail="Could not create invoice.")
-    logger.info(f"Invoice URL created for order: {invoice_url}")
-    return { 'invoiceUrl': invoice_url }
+    # 3. Создаем и сохраняем заказ в базе данных
+    new_order = Order(
+        cafe_id=cafe_id,
+        user_info=user_info_dict,
+        cart_items=[item.dict() for item in order_data.cartItems], # Сохраняем Pydantic модели как dict
+        total_amount=total_amount_in_minimal_units,
+        currency="RUB" # Или любая ваша валюта
+    )
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order) # Получаем сгенерированный ID
+    logger.info(f"Order {new_order.id} created and saved to DB.")
+
+    # 4. Создаем инвойс, используя ID нашего заказа как payload
+    invoice_url = await create_invoice_link(
+        prices=labeled_prices,
+        payload=str(new_order.id), # <--- ПЕРЕДАЕМ НАШ ID ЗАКАЗА
+        bot_instance=bot_instance
+    )
+
+
+    # invoice_url = await create_invoice_link(prices=labeled_prices, bot_instance=bot_instance)
+    # if invoice_url is None:
+    #     logger.error("Failed to get invoice URL from bot.")
+    #     raise HTTPException(status_code=500, detail="Could not create invoice.")
+    # logger.info(f"Invoice URL created for order: {invoice_url}")
+    # return { 'invoiceUrl': invoice_url }

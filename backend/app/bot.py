@@ -2,6 +2,9 @@ import logging
 import os
 import re
 import asyncio
+from .database import SessionLocal
+from .models import Order
+import uuid
 
 # Импорты из python-telegram-bot
 from telegram import (
@@ -70,7 +73,7 @@ async def handle_pre_checkout_query(update: Update, context: CallbackContext) ->
         logger.error(f"Failed to answer pre-checkout query (ID: {query_id}): {e}")
     except Exception as e:
         logger.error(f"Unexpected error answering pre-checkout query (ID: {query_id}): {e}")
-        
+
 async def handle_successful_payment(update: Update, context: CallbackContext) -> None:
     """Обработка успешного платежа."""
     if not update.message or not update.message.successful_payment or not update.effective_chat:
@@ -100,32 +103,47 @@ async def handle_successful_payment(update: Update, context: CallbackContext) ->
     chat_id = update.effective_chat.id
     user_name = payment.order_info.name or "Friend"
 
-    logger.info(f"Received successful payment of {payment.total_amount / 100} {payment.currency} from chat_id: {chat_id}")
-
-    # 1. Отправляем подтверждение пользователю
-    user_confirmation_text = (
-        f'Спасибо за ваш заказ, *{user_name}*! Это не настоящее кафе, так что ваша карта не была списана.\n\n'
-        f'Хорошего дня 🙂'
-    )
-    try:
-        await context.bot.send_message(
-            chat_id=chat_id,
-            text=user_confirmation_text,
-            parse_mode='Markdown'
-        )
-    except TelegramError as e:
-        logger.error(f"Failed to send success message to user {chat_id}: {e}")
+    order_id_str = payment.invoice_payload # <--- ПОЛУЧАЕМ ID НАШЕГО ЗАКАЗА
+    
+    # 1. Обновляем статус заказа в БД и получаем детали
+    order_details = None
+    with SessionLocal() as db:
+        try:
+            order_id = uuid.UUID(order_id_str)
+            order_in_db = db.query(Order).filter(Order.id == order_id).first()
+            if order_in_db:
+                order_in_db.status = 'paid'
+                order_in_db.telegram_payment_charge_id = payment.telegram_payment_charge_id
+                db.commit()
+                db.refresh(order_in_db)
+                order_details = order_in_db
+                logger.info(f"Order {order_id} status updated to 'paid'.")
+            else:
+                logger.error(f"Order with ID {order_id} not found in DB after successful payment!")
+        except Exception as e:
+            logger.error(f"Error updating order status in DB: {e}")
 
     # 2. Формируем и отправляем уведомление в группу сотрудников
-    if STAFF_GROUP_ID:
+    if STAFF_GROUP_ID and order_details:
         try:
             # Собираем информацию о заказе
             order_info = payment.order_info
             shipping_address = order_info.shipping_address
             
+            # Форматируем список товаров
+            items_text_list = []
+            for item in order_details.cart_items:
+                item_name = item.get('cafeItem', {}).get('name', 'Unknown Item')
+                variant_name = item.get('variant', {}).get('name', 'Standard')
+                quantity = item.get('quantity', 0)
+                items_text_list.append(f"  - {item_name} ({variant_name}) x {quantity}")
+            
+            items_text = "\n".join(items_text_list)
+
             # Форматируем красивое сообщение для сотрудников
             staff_notification_text = (
-                f"🎉 *Новый заказ!* 🎉\n\n"
+                f"🎉 *Новый заказ!* `#{str(order_details.id)[:8]}` 🎉\n\n"
+                f"🛍️ *Состав заказа:*\n{items_text}\n\n"
                 f"💰 *Сумма:* {payment.total_amount / 100} {payment.currency}\n"
                 f"👤 *Клиент:* {order_info.name or 'Не указано'}\n"
                 f"📞 *Телефон:* {order_info.phone_number or 'Не указан'}\n\n"
@@ -142,7 +160,7 @@ async def handle_successful_payment(update: Update, context: CallbackContext) ->
                 text=staff_notification_text,
                 parse_mode='Markdown'
             )
-            logger.info(f"Successfully sent order notification to staff group {STAFF_GROUP_ID}")
+            logger.info(f"Successfully sent detailed order notification to staff group {STAFF_GROUP_ID}")
         except TelegramError as e:
             logger.error(f"Failed to send order notification to staff group {STAFF_GROUP_ID}: {e}")
         except Exception as e:
