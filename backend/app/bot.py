@@ -232,7 +232,7 @@ async def send_actionable_message(chat_id: int, text: str, bot_instance: Bot) ->
 
 # --- Синхронная функция для создания ссылки на инвойс (вызывается из FastAPI) ---
 # Теперь принимает bot_instance явно
-def create_invoice_link(prices: list[LabeledPrice], bot_instance: Bot) -> str | None:
+async def create_invoice_link(prices: list[LabeledPrice], payload: str, bot_instance: Bot) -> str | None:
     """Создание ссылки на инвойс для оплаты. Вызывается из FastAPI."""
     if bot_instance is None:
         logger.error("Bot instance is not provided to create_invoice_link! Cannot create invoice link.")
@@ -242,15 +242,16 @@ def create_invoice_link(prices: list[LabeledPrice], bot_instance: Bot) -> str | 
          logger.error("PAYMENT_PROVIDER_TOKEN is not set! Cannot create invoice link.")
          return None
     
-    logger.info(f"Attempting to create invoice link.")
+    logger.info(f"Attempting to create invoice link with payload: {payload}")
     logger.info(f"PAYMENT_PROVIDER_TOKEN being used: {PAYMENT_PROVIDER_TOKEN}")
-    logger.info(f"Prices being sent: {[p.to_dict() for p in prices]}") # Для наглядности, преобразуем LabeledPrice в dict
+    logger.info(f"Prices being sent: {[p.to_dict() for p in prices]}")
 
     try:
-        return bot_instance.create_invoice_link(
+        # ВНИМАНИЕ: create_invoice_link теперь асинхронный
+        return await bot_instance.create_invoice_link(
             title='Заказ #1',
             description='Отличный выбор! Еще пара шагов, и приступим к готовке ;)',
-            payload='orderID',
+            payload=payload, # <--- ИСПОЛЬЗУЕМ ПЕРЕДАННЫЙ payload
             provider_token=PAYMENT_PROVIDER_TOKEN,
             currency='RUB',
             prices=prices,
