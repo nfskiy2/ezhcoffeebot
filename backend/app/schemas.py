@@ -1,23 +1,21 @@
 # backend/app/schemas.py
 from pydantic import BaseModel, Field
 from typing import List, Any, Optional
-from pydantic.alias_generators import to_camel # НОВЫЙ ИМПОРТ
 
 class CafeSchema(BaseModel):
     id: str
     name: str
-    coverImage: Optional[str]
-    logoImage: Optional[str]
-    kitchenCategories: Optional[str]
-    rating: Optional[str]
-    cookingTime: Optional[str]
-    status: Optional[str]
-    openingHours: Optional[str]
-    minOrderAmount: Optional[int]
+    cover_image: Optional[str] = Field(None, alias='coverImage')
+    logo_image: Optional[str] = Field(None, alias='logoImage')
+    kitchen_categories: Optional[str] = Field(None, alias='kitchenCategories')
+    rating: Optional[str] = None
+    cooking_time: Optional[str] = Field(None, alias='cookingTime')
+    status: Optional[str] = None
+    opening_hours: Optional[str] = Field(None, alias='openingHours')
+    min_order_amount: Optional[int] = Field(None, alias='minOrderAmount')
 
     class Config:
         from_attributes = True
-        alias_generator = to_camel
         populate_by_name = True
 
 class CategorySchema(BaseModel):
@@ -25,11 +23,10 @@ class CategorySchema(BaseModel):
     cafe_id: str
     icon: Optional[str]
     name: Optional[str]
-    backgroundColor: Optional[str]
+    background_color: Optional[str] = Field(None, alias='backgroundColor')
 
     class Config:
         from_attributes = True
-        alias_generator = to_camel
         populate_by_name = True
 
 class MenuItemVariantSchema(BaseModel):
@@ -51,7 +48,11 @@ class MenuItemSchema(BaseModel):
         from_attributes = True
 
 class CafeSettingsSchema(BaseModel):
-    minOrderAmount: int
+    min_order_amount: int = Field(alias='minOrderAmount')
+
+    class Config:
+        populate_by_name = True
+        from_attributes = True
 
 # --- Схемы для заказа (OrderRequest) ---
 class OrderItemCafeItem(BaseModel):
@@ -71,4 +72,4 @@ class CartItemRequest(BaseModel):
 
 class OrderRequest(BaseModel):
     auth: str
-    cartItems: List[CartItemRequest] 
+    cartItems: List[CartItemRequest]
