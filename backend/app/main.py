@@ -389,19 +389,19 @@ async def create_order(
 ):
     logger.info("Received order request.")
 
-    if not auth.validate_auth_data(BOT_TOKEN, order_data.auth_data):
+    if not auth.validate_auth_data(BOT_TOKEN, order_data.auth): 
         logger.warning("Invalid auth data received in order request.")
         raise HTTPException(status_code=401, detail="Invalid auth data.")
     logger.info("Auth data validated.")
 
-    if not order_data.cart_items:
+    if not order_data.cartItems:
         logger.warning("Cart Items are not provided.")
         raise HTTPException(status_code=400, detail="Cart Items are not provided.")
-    logger.info(f"Received {len(order_data.cart_items)} items in cart.")
+    logger.info(f"Received {len(order_data.cartItems)} items in cart.")
 
     labeled_prices = []
     total_amount_in_minimal_units = 0
-    for item in order_data.cart_items:
+    for item in order_data.cartItems: 
         try:
             cost_in_minimal_unit = int(item.variant.cost)
             quantity = item.quantity
