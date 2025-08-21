@@ -1,3 +1,4 @@
 .netlify
 .env
 *.env
+.env.production
