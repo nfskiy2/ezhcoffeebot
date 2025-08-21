@@ -302,11 +302,18 @@ async def create_order(
     logger.info(f"Order {new_order.id} created and saved to DB.")
 
     # 4. Создаем инвойс, используя ID нашего заказа как payload
-    invoice_url = await create_invoice_link(
+    invoice_url = await create_invoice_link( # <--- ДОБАВЬТЕ await
         prices=labeled_prices,
-        payload=str(new_order.id), # <--- ПЕРЕДАЕМ НАШ ID ЗАКАЗА
+        payload=str(new_order.id),
         bot_instance=bot_instance
     )
+
+    if invoice_url is None:
+        logger.error("Failed to get invoice URL from bot.")
+        raise HTTPException(status_code=500, detail="Could not create invoice.")
+
+    logger.info(f"Invoice URL created for order: {invoice_url}")
+    return { 'invoiceUrl': invoice_url }
 
 
     # invoice_url = await create_invoice_link(prices=labeled_prices, bot_instance=bot_instance)
