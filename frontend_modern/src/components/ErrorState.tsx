@@ -24,7 +24,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({ message, onRetry }) => {
             >
                 error
             </span>
-            <h3 style={{ marginBottom: '8px' }}>Oops! Something went wrong.</h3>
+            <h3 style={{ marginBottom: '8px' }}>Ой! Что-то пошло не так.</h3>
             <p style={{ opacity: 0.7, marginBottom: '24px' }}>{message}</p>
             <button
                 onClick={onRetry}
@@ -39,7 +39,7 @@ const ErrorState: React.FC<ErrorStateProps> = ({ message, onRetry }) => {
                     fontWeight: 500
                 }}
             >
-                Try Again
+                Попробовать снова
             </button>
         </div>
     );
