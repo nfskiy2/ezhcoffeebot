@@ -15,9 +15,11 @@ from telegram.error import TelegramError # Для обработки ошибо�
 # Получаем переменные окружения
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 PAYMENT_PROVIDER_TOKEN = os.getenv('PAYMENT_PROVIDER_TOKEN')
-WEBHOOK_URL = os.getenv('WEBHOOK_URL') # URL, где запущен FastAPI (для установки вебхука)
-WEBHOOK_PATH = '/bot' # Путь вебхука на FastAPI
-APP_URL = os.getenv('APP_URL') # URL мини-приложения для кнопки
+WEBHOOK_URL = os.getenv('WEBHOOK_URL')
+WEBHOOK_PATH = '/bot'
+APP_URL = os.getenv('APP_URL')
+# НОВАЯ ПЕРЕМЕННАЯ: ID группы для уведомлений
+STAFF_GROUP_ID = os.getenv('STAFF_GROUP_ID')
 
 # Настройка логирования
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -69,28 +71,65 @@ async def handle_successful_payment(update: Update, context: CallbackContext) ->
         logger.error(f"Failed to send success message: {e}")
 
 
-async def handle_pre_checkout_query(update: Update, context: CallbackContext) -> None:
-    """Обработка Pre-Checkout запроса."""
-    if not update.pre_checkout_query:
-         logger.warning("Received pre-checkout query update with missing data.")
-         return
+async def handle_successful_payment(update: Update, context: CallbackContext) -> None:
+    """Обработка успешного платежа."""
+    if not update.message or not update.message.successful_payment or not update.effective_chat:
+        logger.warning("Received successful payment update with missing data.")
+        return
 
-    query_id = update.pre_checkout_query.id
-    user_id = update.pre_checkout_query.from_user.id
-    logger.info(f"Received pre-checkout query (ID: {query_id}) from user_id: {user_id}")
+    payment = update.message.successful_payment
+    chat_id = update.effective_chat.id
+    user_name = payment.order_info.name or "Friend"
 
+    logger.info(f"Received successful payment of {payment.total_amount / 100} {payment.currency} from chat_id: {chat_id}")
+
+    # 1. Отправляем подтверждение пользователю
+    user_confirmation_text = (
+        f'Спасибо за ваш заказ, *{user_name}*! Это не настоящее кафе, так что ваша карта не была списана.\n\n'
+        f'Хорошего дня 🙂'
+    )
     try:
-        start_time = asyncio.get_event_loop().time() # Засекаем время
-        await update.pre_checkout_query.answer(ok=True)
-        end_time = asyncio.get_event_loop().time() # Засекаем время
-        logger.info(f"Answered pre-checkout query (ID: {query_id}) successfully in {end_time - start_time:.3f} seconds.")
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=user_confirmation_text,
+            parse_mode='Markdown'
+        )
     except TelegramError as e:
-        logger.error(f"Failed to answer pre-checkout query (ID: {query_id}): {e}")
-        # Возможно, здесь стоит добавить небольшую задержку перед retry или logging.
-        # Но для PreCheckoutQuery, если первый раз не получилось, то второй раз уже не имеет смысла
-        # т.к. Telegram уже отменил.
-    except Exception as e:
-        logger.error(f"Unexpected error answering pre-checkout query (ID: {query_id}): {e}")
+        logger.error(f"Failed to send success message to user {chat_id}: {e}")
+
+    # 2. Формируем и отправляем уведомление в группу сотрудников
+    if STAFF_GROUP_ID:
+        try:
+            # Собираем информацию о заказе
+            order_info = payment.order_info
+            shipping_address = order_info.shipping_address
+            
+            # Форматируем красивое сообщение для сотрудников
+            staff_notification_text = (
+                f"🎉 *Новый заказ!* 🎉\n\n"
+                f"💰 *Сумма:* {payment.total_amount / 100} {payment.currency}\n"
+                f"👤 *Клиент:* {order_info.name or 'Не указано'}\n"
+                f"📞 *Телефон:* {order_info.phone_number or 'Не указан'}\n\n"
+                f"📍 *Адрес доставки:*\n"
+                f"   `{shipping_address.country_code}, {shipping_address.state}`\n"
+                f"   `{shipping_address.city}, {shipping_address.street_line1}`\n"
+                f"   `{shipping_address.street_line2 or ''}`\n"
+                f"   `Почтовый индекс: {shipping_address.post_code}`\n\n"
+                f"Проверьте детали в вашей системе."
+            )
+
+            await context.bot.send_message(
+                chat_id=STAFF_GROUP_ID,
+                text=staff_notification_text,
+                parse_mode='Markdown'
+            )
+            logger.info(f"Successfully sent order notification to staff group {STAFF_GROUP_ID}")
+        except TelegramError as e:
+            logger.error(f"Failed to send order notification to staff group {STAFF_GROUP_ID}: {e}")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while sending staff notification: {e}")
+    else:
+        logger.warning("STAFF_GROUP_ID is not set. Skipping notification to staff.")
 
 
 
