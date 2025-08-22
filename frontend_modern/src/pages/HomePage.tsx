@@ -1,5 +1,5 @@
 // frontend_modern/src/pages/HomePage.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { getCafeCategories, getCafePopularMenu } from '../api';
@@ -10,6 +10,7 @@ import { getContrastingTextColor } from '../utils/colorUtils';
 import { useCafe } from '../store/cafe';
 import { logger } from '../utils/logger';
 import ErrorState from '../components/ErrorState';
+import { getCafeStatus } from '../utils/timeUtils';
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
@@ -26,6 +27,10 @@ const HomePage: React.FC = () => {
     const [categories, setCategories] = useState<CategorySchema[]>([]);
     const [popularItems, setPopularItems] = useState<MenuItemSchema[]>([]);
     const [isLoadingCafeData, setIsLoadingCafeData] = useState(true);
+    const cafeStatus = useMemo(() => {
+        return getCafeStatus(selectedCafe?.openingHours);
+    }, [selectedCafe]);
+
 
     useEffect(() => {
         const loadCafeSpecificData = async () => {
@@ -163,7 +168,13 @@ const HomePage: React.FC = () => {
                         <img src="/icons/icon-time.svg" className="cafe-parameter-icon" alt="Время работы"/>
                         <div id="cafe-cooking-time" className="cafe-parameter-value">{selectedCafe.openingHours}</div>
                     </div>
-                    <div id="cafe-status" className="cafe-status">{selectedCafe.status}</div>
+                    <div
+                        id="cafe-status"
+                        className="cafe-status"
+                        style={{ backgroundColor: cafeStatus.color }} // Динамический цвет
+                    >
+                        {cafeStatus.status} {/* Динамический текст */}
+                    </div>
                 </div>
             </div>
 
