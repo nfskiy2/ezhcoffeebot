@@ -81,6 +81,7 @@ class MenuItem(Base):
     name = Column(String)
     description = Column(String)
     variants = Column(JSON)
+    addons = Column(JSON, nullable=True)
 
     # Устанавливаем отношение с Category.
     # primaryjoin гарантирует, что мы связываем MenuItem с Category, принадлежащей той же кофейне.
