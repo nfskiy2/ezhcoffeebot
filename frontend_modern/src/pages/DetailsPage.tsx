@@ -1,5 +1,5 @@
 // frontend_modern/src/pages/DetailsPage.tsx
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useLayoutEffect  } from 'react';
 import { useParams } from 'react-router-dom';
 import { getCafeMenuItemDetails } from '../api';
 import type { MenuItemSchema, MenuItemVariantSchema, AddonGroup, AddonItem, CartItem, SelectedAddon} from '../api/types';
@@ -133,25 +133,35 @@ const DetailsPage: React.FC = () => {
         }
     }, [menuItem, selectedVariant, quantity, selectedAddons, addItem, showSnackbar, selectedCafe]);
 
-    useEffect(() => {
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            if (menuItem && selectedVariant && quantity > 0) {
-                // const currentTotalCost = parseInt(selectedVariant.cost, 10) * quantity;
-                const displayText = `ДОБАВИТЬ В КОРЗИНУ • ${toDisplayCost(totalCost)}`;
-                tg.MainButton.setText(displayText).show();
-                tg.MainButton.onClick(handleAddToCart);
-                tg.MainButton.enable();
-            } else {
+    useLayoutEffect(() => {
+        const tg = window.Telegram?.WebApp;
+        if (!tg) return; // Если SDK не доступен, ничего не делаем
+
+        if (menuItem && selectedVariant && quantity > 0) {
+            const displayText = `ДОБАВИТЬ В КОРЗИНУ • ${toDisplayCost(totalCost)}`;
+            
+            if (tg.MainButton.text !== displayText) {
                 tg.MainButton.hide();
             }
-            return () => {
-                if (window.Telegram && window.Telegram.WebApp) {
-                    tg.MainButton.offClick(handleAddToCart);
-                }
-            };
+
+            tg.MainButton.setText(displayText);
+            tg.MainButton.show();
+            tg.MainButton.onClick(handleAddToCart);
+            tg.MainButton.enable();
+        } else {
+            tg.MainButton.hide();
         }
+        
+        // ИСПРАВЛЕНИЕ: Функция очистки, которая будет вызвана при уходе со страницы
+        return () => {
+            if (window.Telegram && window.Telegram.WebApp) {
+                const tg_cleanup = window.Telegram.WebApp;
+                tg_cleanup.MainButton.offClick(handleAddToCart); // Удаляем обработчик
+                tg_cleanup.MainButton.hide(); // <--- ГАРАНТИРОВАННО СКРЫВАЕМ КНОПКУ
+            }
+        };
     }, [menuItem, selectedVariant, quantity, handleAddToCart, totalCost]);
+
 
     if (loading) return <section>{/* Shimmer */}</section>;
     if (error) return <div>Ошибка: {error}</div>;
