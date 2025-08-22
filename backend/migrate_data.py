@@ -58,26 +58,25 @@ def migrate():
     cafes_data = [
         {
             "id": "laurel_main",
-            "name": "Laurel Cafe (Main Branch)",
+            "name": "EZHcoffee-1",
             "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
             "logoImage": "icons/logo-laurel.svg",
             "kitchenCategories": "American Barbeque, Dinner, Italian",
             "rating": "4.3 (212)",
             "cookingTime": "5-15 mins",
-            "status": "Open",
-            "openingHours": "Mon-Sun: 9AM-9PM",
+            
+            "openingHours": "пн-пт: 09:00-20:30, сб-вс: 10:00-19:00",
             "minOrderAmount": 10000
         },
         {
             "id": "laurel_coffee_only",
-            "name": "Laurel Coffee Express",
+            "name": "EZHcoffee-2",
             "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
             "logoImage": "icons/logo-laurel.svg",
             "kitchenCategories": "Coffee, Desserts",
             "rating": "4.8 (98)",
             "cookingTime": "2-5 mins",
-            "status": "Open",
-            "openingHours": "Mon-Fri: 7AM-7PM, Sat-Sun: 8AM-5PM",
+            "openingHours": "пн-пт: 07:00-19:00, сб: 08:00-17:00", 
             "minOrderAmount": 5000
         }
     ]

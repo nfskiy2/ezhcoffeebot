@@ -10,7 +10,7 @@ import { getContrastingTextColor } from '../utils/colorUtils';
 import { useCafe } from '../store/cafe';
 import { logger } from '../utils/logger';
 import ErrorState from '../components/ErrorState';
-import { getCafeStatus } from '../utils/timeUtils';
+import { getCafeStatus, formatOpeningHours } from '../utils/timeUtils';
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
