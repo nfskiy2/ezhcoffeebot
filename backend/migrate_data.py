@@ -58,26 +58,26 @@ def migrate():
     cafes_data = [
         {
             "id": "laurel_main",
-            "name": "Laurel Cafe (Main Branch)",
-            "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+            "name": "Laurel Cafe (Main Branch)", 
+            "coverImage": "...",
             "logoImage": "icons/logo-laurel.svg",
-            "kitchenCategories": "American Barbeque, Dinner, Italian",
+            "kitchenCategories": "...",
             "rating": "4.3 (212)",
             "cookingTime": "5-15 mins",
-            "status": "Open",
+            "status": "Open", 
             "openingHours": "пн-пт: 09:00-20:30, сб-вс: 10:00-19:00",
             "minOrderAmount": 10000
         },
         {
             "id": "laurel_coffee_only",
-            "name": "Laurel Coffee Express",
-            "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+            "name": "Laurel Coffee Express", 
+            "coverImage": "...",
             "logoImage": "icons/logo-laurel.svg",
             "kitchenCategories": "Coffee, Desserts",
             "rating": "4.8 (98)",
             "cookingTime": "2-5 mins",
-            "status": "Open",
-            "openingHours": "пн-пт: 07:00-19:00, сб: 08:00-17:00", 
+            "status": "Open", 
+            "openingHours": "пн-пт: 07:00-19:00, сб: 08:00-17:00",
             "minOrderAmount": 5000
         }
     ]
