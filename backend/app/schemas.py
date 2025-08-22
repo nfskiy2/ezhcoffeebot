@@ -18,7 +18,7 @@ class CafeSchema(BaseModel):
     class Config:
         from_attributes = True
         alias_generator = to_camel
-        populate_by_name = True
+        populate_by_name = True  
 
 class CategorySchema(BaseModel):
     id: str
