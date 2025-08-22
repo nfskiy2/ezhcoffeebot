@@ -1,5 +1,19 @@
 // frontend_modern/src/api/types.ts
-// import type { CartItem } from '../store/cart';
+export interface CartItem {
+    cafeItem: {
+        id: string;
+        name: string;
+        image?: string;
+    };
+    variant: {
+        id: string;
+        name: string;
+        cost: string;
+    };
+    quantity: number;
+    cafeId: string;
+    categoryId: string;
+}
 
 export interface AddonItem {
     id: string;

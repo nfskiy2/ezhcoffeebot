@@ -1,23 +1,7 @@
 // frontend_modern/src/store/cart.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { logger } from '../utils/logger';
-
-// ЭКСПОРТИРУЕМ CartItem, чтобы он был доступен для других модулей
-export interface CartItem {
-    cafeItem: {
-        id: string;
-        name: string;
-        image?: string;
-    };
-    variant: {
-        id: string;
-        name: string;
-        cost: string;
-    };
-    quantity: number;
-    cafeId: string;
-    categoryId: string;
-}
+import type { CartItem } from '../api/types';
 
 const LOCAL_STORAGE_KEY = 'laurel_cafe_cart';
 
