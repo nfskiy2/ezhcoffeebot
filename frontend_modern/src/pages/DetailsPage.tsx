@@ -3,8 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { getCafeMenuItemDetails } from '../api';
-import type { MenuItemSchema, MenuItemVariantSchema, AddonGroup, AddonItem} from '../api/types';
-import type { CartItem } from '../api/types';
+import type { MenuItemSchema, MenuItemVariantSchema, AddonGroup, AddonItem, CartItem} from '../api/types';
 import { toDisplayCost } from '../utils/currency';
 import { useCart } from '../store/cart';
 import { useSnackbar } from '../components/Snackbar';

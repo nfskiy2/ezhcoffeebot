@@ -50,6 +50,8 @@ class MenuItemSchema(BaseModel):
 
     class Config:
         from_attributes = True
+        alias_generator = to_camel 
+        populate_by_name = True
 
 class CafeSettingsSchema(BaseModel):
     min_order_amount: int = Field(alias='minOrderAmount')
