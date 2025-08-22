@@ -59,7 +59,7 @@ def migrate():
         {
             "id": "laurel_main",
             "name": "Laurel Cafe (Main Branch)", 
-            "coverImage": "...",
+            "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
             "logoImage": "icons/logo-laurel.svg",
             "kitchenCategories": "...",
             "rating": "4.3 (212)",
@@ -71,7 +71,7 @@ def migrate():
         {
             "id": "laurel_coffee_only",
             "name": "Laurel Coffee Express", 
-            "coverImage": "...",
+            "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
             "logoImage": "icons/logo-laurel.svg",
             "kitchenCategories": "Coffee, Desserts",
             "rating": "4.8 (98)",
