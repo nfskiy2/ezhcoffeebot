@@ -3,7 +3,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { getCafeMenuItemDetails } from '../api';
-import type { MenuItemSchema, MenuItemVariantSchema } from '../api/types';
+import type { MenuItemSchema, MenuItemVariantSchema, AddonGroup, AddonItem} from '../api/types';
 import type { CartItem } from '../store/cart';
 import { toDisplayCost } from '../utils/currency';
 import { useCart } from '../store/cart';
@@ -11,6 +11,7 @@ import { useSnackbar } from '../components/Snackbar';
 import { TelegramSDK } from '../telegram/telegram';
 import { useCafe } from '../store/cafe';
 import { logger } from '../utils/logger';
+import Accordion from '../components/Accordion';
 
 const DetailsPage: React.FC = () => {
     const { cafeId, itemId } = useParams<{ cafeId: string; itemId: string }>();
@@ -23,6 +24,15 @@ const DetailsPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [selectedVariant, setSelectedVariant] = useState<MenuItemVariantSchema | null>(null);
     const [quantity, setQuantity] = useState(1);
+    const [selectedAddons, setSelectedAddons] = useState<{ [key: string]: boolean }>({});
+
+    const handleAddonToggle = (addonId: string) => {
+        setSelectedAddons(prev => ({
+            ...prev,
+            [addonId]: !prev[addonId]
+        }));
+    };
+
 
     useEffect(() => {
         const loadDetails = async () => {
@@ -145,7 +155,28 @@ const DetailsPage: React.FC = () => {
                 )}
                 
                 {/* Здесь будет секция с добавками */}
-
+                {menuItem.addons && menuItem.addons.length > 0 && (
+                    <>
+                        <h3 className="cafe-item-details-section-title">Добавки</h3>
+                        {menuItem.addons.map((addonGroup: AddonGroup) => ( // <--- ЯВНО УКАЗЫВАЕМ ТИП
+                            <Accordion key={addonGroup.id} title={addonGroup.name}>
+                                {addonGroup.items.map((addon: AddonItem) => ( // <--- ЯВНО УКАЗЫВАЕМ ТИП
+                                    <div key={addon.id} className="addon-item">
+                                        <div>
+                                            <span className="addon-item-name">{addon.name}</span>
+                                            <span className="addon-item-price"> +{toDisplayCost(parseInt(addon.cost, 10))}</span>
+                                        </div>
+                                        <input
+                                            type="checkbox"
+                                            checked={!!selectedAddons[addon.id]}
+                                            onChange={() => handleAddonToggle(addon.id)}
+                                        />
+                                    </div>
+                                ))}
+                            </Accordion>
+                        ))}
+                    </>
+                )}
             </div>
             
             <div className="cafe-item-details-quantity-selector-container">

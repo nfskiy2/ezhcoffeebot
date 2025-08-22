@@ -1,6 +1,18 @@
 // frontend_modern/src/api/types.ts
 // import type { CartItem } from '../store/cart';
 
+export interface AddonItem {
+    id: string;
+    name: string;
+    cost: string;
+}
+
+export interface AddonGroup {
+    id: string;
+    name: string;
+    items: AddonItem[];
+}
+
 export interface CafeSchema {
     id: string;
     name: string;
@@ -37,6 +49,7 @@ export interface MenuItemSchema {
     name?: string;
     description?: string;
     variants: MenuItemVariantSchema[];
+    addons?: AddonGroup[];
 }
 
 export interface CafeSettingsSchema {

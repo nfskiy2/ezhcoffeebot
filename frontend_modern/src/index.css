@@ -655,3 +655,48 @@ section {
     max-width: 400px;
 }
 
+.accordion-item {
+    border-bottom: 1px solid var(--divider-color);
+}
+.accordion-title {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 500;
+}
+.accordion-title .material-symbols-rounded {
+    transition: transform 0.3s ease;
+}
+.accordion-title .material-symbols-rounded.open {
+    transform: rotate(180deg);
+}
+.accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+    padding: 0 16px;
+}
+.accordion-content.open {
+    max-height: 500px; /* Достаточно большая высота для контента */
+    padding: 0 16px 16px 16px;
+}
+
+/* Стили для элементов внутри аккордеона */
+.addon-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+.addon-item-name {
+    font-size: 14px;
+    opacity: 0.9;
+}
+.addon-item-price {
+    font-size: 14px;
+    font-weight: 500;
+    margin-left: 16px;
+}

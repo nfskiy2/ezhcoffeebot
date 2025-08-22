@@ -75,6 +75,25 @@
                 "cost": "540",
                 "weight": "300ml"
             }
+        ],
+        "addons": [
+            {
+                "id": "syrups",
+                "name": "Сиропы",
+                "items": [
+                    { "id": "syrup-vanilla", "name": "Ванильный", "cost": "50" },
+                    { "id": "syrup-caramel", "name": "Карамельный", "cost": "50" },
+                    { "id": "syrup-hazelnut", "name": "Ореховый", "cost": "50" }
+                ]
+            },
+            {
+                "id": "milk",
+                "name": "Молоко",
+                "items": [
+                    { "id": "milk-oat", "name": "Овсяное", "cost": "70" },
+                    { "id": "milk-coconut", "name": "Кокосовое", "cost": "70" }
+                ]
+            }
         ]
     },
     {

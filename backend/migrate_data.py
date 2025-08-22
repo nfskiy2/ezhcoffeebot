@@ -167,7 +167,8 @@ def migrate():
                             image=item_data['image'],
                             name=item_data['name'],
                             description=item_data['description'],
-                            variants=item_data['variants']
+                            variants=item_data['variants'],
+                            addons=item_data.get('addons')
                         )
                         db.add(menu_item)
         db.commit() # Коммит после каждой кофейни
