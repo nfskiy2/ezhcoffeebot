@@ -1,20 +1,18 @@
 // frontend_modern/src/pages/CategoryPage.tsx
-import * as React from 'react'; // Use * as React
-import { useEffect, useState, useCallback } from 'react'; // Explicitly import hooks
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { getCafeCategoryMenu } from '../api';
 import type { MenuItemSchema } from '../api/types';
 import { useCart } from '../store/cart';
 import MenuItemCard from '../components/MenuItemCard';
-// import { useCafe } from '../store/cafe'; // Keep useCafe for context access
-import { logger } from '../utils/logger'; // Import logger
+import { logger } from '../utils/logger';
 
 const CategoryPage: React.FC = () => {
     const { cafeId, categoryId } = useParams<{ cafeId: string; categoryId: string }>();
     const navigate = useNavigate();
     const { items, getItemCount } = useCart();
-
+    
     const [menuItems, setMenuItems] = useState<MenuItemSchema[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -22,57 +20,46 @@ const CategoryPage: React.FC = () => {
     useEffect(() => {
         const loadMenu = async () => {
             if (!cafeId || !categoryId) {
-                logger.error("Cafe ID or Category ID is missing in URL.");
-                setError("Cafe ID or Category ID is missing in URL.");
+                setError("ID кофейни или категории отсутствует в URL.");
                 setLoading(false);
                 return;
             }
-
             setLoading(true);
             setError(null);
-
             try {
                 const items = await getCafeCategoryMenu(cafeId, categoryId);
-                if (Array.isArray(items)) {
-                    setMenuItems(items);
-                } else {
-                    const errorMessage = `API did not return an array for menu in category ${categoryId} for cafe ${cafeId}.`;
-                    logger.error(errorMessage);
-                    setError(errorMessage);
-                }
+                setMenuItems(items || []);
             } catch (err: any) {
                 logger.error("Failed to load menu:", err);
-                setError(err.message || "Failed to load menu.");
+                setError(err.message || "Не удалось загрузить меню.");
             } finally {
                 setLoading(false);
             }
         };
-
         loadMenu();
-
-    }, [cafeId, categoryId]); // Dependencies: cafeId and categoryId
+    }, [cafeId, categoryId]);
 
     const handleMainButtonClick = useCallback(() => {
         navigate('/cart');
     }, [navigate]);
 
     useEffect(() => {
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
+        if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
-            const cartItemCount = getItemCount(items);
-
-            if (cartItemCount > 0) {
-                const buttonText = `MY CART • ${cartItemCount} POSITION${cartItemCount > 1 ? 'S' : ''}`;
+            const positions = getItemCount(items);
+            if (positions > 0) {
+                let plural = 'ПОЗИЦИЙ';
+                if (positions === 1) plural = 'ПОЗИЦИЯ';
+                else if (positions > 1 && positions < 5) plural = 'ПОЗИЦИИ';
+                const buttonText = `МОЯ КОРЗИНА • ${positions} ${plural}`;
                 tg.MainButton.setText(buttonText).show();
                 tg.MainButton.onClick(handleMainButtonClick);
                 tg.MainButton.enable();
             } else {
                 tg.MainButton.hide();
             }
-
             return () => {
-                if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
-                    const tg = window.Telegram.WebApp;
+                if (window.Telegram && window.Telegram.WebApp) {
                     tg.MainButton.offClick(handleMainButtonClick);
                 }
             };
@@ -107,17 +94,19 @@ const CategoryPage: React.FC = () => {
     }
 
     if (error) {
-        return <div>Error loading menu: {error}</div>;
+        return <div>Ошибка загрузки меню: {error}</div>;
     }
 
     return (
-         <section>
+        <section>
             <div id="cafe-category" className="cafe-section-vertical">
-                {Array.isArray(menuItems) && menuItems.map(item => (
-                     // cafeId! is safe here because of the initial check in useEffect
-                     <MenuItemCard key={item.id} item={item} cafeId={cafeId!} />
-                ))}
-                 {Array.isArray(menuItems) && menuItems.length === 0 && !loading && !error && <p>No items found in this category.</p>}
+                {menuItems.length > 0 ? (
+                    menuItems.map(item => (
+                        <MenuItemCard key={item.id} item={item} cafeId={cafeId!} />
+                    ))
+                ) : (
+                    <p>В этой категории нет товаров.</p>
+                )}
             </div>
         </section>
     );

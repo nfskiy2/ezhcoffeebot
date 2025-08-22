@@ -1,10 +1,10 @@
 // frontend_modern/src/pages/DetailsPage.tsx
-import React, { useEffect, useState, useCallback } from 'react'; // ОБЯЗАТЕЛЬНО ИМПОРТИРУЕМ React
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 
 import { getCafeMenuItemDetails } from '../api';
 import type { MenuItemSchema, MenuItemVariantSchema } from '../api/types';
-import type { CartItem } from '../store/cart'; // ИМПОРТИРУЕМ CartItem из cart.tsx
+import type { CartItem } from '../store/cart';
 import { toDisplayCost } from '../utils/currency';
 import { useCart } from '../store/cart';
 import { useSnackbar } from '../components/Snackbar';
@@ -12,7 +12,7 @@ import { TelegramSDK } from '../telegram/telegram';
 import { useCafe } from '../store/cafe';
 import { logger } from '../utils/logger';
 
-const DetailsPage: React.FC = () => { // ВОЗВРАЩАЕМ React.FC
+const DetailsPage: React.FC = () => {
     const { cafeId, itemId } = useParams<{ cafeId: string; itemId: string }>();
     const { addItem } = useCart();
     const { showSnackbar } = useSnackbar();
@@ -84,60 +84,52 @@ const DetailsPage: React.FC = () => { // ВОЗВРАЩАЕМ React.FC
     }, []);
 
     const handleAddToCart = useCallback(() => {
-        if (menuItem && selectedVariant && quantity > 0) {
-            if (selectedCafe) {
-                const cartItemToAdd: CartItem = {
-                    cafeItem: {
-                        id: menuItem.id,
-                        name: menuItem.name || 'Unknown Item',
-                        image: menuItem.image || '/icons/icon-transparent.svg',
-                    },
-                    variant: {
-                        id: selectedVariant.id,
-                        name: selectedVariant.name,
-                        cost: selectedVariant.cost,
-                    },
-                    quantity: quantity,
-                    cafeId: selectedCafe.id,
-                    categoryId: menuItem.category_id,
-                };
-                addItem(cartItemToAdd);
-                setQuantity(1);
+        if (!selectedCafe) {
+            showSnackbar('Пожалуйста, сначала выберите кофейню.', { style: 'warning' });
+            return;
+        }
 
-                showSnackbar('Successfully added to cart!', { style: 'success', backgroundColor: 'var(--success-color)' });
-                TelegramSDK.notificationOccurred('success');
-            } else {
-                showSnackbar('Please select a cafe first.', { style: 'warning' });
-            }
+        if (menuItem && selectedVariant && quantity > 0) {
+            const cartItemToAdd: CartItem = {
+                cafeItem: {
+                    id: menuItem.id,
+                    name: menuItem.name || 'Неизвестный товар',
+                    image: menuItem.image,
+                },
+                variant: selectedVariant,
+                quantity: quantity,
+                cafeId: selectedCafe.id,
+                categoryId: menuItem.category_id,
+            };
+            addItem(cartItemToAdd);
+            setQuantity(1);
+            showSnackbar('Успешно добавлено в корзину!', { 
+                style: 'success', 
+                backgroundColor: 'var(--success-color)' 
+            });
         } else {
-            showSnackbar('Could not add item to cart. Please select an option and quantity.', { style: 'warning' });
+            showSnackbar('Пожалуйста, выберите опцию товара.', { style: 'warning' });
         }
     }, [menuItem, selectedVariant, quantity, addItem, showSnackbar, selectedCafe]);
 
     useEffect(() => {
-        if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
+        if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
-
             if (menuItem && selectedVariant && quantity > 0) {
                 const currentTotalCost = parseInt(selectedVariant.cost, 10) * quantity;
-                const displayText = `ADD TO CART • ${toDisplayCost(currentTotalCost)}`;
-
+                const displayText = `ДОБАВИТЬ В КОРЗИНУ • ${toDisplayCost(currentTotalCost)}`;
                 tg.MainButton.setText(displayText).show();
                 tg.MainButton.onClick(handleAddToCart);
                 tg.MainButton.enable();
             } else {
                 tg.MainButton.hide();
-                tg.MainButton.offClick(handleAddToCart);
             }
+            return () => {
+                if (window.Telegram && window.Telegram.WebApp) {
+                    tg.MainButton.offClick(handleAddToCart);
+                }
+            };
         }
-
-        return () => {
-            if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.MainButton) {
-                const tg = window.Telegram.WebApp;
-                tg.MainButton.hide();
-                tg.MainButton.offClick(handleAddToCart);
-            }
-        };
     }, [menuItem, selectedVariant, quantity, handleAddToCart]);
 
     if (loading) {

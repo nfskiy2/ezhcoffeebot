@@ -18,10 +18,8 @@ const ErrorState: React.FC<ErrorStateProps> = ({ message, onRetry }) => {
             textAlign: 'center',
             height: '100%',
         }}>
-            <span
-                className="material-symbols-rounded"
-                style={{ fontSize: '64px', opacity: 0.5, marginBottom: '16px' }}
-            >
+            <span className="material-symbols-rounded" 
+                  style={{ fontSize: '64px', opacity: 0.5, marginBottom: '16px' }}>
                 error
             </span>
             <h3 style={{ marginBottom: '8px' }}>Ой! Что-то пошло не так.</h3>
