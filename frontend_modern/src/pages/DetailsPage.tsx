@@ -187,7 +187,11 @@ const DetailsPage: React.FC = () => {
                                 </button>
                             ))}
                         </div>
-                        {selectedVariant && <h2 className="cafe-item-details-selected-variant-price">{toDisplayCost(parseInt(selectedVariant.cost, 10))}</h2>}
+                        {selectedVariant && (
+                            <h2 className="cafe-item-details-selected-variant-price">
+                                {toDisplayCost(totalCost / quantity)} {/* Показываем цену за 1 шт с добавками */}
+                            </h2>
+                        )}
                     </div>
                 )}
                 
