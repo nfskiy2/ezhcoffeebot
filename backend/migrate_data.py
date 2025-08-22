@@ -58,7 +58,7 @@ def migrate():
     cafes_data = [
         {
             "id": "laurel_main",
-            "name": "EZHcoffee-1",
+            "name": "Laurel Cafe (Main Branch)",
             "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
             "logoImage": "icons/logo-laurel.svg",
             "kitchenCategories": "American Barbeque, Dinner, Italian",
@@ -70,7 +70,7 @@ def migrate():
         },
         {
             "id": "laurel_coffee_only",
-            "name": "EZHcoffee-2",
+            "name": "Laurel Coffee Express",
             "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
             "logoImage": "icons/logo-laurel.svg",
             "kitchenCategories": "Coffee, Desserts",
