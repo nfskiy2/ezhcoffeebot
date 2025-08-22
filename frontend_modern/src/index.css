@@ -271,8 +271,8 @@ section {
     flex-direction: row;
     flex-wrap: wrap;
     gap: 16px;
-    justify-content: center;
-    align-content: flex-start; /* Прижимает элементы к верху, предотвращая большие вертикальные зазоры */
+    justify-content: center; /* <--- ЭТО СВОЙСТВО ЦЕНТРИРУЕТ КАРТОЧКИ */
+    align-content: flex-start;    
     box-sizing: border-box;
 }
 
@@ -315,11 +315,23 @@ section {
 .cafe-item-container {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
-    max-width: 224px; /* Максимальная ширина */
-    width: calc((100% - 16px * 3) / 2); /* Две колонки с отступами */
+    align-items: flex-start; /* <--- ЭТО СВОЙСТВО ОТВЕЧАЕТ ЗА ВЫРАВНИВАНИЕ ПО ЛЕВОМУ КРАЮ */
+    max-width: 224px;
+    
+    /* Эти стили для двухколоночной сетки */
+    width: calc(50% - 8px);
+    margin-bottom: 16px;
+    
     cursor: pointer;
     transition: transform 0.1s ease-out;
+}
+
+
+.cafe-section-vertical .cafe-item-container:nth-child(odd) {
+    margin-right: 16px; /* Отступ для нечетных элементов (левая колонка) */
+}
+.cafe-section-vertical .cafe-item-container:nth-child(even) {
+    margin-right: 0; /* Убираем отступ для четных (правая колонка) */
 }
 
 .cafe-item-container:active {
@@ -341,23 +353,16 @@ section {
     line-height: 1.3;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: -webkit-box;
-    line-clamp: 2; /* Add this */
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    text-align: left;
 }
 
 .cafe-item-description {
     margin-top: 2px;
     font-size: 11px; /* Small font size as per p.small */
     line-height: 1.4;
+    white-space: normal;
     opacity: 0.72; /* Opacity as per p */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    display: -webkit-box;
-    line-clamp: 2; /* Add this */
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    text-align: left;
 }
 
 
@@ -376,31 +381,33 @@ section {
 
 .cafe-item-details-title-container {
     margin: 16px 16px 0 16px;
-    display: flex;
+    display: block;
     flex-direction: row;
     flex-wrap: nowrap;
     align-items: center;
 }
 
 .cafe-item-details-name {
-    margin-right: 16px;
+    margin-right: 0;
     flex-grow: 1;
     font-size: 28px;
     line-height: 1.1;
 }
 
 .cafe-item-details-selected-variant-weight {
-    min-width: 2em;
+    margin: 4px 16px 0 16px; /* Отступы, чтобы соответствовать заголовку */
+    min-width: 0; /* Сбрасываем */
     opacity: 0.72;
-    text-align: right;
+    text-align: left; /* Выравнивание по левому краю */
+    font-size: 14px; /* Размер обычного текста */
 }
 
 .cafe-item-details-description {
     min-width: calc(100% - 32px);
-    margin: 16px 16px 0 16px;
+    margin: 16px 16px 0 16px; /* Убедимся, что отступ корректный */
+    font-size: 14px; /* Убедимся, что размер шрифта 14px, а не p.small */
+    opacity: 0.72;
     line-height: 1.5;
-    font-size: 14px; /* Ensure font size is correct */
-    opacity: 0.72; /* Ensure opacity is correct */
 }
 
 .cafe-item-details-section-title {
