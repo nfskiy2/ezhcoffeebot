@@ -18,8 +18,8 @@ class CafeSchema(BaseModel):
 
     class Config:
         from_attributes = True
-        alias_generator = to_camel # <--- ДОБАВЬТЕ ЭТУ СТРОКУ
-        populate_by_name = True
+        alias_generator = to_camel # <--- УБЕДИТЕСЬ, ЧТО ЭТО ЕСТЬ
+        populate_by_name = True  # <--- И ЭТО
 
 class CategorySchema(BaseModel):
     id: str
