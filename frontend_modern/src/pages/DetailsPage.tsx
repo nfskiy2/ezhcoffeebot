@@ -115,7 +115,6 @@ const DetailsPage: React.FC = () => {
             <div className="cafe-item-details-content">
                 <img className="cover" src={menuItem.image || "/icons/icon-transparent.svg"} alt={menuItem.name || 'Товар'}/>
                 
-                {/* ИСПРАВЛЕННАЯ СТРУКТУРА ЗАГОЛОВКА */}
                 <div className="cafe-item-details-title-container">
                     <h1 id="cafe-item-details-name">{menuItem.name}</h1>
                 </div>
@@ -127,22 +126,26 @@ const DetailsPage: React.FC = () => {
                 
                 <p className="cafe-item-details-description">{menuItem.description}</p>
                 
-                <h3 className="cafe-item-details-section-title">Опции</h3>
-                
-                <div className="cafe-item-details-section-price">
-                    <div className="cafe-item-details-variants">
-                        {menuItem.variants.map(variant => (
-                            <button
-                                key={variant.id}
-                                className={`cafe-item-details-variant ${selectedVariant?.id === variant.id ? 'selected' : ''}`}
-                                onClick={() => handleSelectVariant(variant)}
-                            >
-                                {variant.name}
-                            </button>
-                        ))}
+                {/* ИСПРАВЛЕННЫЙ БЛОК С ОПЦИЯМИ И ЦЕНОЙ */}
+                {menuItem.variants.length > 0 && (
+                    <div className="cafe-item-details-section-price">
+                        <div className="cafe-item-details-variants">
+                            {menuItem.variants.map(variant => (
+                                <button
+                                    key={variant.id}
+                                    className={`cafe-item-details-variant ${selectedVariant?.id === variant.id ? 'selected' : ''}`}
+                                    onClick={() => handleSelectVariant(variant)}
+                                >
+                                    {variant.name}
+                                </button>
+                            ))}
+                        </div>
+                        {selectedVariant && <h2 className="cafe-item-details-selected-variant-price">{toDisplayCost(parseInt(selectedVariant.cost, 10))}</h2>}
                     </div>
-                    {selectedVariant && <h2 className="cafe-item-details-selected-variant-price">{toDisplayCost(parseInt(selectedVariant.cost, 10))}</h2>}
-                </div>
+                )}
+                
+                {/* Здесь будет секция с добавками */}
+
             </div>
             
             <div className="cafe-item-details-quantity-selector-container">

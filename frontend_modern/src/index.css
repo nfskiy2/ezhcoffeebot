@@ -265,14 +265,12 @@ section {
 
 /* --- Vertical Sections (Category Page) --- */
 .cafe-section-vertical {
-    flex-grow: 1; /* Позволяет контейнеру растягиваться */
     padding: 16px;
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    gap: 16px;
-    justify-content: center; /* <--- ЭТО СВОЙСТВО ЦЕНТРИРУЕТ КАРТОЧКИ */
-    align-content: flex-start;    
+    justify-content: space-between; /* Распределяет элементы по ширине */
+    align-content: flex-start;
     box-sizing: border-box;
 }
 
@@ -315,23 +313,14 @@ section {
 .cafe-item-container {
     display: flex;
     flex-direction: column;
-    align-items: flex-start; /* <--- ЭТО СВОЙСТВО ОТВЕЧАЕТ ЗА ВЫРАВНИВАНИЕ ПО ЛЕВОМУ КРАЮ */
-    max-width: 224px;
+    align-items: flex-start;
     
-    /* Эти стили для двухколоночной сетки */
-    width: calc(50% - 8px);
-    margin-bottom: 16px;
+    /* ИСПРАВЛЕНИЕ: Возвращаем расчет ширины для двух колонок */
+    width: calc(50% - 8px); /* 50% ширины минус половина отступа */
+    margin-bottom: 16px; /* Вертикальный отступ */
     
     cursor: pointer;
     transition: transform 0.1s ease-out;
-}
-
-
-.cafe-section-vertical .cafe-item-container:nth-child(odd) {
-    margin-right: 16px; /* Отступ для нечетных элементов (левая колонка) */
-}
-.cafe-section-vertical .cafe-item-container:nth-child(even) {
-    margin-right: 0; /* Убираем отступ для четных (правая колонка) */
 }
 
 .cafe-item-container:active {
