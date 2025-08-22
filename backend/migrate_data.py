@@ -93,7 +93,7 @@ def migrate():
                 kitchen_categories=cafe_data['kitchenCategories'],
                 rating=cafe_data['rating'],
                 cooking_time=cafe_data['cookingTime'],
-                status=cafe_data['status'],
+                status=cafe_data.get('status', 'Closed'),
                 opening_hours=cafe_data['openingHours'],
                 min_order_amount=cafe_data['minOrderAmount']
             )
