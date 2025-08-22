@@ -47,6 +47,7 @@ class MenuItemSchema(BaseModel):
     name: Optional[str]
     description: Optional[str]
     variants: List[MenuItemVariantSchema]
+    addons: Optional[List[Any]]
 
     class Config:
         from_attributes = True
