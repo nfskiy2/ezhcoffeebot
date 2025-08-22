@@ -131,9 +131,22 @@ const CartPage: React.FC = () => {
                             <div className="cart-item-info-container">
                                 <h6>{item.cafeItem.name}</h6>
                                 <p className="small cart-item-description">{item.variant.name}</p>
+                                {item.selectedAddons && item.selectedAddons.length > 0 && (
+                                    <div className="cart-item-addons">
+                                        {item.selectedAddons.map(addon => (
+                                            <span key={addon.id}>+ {addon.name}</span>
+                                        ))}
+                                    </div>
+                                )}
+
                                 <div className="cart-item-cost">
-                                    {toDisplayCost(parseInt(item.variant.cost, 10) * item.quantity)}
+                                    {/* Теперь эта цена будет правильной, так как getTotalCost обновлен */}
+                                    {toDisplayCost(
+                                        (parseInt(item.variant.cost, 10) + 
+                                        (item.selectedAddons?.reduce((sum, addon) => sum + parseInt(addon.cost, 10), 0) || 0)) * item.quantity
+                                    )}
                                 </div>
+                        
                             </div>
                             <div className="cart-item-quantity-container">
                                 <button 

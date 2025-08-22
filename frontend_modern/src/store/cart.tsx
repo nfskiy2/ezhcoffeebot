@@ -1,7 +1,7 @@
 // frontend_modern/src/store/cart.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { logger } from '../utils/logger';
-import type { CartItem } from '../api/types';
+import type { CartItem, SelectedAddon } from '../api/types';
 
 const LOCAL_STORAGE_KEY = 'laurel_cafe_cart';
 
@@ -81,26 +81,46 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             logger.warn("Attempted to add item with quantity 0 or less.");
             return;
         }
+
         setCartItems(prevItems => {
-            const existingItemIndex = prevItems.findIndex(
-                item => item.cafeId === newItem.cafeId &&
-                        item.cafeItem.id === newItem.cafeItem.id &&
-                        item.variant.id === newItem.variant.id
+            // ИСПРАВЛЕНИЕ: Усложняем логику поиска существующего элемента
+
+            // 1. Создаем "ключ" для набора добавок (отсортированные ID)
+            const getAddonsKey = (addons?: SelectedAddon[]) => {
+                if (!addons || addons.length === 0) {
+                    return ''; // Пустой ключ, если добавок нет
+                }
+                // Сортируем ID, чтобы порядок не имел значения, и объединяем в строку
+                return addons.map(a => a.id).sort().join(',');
+            };
+
+            const newItemAddonsKey = getAddonsKey(newItem.selectedAddons);
+
+            // 2. Ищем элемент с таким же товаром, вариантом И набором добавок
+            const existingItemIndex = prevItems.findIndex(item =>
+                item.cafeId === newItem.cafeId &&
+                item.cafeItem.id === newItem.cafeItem.id &&
+                item.variant.id === newItem.variant.id &&
+                getAddonsKey(item.selectedAddons) === newItemAddonsKey
             );
+
             if (existingItemIndex > -1) {
+                // Если НАЙДЕН полный аналог (включая добавки), увеличиваем количество
                 const updatedItems = [...prevItems];
                 updatedItems[existingItemIndex] = {
                     ...updatedItems[existingItemIndex],
                     quantity: updatedItems[existingItemIndex].quantity + newItem.quantity
                 };
-                logger.log(`Increased quantity for item ${newItem.cafeItem.name} (${newItem.variant.name}) in cafe ${newItem.cafeId}. New quantity: ${updatedItems[existingItemIndex].quantity}`);
+                logger.log(`Increased quantity for existing item with same addons.`);
                 return updatedItems;
             } else {
-                logger.log(`Added new item to cart: ${newItem.cafeItem.name} (${newItem.variant.name}) in cafe ${newItem.cafeId} x${newItem.quantity}. Category: ${newItem.categoryId}`);
+                // Если полный аналог НЕ НАЙДЕН, добавляем как новую позицию
+                logger.log(`Added as new item (different addons or new item).`);
                 return [...prevItems, newItem];
             }
         });
     }, []);
+
 
     const increaseQuantity = useCallback((itemId: string, variantId: string, quantityToIncrease: number = 1) => {
         if (quantityToIncrease <= 0) return;
@@ -163,10 +183,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 function getTotalCost(items: CartItem[]): number {
     return items.reduce((total, item) => {
-        const cost = parseFloat(item.variant.cost);
-        return total + (isNaN(cost) ? 0 : cost * item.quantity);
+        // Стоимость основного варианта
+        const variantCost = parseInt(item.variant.cost, 10);
+
+        // Считаем стоимость всех добавок для этого товара
+        const addonsCost = item.selectedAddons?.reduce((addonTotal, addon) => {
+            return addonTotal + parseInt(addon.cost, 10);
+        }, 0) || 0; // || 0 на случай, если selectedAddons не существует
+
+        // Суммируем (цена варианта + цена добавок) * количество
+        const totalItemCost = (variantCost + addonsCost) * item.quantity;
+        
+        return total + (isNaN(totalItemCost) ? 0 : totalItemCost);
     }, 0);
 }
+
 
 function getItemCount(items: CartItem[]): number {
     return items.reduce((total, item) => total + item.quantity, 0);

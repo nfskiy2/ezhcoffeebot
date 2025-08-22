@@ -530,6 +530,19 @@ section {
 .cart-item-description {
     margin-top: 2px;
 }
+.cart-item-addons {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: 4px;
+}
+
+/* НОВЫЕ СТИЛИ: Стиль для каждой добавки */
+.cart-item-addons span {
+    font-size: 10px; /* Очень маленький шрифт */
+    opacity: 0.6;    /* Полупрозрачный */
+    line-height: 1.2;
+}
 
 .cart-item-cost {
     margin-top: 4px;
