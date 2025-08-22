@@ -27,10 +27,7 @@ const HomePage: React.FC = () => {
     const [categories, setCategories] = useState<CategorySchema[]>([]);
     const [popularItems, setPopularItems] = useState<MenuItemSchema[]>([]);
     const [isLoadingCafeData, setIsLoadingCafeData] = useState(true);
-    const cafeStatus = useMemo(() => {
-        return getCafeStatus(selectedCafe?.openingHours);
-    }, [selectedCafe]);
-
+    const cafeStatus = useMemo(() => getCafeStatus(selectedCafe?.openingHours), [selectedCafe]);
 
     useEffect(() => {
         const loadCafeSpecificData = async () => {
@@ -166,7 +163,9 @@ const HomePage: React.FC = () => {
                     </div>
                     <div className="cafe-parameter-container">
                         <img src="/icons/icon-time.svg" className="cafe-parameter-icon" alt="Время работы"/>
-                        <div id="cafe-cooking-time" className="cafe-parameter-value">{selectedCafe.openingHours}</div>
+                        <div id="cafe-cooking-time" className="cafe-parameter-value">
+                            {formatOpeningHours(selectedCafe.openingHours)}
+                        </div>
                     </div>
                     <div
                         id="cafe-status"

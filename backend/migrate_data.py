@@ -64,7 +64,7 @@ def migrate():
             "kitchenCategories": "American Barbeque, Dinner, Italian",
             "rating": "4.3 (212)",
             "cookingTime": "5-15 mins",
-            
+            "status": "Open",
             "openingHours": "пн-пт: 09:00-20:30, сб-вс: 10:00-19:00",
             "minOrderAmount": 10000
         },
@@ -76,6 +76,7 @@ def migrate():
             "kitchenCategories": "Coffee, Desserts",
             "rating": "4.8 (98)",
             "cookingTime": "2-5 mins",
+            "status": "Open",
             "openingHours": "пн-пт: 07:00-19:00, сб: 08:00-17:00", 
             "minOrderAmount": 5000
         }
