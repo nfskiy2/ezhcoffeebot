@@ -21,6 +21,7 @@ export interface CartItem {
     quantity: number;
     cafeId: string;
     categoryId: string;
+    selectedAddons?: SelectedAddon[];
 }
 
 export interface AddonItem {

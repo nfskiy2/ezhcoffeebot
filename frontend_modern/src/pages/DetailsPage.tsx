@@ -1,9 +1,8 @@
 // frontend_modern/src/pages/DetailsPage.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-
 import { getCafeMenuItemDetails } from '../api';
-import type { MenuItemSchema, MenuItemVariantSchema, AddonGroup, AddonItem, CartItem} from '../api/types';
+import type { MenuItemSchema, MenuItemVariantSchema, AddonGroup, AddonItem, CartItem, SelectedAddon} from '../api/types';
 import { toDisplayCost } from '../utils/currency';
 import { useCart } from '../store/cart';
 import { useSnackbar } from '../components/Snackbar';
@@ -74,9 +73,46 @@ const DetailsPage: React.FC = () => {
         TelegramSDK.impactOccurred('light');
     }, []);
 
+    const totalCost = useMemo(() => {
+        if (!selectedVariant) return 0;
+        
+        let addonsCost = 0;
+        if (menuItem?.addons) {
+            // Проходим по всем группам добавок
+            for (const group of menuItem.addons) {
+                // Проходим по всем добавкам в группе
+                for (const addon of group.items) {
+                    // Если добавка выбрана, прибавляем ее стоимость
+                    if (selectedAddons[addon.id]) {
+                        addonsCost += parseInt(addon.cost, 10);
+                    }
+                }
+            }
+        }
+        
+        const variantCost = parseInt(selectedVariant.cost, 10);
+        return (variantCost + addonsCost) * quantity;
+    }, [selectedVariant, selectedAddons, quantity, menuItem]);
+
     const handleAddToCart = useCallback(() => {
         if (menuItem && selectedVariant && quantity > 0 && selectedCafe) {
+            const addonsList: SelectedAddon[] = [];
+            if (menuItem.addons) {
+                for (const group of menuItem.addons) {
+                    for (const addon of group.items) {
+                        if (selectedAddons[addon.id]) {
+                            addonsList.push({
+                                id: addon.id,
+                                name: addon.name,
+                                cost: addon.cost,
+                            });
+                        }
+                    }
+                }
+            }
+
             const cartItemToAdd: CartItem = {
+                
                 cafeItem: {
                     id: menuItem.id,
                     name: menuItem.name || 'Неизвестный товар',
@@ -86,21 +122,23 @@ const DetailsPage: React.FC = () => {
                 quantity: quantity,
                 cafeId: selectedCafe.id,
                 categoryId: menuItem.category_id,
+                selectedAddons: addonsList,
             };
             addItem(cartItemToAdd);
             setQuantity(1);
+            setSelectedAddons({}); // Сбрасываем выбор добавок
             showSnackbar('Успешно добавлено в корзину!', { style: 'success', backgroundColor: 'var(--success-color)' });
         } else {
             showSnackbar('Не удалось добавить товар. Пожалуйста, выберите опцию.', { style: 'warning' });
         }
-    }, [menuItem, selectedVariant, quantity, addItem, showSnackbar, selectedCafe]);
+    }, [menuItem, selectedVariant, quantity, selectedAddons, addItem, showSnackbar, selectedCafe]);
 
     useEffect(() => {
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
             if (menuItem && selectedVariant && quantity > 0) {
-                const currentTotalCost = parseInt(selectedVariant.cost, 10) * quantity;
-                const displayText = `ДОБАВИТЬ В КОРЗИНУ • ${toDisplayCost(currentTotalCost)}`;
+                // const currentTotalCost = parseInt(selectedVariant.cost, 10) * quantity;
+                const displayText = `ДОБАВИТЬ В КОРЗИНУ • ${toDisplayCost(totalCost)}`;
                 tg.MainButton.setText(displayText).show();
                 tg.MainButton.onClick(handleAddToCart);
                 tg.MainButton.enable();
@@ -113,7 +151,7 @@ const DetailsPage: React.FC = () => {
                 }
             };
         }
-    }, [menuItem, selectedVariant, quantity, handleAddToCart]);
+    }, [menuItem, selectedVariant, quantity, handleAddToCart, totalCost]);
 
     if (loading) return <section>{/* Shimmer */}</section>;
     if (error) return <div>Ошибка: {error}</div>;
