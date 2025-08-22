@@ -7,14 +7,14 @@ from pydantic.alias_generators import to_camel # НОВЫЙ ИМПОРТ
 class CafeSchema(BaseModel):
     id: str
     name: str
-    cover_image: Optional[str] = Field(None, alias='coverImage')
-    logo_image: Optional[str] = Field(None, alias='logoImage')
-    kitchen_categories: Optional[str] = Field(None, alias='kitchenCategories')
-    rating: Optional[str] = None
-    cooking_time: Optional[str] = Field(None, alias='cookingTime')
-    status: Optional[str] = None
-    opening_hours: Optional[str] = Field(None, alias='openingHours')
-    min_order_amount: Optional[int] = Field(None, alias='minOrderAmount')
+    cover_image: Optional[str]
+    logo_image: Optional[str]
+    kitchen_categories: Optional[str]
+    rating: Optional[str]
+    cooking_time: Optional[str]
+    status: Optional[str]
+    opening_hours: Optional[str]
+    min_order_amount: Optional[int]
 
     class Config:
         from_attributes = True
@@ -26,7 +26,7 @@ class CategorySchema(BaseModel):
     cafe_id: str
     icon: Optional[str]
     name: Optional[str]
-    background_color: Optional[str] = Field(None, alias='backgroundColor')
+    background_color: Optional[str]
 
     class Config:
         from_attributes = True
