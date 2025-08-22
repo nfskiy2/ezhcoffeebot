@@ -205,6 +205,8 @@ section {
     justify-content: space-between;
     align-items: center;
     border-radius: 8px; /* For shimmer */
+    align-items: flex-start; /* Выравниваем элементы по верху */
+    gap: 8px; /* Добавляем небольшой отступ между элементами */
 }
 
 .cafe-parameter-container {

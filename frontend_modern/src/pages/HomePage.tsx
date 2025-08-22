@@ -158,14 +158,14 @@ const HomePage: React.FC = () => {
                 <p id="cafe-kitchen-categories" className="cafe-kitchen-categories">{selectedCafe.kitchenCategories}</p>
                 <div className="cafe-parameters-container">
                     <div className="cafe-parameter-container">
-                        <img src="/icons/icon-star.svg" className="cafe-parameter-icon" alt="Рейтинг"/>
-                        <div id="cafe-rating" className="cafe-parameter-value">{selectedCafe.rating}</div>
-                    </div>
-                    <div className="cafe-parameter-container">
                         <img src="/icons/icon-time.svg" className="cafe-parameter-icon" alt="Время работы"/>
-                        <div id="cafe-cooking-time" className="cafe-parameter-value">
-                            {formatOpeningHours(selectedCafe.openingHours)}
-                        </div>
+                            <div>
+                                {formatOpeningHours(selectedCafe.openingHours).split(',').map((line, index) => (
+                                    <div key={index} className="cafe-parameter-value" style={{ opacity: 0.72 }}>
+                                        {line.trim()}
+                                    </div>
+                                ))}
+                            </div>
                     </div>
                     <div
                         id="cafe-status"
