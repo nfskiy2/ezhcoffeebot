@@ -1,9 +1,17 @@
 // frontend_modern/src/api/types.ts
+
+export interface SelectedAddon {
+    id: string;
+    name: string;
+    cost: string;
+}
+
 export interface CartItem {
     cafeItem: {
         id: string;
         name: string;
         image?: string;
+        selectedAddons?: SelectedAddon[];
     };
     variant: {
         id: string;
@@ -92,5 +100,5 @@ export interface CartItemRequest {
 // Главная схема запроса заказа (соответствует backend/app/schemas.py)
 export interface OrderRequest {
     auth: string;
-    cartItems: CartItemRequest[]; // <--- ИСПОЛЬЗУЕМ camelCase
+    cartItems: CartItemRequest[];
 }
