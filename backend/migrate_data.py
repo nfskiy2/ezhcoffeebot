@@ -37,84 +37,47 @@ def migrate():
             {
                 "id": "ezh-1",
                 "name": "EZH-1",
-                "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
-                "logoImage": "icons/logo-laurel.svg",
-                "kitchenCategories": "American Barbeque, Dinner, Italian",
+                "cover_image": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "logo_image": "icons/logo-laurel.svg",
+                "kitchen_categories": "American Barbeque, Dinner, Italian",
                 "rating": "4.3 (212)",
-                "cookingTime": "5-15 mins",
+                "cooking_time": "5-15 mins",
                 "status": "Open",
-                "openingHours": "пн-пт: 09:00-20:30, сб-вс: 10:00-19:00",
-                "minOrderAmount": 10000
+                "opening_hours": "пн-пт: 09:00-20:30, сб-вс: 10:00-19:00",
+                "min_order_amount": 10000
             },
             {
                 "id": "ezh-2",
                 "name": "EZH-2",
-                "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
-                "logoImage": "icons/logo-laurel.svg",
-                "kitchenCategories": "Coffee, Desserts",
+                "cover_image": "https://images.unsplash.com/photo-1495474472106-ccddc55a2977?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "logo_image": "icons/logo-laurel.svg",
+                "kitchen_categories": "Coffee, Desserts",
                 "rating": "4.8 (98)",
-                "cookingTime": "2-5 mins",
+                "cooking_time": "2-5 mins",
                 "status": "Open",
-                "openingHours": "пн-пт: 07:00-19:00, сб: 08:00-17:00",
-                "minOrderAmount": 5000
+                "opening_hours": "пн-пт: 07:00-19:00, сб: 08:00-17:00",
+                "min_order_amount": 5000
             },
             {
                 "id": "ezh-3",
                 "name": "EZH-3",
-                "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
-                "logoImage": "icons/logo-laurel.svg",
-                "kitchenCategories": "Pizza, Pasta",
+                "cover_image": "https://images.unsplash.com/photo-1511920183276-5941b6593b4a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "logo_image": "icons/logo-laurel.svg",
+                "kitchen_categories": "Pizza, Pasta",
                 "rating": "4.5 (150)",
-                "cookingTime": "10-20 mins",
+                "cooking_time": "10-20 mins",
                 "status": "Open",
-                "openingHours": "пн-вс: 11:00-22:00",
-                "minOrderAmount": 12000
+                "opening_hours": "пн-вс: 11:00-22:00",
+                "min_order_amount": 12000
             }
         ]
         
         for cafe_data in cafes_data:
-            cafe = Cafe(
-                id=cafe_data.get('id'),
-                name=cafe_data.get('name'),
-                cover_image=cafe_data.get('coverImage'),
-                logo_image=cafe_data.get('logoImage'),
-                kitchen_categories=cafe_data.get('kitchenCategories'),
-                rating=cafe_data.get('rating'),
-                cooking_time=cafe_data.get('cookingTime'),
-                status=cafe_data.get('status', 'Closed'),
-                opening_hours=cafe_data.get('openingHours'),
-                min_order_amount=cafe_data.get('minOrderAmount')
-            )
+            cafe = Cafe(**cafe_data)
             db.add(cafe)
         db.commit()
         print(f"-> Cafes committed. Total in DB: {db.query(Cafe).count()}")
 
-        # 2. ТЕСТ: Добавляем одну категорию и один товар вручную
-        # print("\n--- TEST: Adding one category and one item manually ---")
-        
-        # # Создаем тестовую категорию для ezh-1
-        # test_category = Category(
-        #     id='test-cat',
-        #     cafe_id='ezh-1',
-        #     name='Тестовая категория',
-        #     icon='icons/icon-test.svg',
-        #     background_color='#FF0000'
-        # )
-        # db.add(test_category)
-
-        # # Создаем тестовый товар для этой категории
-        # test_item = MenuItem(
-        #     id='test-item-1',
-        #     cafe_id='ezh-1',
-        #     category_id='test-cat',
-        #     name='Тестовый товар',
-        #     description='Это тестовое описание',
-        #     variants=[{'id': 'normal', 'name': 'Стандарт', 'cost': '1000'}]
-        # )
-        # db.add(test_item)
-        
-        # print("-> Committing test data...")
-        # db.commit()
         # 2. МИГРАЦИЯ КАТЕГОРИЙ И МЕНЮ
         categories_data_path = 'data/categories.json'
         with open(categories_data_path, 'r', encoding='utf-8') as f:
@@ -137,7 +100,7 @@ def migrate():
                 
                 print(f"  -> Adding Category: {cat_data['name']}")
                 category = Category(
-                    id=cat_data['id'],
+                    id=cat_data.get('id'),
                     cafe_id=cafe_id,
                     icon=cat_data.get('icon'),
                     name=cat_data.get('name'),
