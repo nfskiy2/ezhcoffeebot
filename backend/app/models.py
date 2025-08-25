@@ -80,4 +80,7 @@ class Order(Base):
     cart_items = Column(JSON)
     total_amount = Column(Integer)
     currency = Column(String(3))
-    t
+    telegram_payment_charge_id = Column(String, unique=True, nullable=True)
+    status = Column(String, default='pending')
+
+    cafe = relationship("Cafe", back_populates="orders")
