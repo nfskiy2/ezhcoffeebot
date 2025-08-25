@@ -90,80 +90,80 @@ def migrate():
         print(f"-> Cafes committed. Total in DB: {db.query(Cafe).count()}")
 
         # 2. ТЕСТ: Добавляем одну категорию и один товар вручную
-        print("\n--- TEST: Adding one category and one item manually ---")
+        # print("\n--- TEST: Adding one category and one item manually ---")
         
-        # Создаем тестовую категорию для ezh-1
-        test_category = Category(
-            id='test-cat',
-            cafe_id='ezh-1',
-            name='Тестовая категория',
-            icon='icons/icon-test.svg',
-            background_color='#FF0000'
-        )
-        db.add(test_category)
+        # # Создаем тестовую категорию для ezh-1
+        # test_category = Category(
+        #     id='test-cat',
+        #     cafe_id='ezh-1',
+        #     name='Тестовая категория',
+        #     icon='icons/icon-test.svg',
+        #     background_color='#FF0000'
+        # )
+        # db.add(test_category)
 
-        # Создаем тестовый товар для этой категории
-        test_item = MenuItem(
-            id='test-item-1',
-            cafe_id='ezh-1',
-            category_id='test-cat',
-            name='Тестовый товар',
-            description='Это тестовое описание',
-            variants=[{'id': 'normal', 'name': 'Стандарт', 'cost': '1000'}]
-        )
-        db.add(test_item)
+        # # Создаем тестовый товар для этой категории
+        # test_item = MenuItem(
+        #     id='test-item-1',
+        #     cafe_id='ezh-1',
+        #     category_id='test-cat',
+        #     name='Тестовый товар',
+        #     description='Это тестовое описание',
+        #     variants=[{'id': 'normal', 'name': 'Стандарт', 'cost': '1000'}]
+        # )
+        # db.add(test_item)
         
-        print("-> Committing test data...")
-        db.commit()
-        # # 2. МИГРАЦИЯ КАТЕГОРИЙ И МЕНЮ
-        # categories_data_path = 'data/categories.json'
-        # with open(categories_data_path, 'r', encoding='utf-8') as f:
-        #     all_categories = json.load(f)
-        # all_category_ids = [cat['id'] for cat in all_categories]
+        # print("-> Committing test data...")
+        # db.commit()
+        # 2. МИГРАЦИЯ КАТЕГОРИЙ И МЕНЮ
+        categories_data_path = 'data/categories.json'
+        with open(categories_data_path, 'r', encoding='utf-8') as f:
+            all_categories = json.load(f)
+        all_category_ids = [cat['id'] for cat in all_categories]
         
-        # cafe_category_mapping = {
-        #     "ezh-1": all_category_ids,
-        #     "ezh-2": [cid for cid in all_category_ids if 'kofe' in cid or 'coffee' in cid],
-        #     "ezh-3": [cid for cid in all_category_ids if 'picca' in cid or 'pasta' in cid]
-        # }
+        cafe_category_mapping = {
+            "ezh-1": all_category_ids,
+            "ezh-2": [cid for cid in all_category_ids if 'kofe' in cid or 'coffee' in cid],
+            "ezh-3": [cid for cid in all_category_ids if 'picca' in cid or 'pasta' in cid]
+        }
 
-        # for cafe_id, category_ids in cafe_category_mapping.items():
-        #     print(f"\n--- Processing Cafe ID: {cafe_id} ---")
-        #     for category_id in category_ids:
-        #         cat_data = next((c for c in all_categories if c['id'] == category_id), None)
-        #         if not cat_data:
-        #             print(f"  WARNING: Data for category '{category_id}' not found in categories.json. Skipping.")
-        #             continue
+        for cafe_id, category_ids in cafe_category_mapping.items():
+            print(f"\n--- Processing Cafe ID: {cafe_id} ---")
+            for category_id in category_ids:
+                cat_data = next((c for c in all_categories if c['id'] == category_id), None)
+                if not cat_data:
+                    print(f"  WARNING: Data for category '{category_id}' not found in categories.json. Skipping.")
+                    continue
                 
-        #         print(f"  -> Adding Category: {cat_data['name']}")
-        #         category = Category(
-        #             id=cat_data['id'],
-        #             cafe_id=cafe_id,
-        #             icon=cat_data.get('icon'),
-        #             name=cat_data.get('name'),
-        #             background_color=cat_data.get('backgroundColor')
-        #         )
-        #         db.add(category)
+                print(f"  -> Adding Category: {cat_data['name']}")
+                category = Category(
+                    id=cat_data['id'],
+                    cafe_id=cafe_id,
+                    icon=cat_data.get('icon'),
+                    name=cat_data.get('name'),
+                    background_color=cat_data.get('backgroundColor')
+                )
+                db.add(category)
 
-        #         menu_path = f"data/menu/{category_id}.json"
-        #         if os.path.exists(menu_path):
-        #             with open(menu_path, 'r', encoding='utf-8') as f:
-        #                 menu_items = json.load(f)
-        #                 for item_data in menu_items:
-        #                     print(f"    -> Adding MenuItem: {item_data.get('name')}")
-        #                     menu_item = MenuItem(
-        #                         id=item_data.get('id'),
-        #                         cafe_id=cafe_id,
-        #                         category_id=category_id,
-        #                         image=item_data.get('image'),
-        #                         name=item_data.get('name'),
-        #                         description=item_data.get('description'),
-        #                         variants=item_data.get('variants'),
-        #                         addons=item_data.get('addons')
-        #                     )
-        #                     db.add(menu_item)
-        #     db.commit()
-            # print(f"-> Committed data for cafe: {cafe_id}")
+                menu_path = f"data/menu/{category_id}.json"
+                if os.path.exists(menu_path):
+                    with open(menu_path, 'r', encoding='utf-8') as f:
+                        menu_items = json.load(f)
+                        for item_data in menu_items:
+                            print(f"    -> Adding MenuItem: {item_data.get('name')}")
+                            menu_item = MenuItem(
+                                id=item_data.get('id'),
+                                cafe_id=cafe_id,
+                                category_id=category_id,
+                                image=item_data.get('image'),
+                                name=item_data.get('name'),
+                                description=item_data.get('description'),
+                                variants=item_data.get('variants'),
+                                addons=item_data.get('addons')
+                            )
+                            db.add(menu_item)
+            db.commit()
+            print(f"-> Committed data for cafe: {cafe_id}")
     
     except Exception as e:
         print(f"\n !!! AN ERROR OCCURRED DURING MIGRATION: {e} !!! \n")
