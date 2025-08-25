@@ -3,34 +3,21 @@ from pydantic import BaseModel, Field
 from typing import List, Any, Optional
 from pydantic.alias_generators import to_camel
 
-
-# class CafeSchema(BaseModel):
-#     id: str
-#     name: str
-#     cover_image: Optional[str]
-#     logo_image: Optional[str]
-#     kitchen_categories: Optional[str]
-#     rating: Optional[str]
-#     cooking_time: Optional[str]
-#     status: Optional[str]
-#     opening_hours: Optional[str]
-#     min_order_amount: Optional[int]
-
 class CafeSchema(BaseModel):
     id: str
     name: str
-    cover_image: Optional[str] = Field(None, alias='coverImage')
-    logo_image: Optional[str] = Field(None, alias='logoImage')
-    kitchen_categories: Optional[str] = Field(None, alias='kitchenCategories')
-    rating: Optional[str] = None
-    cooking_time: Optional[str] = Field(None, alias='cookingTime')
-    status: Optional[str] = None
-    opening_hours: Optional[str] = Field(None, alias='openingHours')
-    min_order_amount: Optional[int] = Field(None, alias='minOrderAmount')
+    cover_image: Optional[str]
+    logo_image: Optional[str]
+    kitchen_categories: Optional[str]
+    rating: Optional[str]
+    cooking_time: Optional[str]
+    status: Optional[str]
+    opening_hours: Optional[str]
+    min_order_amount: Optional[int]
 
     class Config:
         from_attributes = True
-        alias_generator = to_camel # <--- УБЕДИТЕСЬ, ЧТО ЭТО ЕСТЬ
+        alias_generator = to_camel
         populate_by_name = True
 
 class CategorySchema(BaseModel):
@@ -49,7 +36,7 @@ class MenuItemVariantSchema(BaseModel):
     id: str
     name: str
     cost: str
-    weight: Optional[str]
+    weight: Optional[str] = None # Сделали опциональным
 
 class MenuItemSchema(BaseModel):
     id: str
@@ -63,16 +50,16 @@ class MenuItemSchema(BaseModel):
 
     class Config:
         from_attributes = True
-        alias_generator = to_camel 
+        alias_generator = to_camel
         populate_by_name = True
 
 class CafeSettingsSchema(BaseModel):
-    min_order_amount: int = Field(alias='minOrderAmount')
+    min_order_amount: int
 
     class Config:
+        from_attributes = True
         alias_generator = to_camel
         populate_by_name = True
-        from_attributes = True
 
 # --- Схемы для заказа (OrderRequest) ---
 class OrderItemCafeItem(BaseModel):

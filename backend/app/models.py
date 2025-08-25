@@ -23,10 +23,9 @@ class Cafe(Base):
     opening_hours = Column(String)
     min_order_amount = Column(Integer, default=0)
 
-    # Связь с категориями
     categories = relationship("Category", back_populates="cafe")
-    # Связь с заказами
     orders = relationship("Order", back_populates="cafe")
+    menu_items = relationship("MenuItem", back_populates="cafe") # Добавим для удобства
 
 class Category(Base):
     __tablename__ = 'categories'
@@ -38,7 +37,6 @@ class Category(Base):
     background_color = Column(String)
 
     cafe = relationship("Cafe", back_populates="categories")
-    # Связь с элементами меню
     menu_items = relationship("MenuItem", back_populates="category")
 
     __table_args__ = (PrimaryKeyConstraint('id', 'cafe_id'),)
@@ -56,12 +54,12 @@ class MenuItem(Base):
     variants = Column(JSON)
     addons = Column(JSON, nullable=True)
 
-    # Связь с категорией
     category = relationship(
         "Category",
         foreign_keys=[category_id, cafe_id],
         back_populates="menu_items"
     )
+    cafe = relationship("Cafe", foreign_keys=[cafe_id], back_populates="menu_items") # Упрощаем связь
 
     __table_args__ = (
         PrimaryKeyConstraint('id', 'cafe_id'),
@@ -69,6 +67,7 @@ class MenuItem(Base):
             ['category_id', 'cafe_id'],
             ['categories.id', 'categories.cafe_id']
         ),
+        ForeignKeyConstraint(['cafe_id'], ['cafes.id']),
     )
     
 class Order(Base):
@@ -81,7 +80,4 @@ class Order(Base):
     cart_items = Column(JSON)
     total_amount = Column(Integer)
     currency = Column(String(3))
-    telegram_payment_charge_id = Column(String, unique=True, nullable=True)
-    status = Column(String, default='pending')
-
-    cafe = relationship("Cafe", back_populates="orders")
+    t
