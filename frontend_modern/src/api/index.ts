@@ -46,6 +46,7 @@ export const getCafeById = async (cafeId: string): Promise<CafeSchema> => {
 export const getCafeCategories = async (cafeId: string): Promise<CategorySchema[]> => {
   try {
     const response = await apiClient.get<CategorySchema[]>(`/cafes/${cafeId}/categories`);
+    console.log(`Raw response for categories of ${cafeId}:`, response); // <--- ДОБАВЬТЕ ЭТОТ ЛОГ
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     logger.error(`Error fetching categories for cafe ${cafeId}:`, error);
@@ -103,6 +104,7 @@ export const createOrder = async (cafeId: string, orderData: OrderRequest): Prom
 export const getCafePopularMenu = async (cafeId: string): Promise<MenuItemSchema[]> => {
   try {
     const response = await apiClient.get<MenuItemSchema[]>(`/cafes/${cafeId}/popular`);
+    console.log(`Raw response for popular of ${cafeId}:`, response); // <--- И ЭТОТ ЛОГ
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     logger.error(`Error fetching popular menu for cafe ${cafeId}:`, error);

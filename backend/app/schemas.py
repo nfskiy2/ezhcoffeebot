@@ -1,25 +1,37 @@
 # backend/app/schemas.py
 from pydantic import BaseModel, Field
 from typing import List, Any, Optional
-from pydantic.alias_generators import to_camel # НОВЫЙ ИМПОРТ
+from pydantic.alias_generators import to_camel
 
+
+# class CafeSchema(BaseModel):
+#     id: str
+#     name: str
+#     cover_image: Optional[str]
+#     logo_image: Optional[str]
+#     kitchen_categories: Optional[str]
+#     rating: Optional[str]
+#     cooking_time: Optional[str]
+#     status: Optional[str]
+#     opening_hours: Optional[str]
+#     min_order_amount: Optional[int]
 
 class CafeSchema(BaseModel):
     id: str
     name: str
-    cover_image: Optional[str]
-    logo_image: Optional[str]
-    kitchen_categories: Optional[str]
-    rating: Optional[str]
-    cooking_time: Optional[str]
-    status: Optional[str]
-    opening_hours: Optional[str]
-    min_order_amount: Optional[int]
+    cover_image: Optional[str] = Field(None, alias='coverImage')
+    logo_image: Optional[str] = Field(None, alias='logoImage')
+    kitchen_categories: Optional[str] = Field(None, alias='kitchenCategories')
+    rating: Optional[str] = None
+    cooking_time: Optional[str] = Field(None, alias='cookingTime')
+    status: Optional[str] = None
+    opening_hours: Optional[str] = Field(None, alias='openingHours')
+    min_order_amount: Optional[int] = Field(None, alias='minOrderAmount')
 
     class Config:
         from_attributes = True
         alias_generator = to_camel # <--- УБЕДИТЕСЬ, ЧТО ЭТО ЕСТЬ
-        populate_by_name = True  # <--- И ЭТО
+        populate_by_name = True
 
 class CategorySchema(BaseModel):
     id: str
