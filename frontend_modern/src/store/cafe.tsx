@@ -54,9 +54,35 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, []);
 
+    
     useEffect(() => {
+        const loadCafes = async () => {
+            setIsLoading(true);
+            setError(null);
+            try {
+                const data: CafeSchema[] = await getAllCafes();
+                setCafes(data);
+                if (data.length > 0) {
+                    const savedCafeId = localStorage.getItem('selectedCafeId');
+                    // ИСПРАВЛЕНИЕ: Ищем сохраненное кафе. Если его нет, выбираем первое.
+                    const savedCafe = savedCafeId ? data.find(c => c.id === savedCafeId) : null;
+                    if (savedCafe) {
+                        setSelectedCafe(savedCafe);
+                    } else {
+                        setSelectedCafe(data[0]);
+                        localStorage.setItem('selectedCafeId', data[0].id); // Обновляем сохраненное значение
+                    }
+                }
+            } catch (err: any) {
+                logger.error('Failed to load cafes:', err);
+                setError(err.message || 'Не удалось загрузить кофейни.');
+            } finally {
+                setIsLoading(false);
+            }
+        };
         loadCafes();
-    }, [loadCafes]);
+    }, []);
+
 
     const setSelectedCafeId = useCallback((cafeId: string | null) => {
         if (cafeId === null) {
