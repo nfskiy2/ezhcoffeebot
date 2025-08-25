@@ -131,6 +131,7 @@ def migrate():
                 Category.cafe_id == cafe_id
             ).first()
             if not existing_cat:
+                print(f"  -> Adding category: {category_id} to cafe: {cafe_id}") # <--- ЛОГ
                 category = Category(
                     id=cat_data['id'],
                     cafe_id=cafe_id,
@@ -140,6 +141,9 @@ def migrate():
                 )
                 db.add(category)
             
+            else:
+                print(f"  -> Category: {category_id} for cafe: {cafe_id} already exists. Skipping.") # <--- ЛОГ
+
             menu_filename = f"{category_id}.json"
             menu_file_path = os.path.join(menu_data_path, menu_filename)
 
@@ -154,6 +158,8 @@ def migrate():
                         MenuItem.cafe_id == cafe_id
                     ).first()
                     if not existing_item:
+                        print(f"    -> Adding menu item: {item_data['name']} to category: {category_id}") # <--- ЛОГ
+
                         menu_item = MenuItem(
                             id=item_data.get('id'),
                             cafe_id=cafe_id,
@@ -165,6 +171,8 @@ def migrate():
                             addons=item_data.get('addons')
                         )
                         db.add(menu_item)
+                    else:
+                        print(f"    -> Menu item: {item_data['name']} for cafe: {cafe_id} already exists. Skipping.") # <--- ЛОГ
         db.commit()
         print(f"Finished migrating categories and menu items for cafe: {cafe_id}")
 
