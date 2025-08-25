@@ -44,6 +44,8 @@ def migrate():
 
     # --- 1. МИГРАЦИЯ ДАННЫХ КОФЕЕН (CAFE) ---
     print("Migrating cafes...")
+    print(f"Total cafes in DB after migration: {db.query(Cafe).count()}")
+
     cafes_data = [
         {
             "id": "ezh-1", # ИЗМЕНЕНО
@@ -132,6 +134,7 @@ def migrate():
             ).first()
             if not existing_cat:
                 print(f"  -> Adding category: {category_id} to cafe: {cafe_id}") # <--- ЛОГ
+                
                 category = Category(
                     id=cat_data['id'],
                     cafe_id=cafe_id,
@@ -174,7 +177,8 @@ def migrate():
                     else:
                         print(f"    -> Menu item: {item_data['name']} for cafe: {cafe_id} already exists. Skipping.") # <--- ЛОГ
         db.commit()
-        print(f"Finished migrating categories and menu items for cafe: {cafe_id}")
+    print(f"Total categories in DB: {db.query(Category).count()}")
+    print(f"Total menu items in DB: {db.query(MenuItem).count()}")
 
     db.close()
     print("Migration completed successfully!")
