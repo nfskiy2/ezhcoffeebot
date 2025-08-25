@@ -87,20 +87,20 @@ def migrate():
 
     for cafe_data in cafes_data:
         existing_cafe = db.query(Cafe).filter(Cafe.id == cafe_data['id']).first()
-        if not existing_cafe:
-            cafe = Cafe(
-                id=cafe_data.get('id'),
-                name=cafe_data.get('name'),
-                cover_image=cafe_data.get('coverImage'),
-                logo_image=cafe_data.get('logoImage'),
-                kitchen_categories=cafe_data.get('kitchenCategories'),
-                rating=cafe_data.get('rating'),
-                cooking_time=cafe_data.get('cookingTime'),
-                status=cafe_data.get('status', 'Closed'),
-                opening_hours=cafe_data.get('openingHours'),
-                min_order_amount=cafe_data.get('minOrderAmount')
-            )
-            db.add(cafe)
+        # if not existing_cafe:
+        cafe = Cafe(
+            id=cafe_data.get('id'),
+            name=cafe_data.get('name'),
+            cover_image=cafe_data.get('coverImage'),
+            logo_image=cafe_data.get('logoImage'),
+            kitchen_categories=cafe_data.get('kitchenCategories'),
+            rating=cafe_data.get('rating'),
+            cooking_time=cafe_data.get('cookingTime'),
+            status=cafe_data.get('status', 'Closed'),
+            opening_hours=cafe_data.get('openingHours'),
+            min_order_amount=cafe_data.get('minOrderAmount')
+        )
+        db.add(cafe)
     db.commit()
     print("Cafes migrated.")
 
@@ -132,20 +132,20 @@ def migrate():
                 Category.id == category_id,
                 Category.cafe_id == cafe_id
             ).first()
-            if not existing_cat:
-                print(f"  -> Adding category: {category_id} to cafe: {cafe_id}") # <--- ЛОГ
-                
-                category = Category(
-                    id=cat_data['id'],
-                    cafe_id=cafe_id,
-                    icon=cat_data.get('icon'),
-                    name=cat_data.get('name'),
-                    background_color=cat_data.get('backgroundColor')
-                )
-                db.add(category)
+            # if not existing_cat:
+            #   print(f"  -> Adding category: {category_id} to cafe: {cafe_id}") # <--- ЛОГ
             
-            else:
-                print(f"  -> Category: {category_id} for cafe: {cafe_id} already exists. Skipping.") # <--- ЛОГ
+            category = Category(
+                id=cat_data['id'],
+                cafe_id=cafe_id,
+                icon=cat_data.get('icon'),
+                name=cat_data.get('name'),
+                background_color=cat_data.get('backgroundColor')
+            )
+            db.add(category)
+        
+        else:
+            print(f"  -> Category: {category_id} for cafe: {cafe_id} already exists. Skipping.") # <--- ЛОГ
 
             menu_filename = f"{category_id}.json"
             menu_file_path = os.path.join(menu_data_path, menu_filename)
