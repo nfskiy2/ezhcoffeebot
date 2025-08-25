@@ -113,9 +113,9 @@ def migrate():
     
     # ИЗМЕНЕНО: Обновляем маппинг для новых ID
     cafe_category_mapping = {
-        "ezh-1": all_category_ids, # EZH-1 имеет все категории
-        "ezh-2": [cid for cid in all_category_ids if 'kofe' in cid or 'coffee' in cid], # EZH-2 только кофе
-        "ezh-3": [cid for cid in all_category_ids if 'picca' in cid or 'pasta' in cid] # EZH-3 только пицца и паста
+        "ezh-1": all_category_ids,
+        "ezh-2": [cid for cid in all_category_ids if 'kofe' in cid or 'coffee' in cid],
+        "ezh-3": [cid for cid in all_category_ids if 'picca' in cid or 'pasta' in cid] 
     }
 
     for cafe_id, category_ids_for_cafe in cafe_category_mapping.items():
