@@ -34,11 +34,51 @@ def migrate():
         # 1. МИГРАЦИЯ КОФЕЕН
         print("Migrating cafes...")
         cafes_data = [
-            # ... (данные кофеен без изменений) ...
+            {
+                "id": "ezh-1",
+                "name": "EZH-1",
+                "cover_image": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "logo_image": "icons/logo-laurel.svg",
+                "kitchen_categories": "American Barbeque, Dinner, Italian",
+                "rating": "4.3 (212)",
+                "cooking_time": "5-15 mins",
+                "status": "Open",
+                "opening_hours": "пн-пт: 09:00-20:30, сб-вс: 10:00-19:00",
+                "min_order_amount": 10000
+            },
+            {
+                "id": "ezh-2",
+                "name": "EZH-2",
+                "cover_image": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "logo_image": "icons/logo-laurel.svg",
+                "kitchen_categories": "Coffee, Desserts",
+                "rating": "4.8 (98)",
+                "cooking_time": "2-5 mins",
+                "status": "Open",
+                "opening_hours": "пн-пт: 07:00-19:00, сб: 08:00-17:00",
+                "min_order_amount": 5000
+            },
+            {
+                "id": "ezh-3",
+                "name": "EZH-3",
+                "cover_image": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "logo_image": "icons/logo-laurel.svg",
+                "kitchen_categories": "Pizza, Pasta",
+                "rating": "4.5 (150)",
+                "cooking_time": "10-20 mins",
+                "status": "Open",
+                "opening_hours": "пн-вс: 11:00-22:00",
+                "min_order_amount": 12000
+            }
         ]
         
-        # ... (код миграции кофеен без изменений) ...
-
+        for cafe_data in cafes_data:
+            cafe = Cafe(**cafe_data)
+            db.add(cafe)
+        
+        # <-- ИСПРАВЛЕНИЕ: Коммитим кофейни ЗДЕСЬ, до добавления категорий.
+        db.commit()
+        print(f"-> Cafes committed. Total in DB: {db.query(Cafe).count()}")
         # 2. МИГРАЦИЯ КАТЕГОРИЙ И МЕНЮ
         categories_data_path = 'data/categories.json'
         with open(categories_data_path, 'r', encoding='utf-8') as f:
@@ -92,6 +132,8 @@ def migrate():
     
     except Exception as e:
         print(f"\n !!! AN ERROR OCCURRED DURING MIGRATION: {e} !!! \n")
+        import traceback
+        traceback.print_exc()
         db.rollback()
     finally:
         print(f"\n--- MIGRATION FINISHED ---")
