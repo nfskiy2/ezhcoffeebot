@@ -25,7 +25,7 @@ class Cafe(Base):
 
     categories = relationship("Category", back_populates="cafe")
     orders = relationship("Order", back_populates="cafe")
-    menu_items = relationship("MenuItem", back_populates="cafe") # Добавим для удобства
+    menu_items = relationship("MenuItem", back_populates="cafe", overlaps="category")
 
 class Category(Base):
     __tablename__ = 'categories'
@@ -37,7 +37,7 @@ class Category(Base):
     background_color = Column(String)
 
     cafe = relationship("Cafe", back_populates="categories")
-    menu_items = relationship("MenuItem", back_populates="category")
+    menu_items = relationship("MenuItem", back_populates="category", overlaps="cafe,menu_items")
 
     __table_args__ = (PrimaryKeyConstraint('id', 'cafe_id'),)
 
@@ -53,14 +53,15 @@ class MenuItem(Base):
     description = Column(String)
     variants = Column(JSON)
     addons = Column(JSON, nullable=True)
-    sub_category = Column(String, nullable=True) # <-- НОВОЕ ПОЛЕ
+    sub_category = Column(String, nullable=True)
 
     category = relationship(
         "Category",
         foreign_keys=[category_id, cafe_id],
-        back_populates="menu_items"
+        back_populates="menu_items",
+        overlaps="menu_items"
     )
-    cafe = relationship("Cafe", foreign_keys=[cafe_id], back_populates="menu_items") # Упрощаем связь
+    cafe = relationship("Cafe", foreign_keys=[cafe_id], back_populates="menu_items", overlaps="menu_items")
 
     __table_args__ = (
         PrimaryKeyConstraint('id', 'cafe_id'),
