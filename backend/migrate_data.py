@@ -3,17 +3,16 @@ import json
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.models import Base, Category, MenuItem, Cafe, Order # Ensure Order is imported if you use it
+from app.models import Base, Category, MenuItem, Cafe, Order
 from urllib.parse import urlparse
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    print("Error: DATABASE_URL environment variable is not set!")
+    print("FATAL: DATABASE_URL not set!")
     exit(1)
 
 parsed_url = urlparse(DATABASE_URL)
-
 db_params = {
     "database": parsed_url.path.lstrip("/"),
     "user": parsed_url.username,
@@ -23,34 +22,21 @@ db_params = {
     "client_encoding": "utf8"
 }
 
-engine = create_engine(
-    f"postgresql://",
-    connect_args=db_params
-)
-
+engine = create_engine(f"postgresql://", connect_args=db_params)
 Base.metadata.create_all(engine)
-
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def get_db():
+def migrate():
     db = SessionLocal()
     try:
-        yield db
-    finally:
-        db.close()
+        print("\n--- STARTING MIGRATION ---")
 
-def migrate():
-    db = next(get_db())
-
-    # --- 1. МИГРАЦИЯ ДАННЫХ КОФЕЕН (CAFE) ---
-    try:
+        # 1. МИГРАЦИЯ КОФЕЕН
         print("Migrating cafes...")
-        print(f"Total cafes in DB after migration: {db.query(Cafe).count()}")
-
         cafes_data = [
             {
-                "id": "ezh-1", # ИЗМЕНЕНО
-                "name": "EZH-1", # ИЗМЕНЕНО
+                "id": "ezh-1",
+                "name": "EZH-1",
                 "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
                 "logoImage": "icons/logo-laurel.svg",
                 "kitchenCategories": "American Barbeque, Dinner, Italian",
@@ -61,9 +47,9 @@ def migrate():
                 "minOrderAmount": 10000
             },
             {
-                "id": "ezh-2", # ИЗМЕНЕНО
-                "name": "EZH-2", # ИЗМЕНЕНО
-                "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "id": "ezh-2",
+                "name": "EZH-2",
+                "coverImage": "https://images.unsplash.com/photo-1495474472106-ccddc55a2977?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
                 "logoImage": "icons/logo-laurel.svg",
                 "kitchenCategories": "Coffee, Desserts",
                 "rating": "4.8 (98)",
@@ -72,10 +58,10 @@ def migrate():
                 "openingHours": "пн-пт: 07:00-19:00, сб: 08:00-17:00",
                 "minOrderAmount": 5000
             },
-            { # НОВАЯ КОФЕЙНЯ
+            {
                 "id": "ezh-3",
                 "name": "EZH-3",
-                "coverImage": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "coverImage": "https://images.unsplash.com/photo-1511920183276-5941b6593b4a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
                 "logoImage": "icons/logo-laurel.svg",
                 "kitchenCategories": "Pizza, Pasta",
                 "rating": "4.5 (150)",
@@ -85,7 +71,7 @@ def migrate():
                 "minOrderAmount": 12000
             }
         ]
-
+        
         for cafe_data in cafes_data:
             cafe = Cafe(
                 id=cafe_data.get('id'),
@@ -101,38 +87,29 @@ def migrate():
             )
             db.add(cafe)
         db.commit()
-        print(f"Total cafes in DB after migration: {db.query(Cafe).count()}")
+        print(f"-> Cafes committed. Total in DB: {db.query(Cafe).count()}")
 
-        # --- 2. МИГРАЦИЯ КАТЕГОРИЙ И ПУНКТОВ МЕНЮ ---
-        menu_data_path = 'data/menu'
+        # 2. МИГРАЦИЯ КАТЕГОРИЙ И МЕНЮ
         categories_data_path = 'data/categories.json'
-
         with open(categories_data_path, 'r', encoding='utf-8') as f:
             all_categories = json.load(f)
-
         all_category_ids = [cat['id'] for cat in all_categories]
         
-        # ИЗМЕНЕНО: Обновляем маппинг для новых ID
         cafe_category_mapping = {
             "ezh-1": all_category_ids,
             "ezh-2": [cid for cid in all_category_ids if 'kofe' in cid or 'coffee' in cid],
             "ezh-3": [cid for cid in all_category_ids if 'picca' in cid or 'pasta' in cid]
         }
 
-        for cafe_id, category_ids_for_cafe in cafe_category_mapping.items():
-            print(f"Migrating categories and menu items for cafe: {cafe_id}")
-            for category_id in category_ids_for_cafe:
+        for cafe_id, category_ids in cafe_category_mapping.items():
+            print(f"\n--- Processing Cafe ID: {cafe_id} ---")
+            for category_id in category_ids:
                 cat_data = next((c for c in all_categories if c['id'] == category_id), None)
                 if not cat_data:
-                    print(f"Warning: Category data for '{category_id}' not found in categories.json. Skipping.")
+                    print(f"  WARNING: Data for category '{category_id}' not found in categories.json. Skipping.")
                     continue
                 
-                existing_cat = db.query(Category).filter(
-                    Category.id == category_id,
-                    Category.cafe_id == cafe_id
-                ).first()
-                print(f"  -> Adding category: {category_id} to cafe: {cafe_id}") # <--- ЛОГ
-                
+                print(f"  -> Adding Category: {cat_data['name']}")
                 category = Category(
                     id=cat_data['id'],
                     cafe_id=cafe_id,
@@ -142,40 +119,35 @@ def migrate():
                 )
                 db.add(category)
 
-                menu_filename = f"{category_id}.json"
-                menu_file_path = os.path.join(menu_data_path, menu_filename)
-                if not os.path.exists(menu_file_path):
-                    continue
-                
-                with open(menu_file_path, 'r', encoding='utf-8') as f:
-                    menu_items_data = json.load(f)
-                    for item_data in menu_items_data:
-                        existing_item = db.query(MenuItem).filter(
-                            MenuItem.id == item_data['id'],
-                            MenuItem.cafe_id == cafe_id
-                        ).first()
-                        print(f"    -> Adding menu item: {item_data['name']} to category: {category_id}") # <--- ЛОГ
-
-                        menu_item = MenuItem(
-                            id=item_data.get('id'),
-                            cafe_id=cafe_id,
-                            category_id=category_id,
-                            image=item_data.get('image'),
-                            name=item_data.get('name'),
-                            description=item_data.get('description'),
-                            variants=item_data.get('variants'),
-                            addons=item_data.get('addons')
-                        )
-                        db.add(menu_item)
-            print(f"Committing changes for cafe: {cafe_id}")
+                menu_path = f"data/menu/{category_id}.json"
+                if os.path.exists(menu_path):
+                    with open(menu_path, 'r', encoding='utf-8') as f:
+                        menu_items = json.load(f)
+                        for item_data in menu_items:
+                            print(f"    -> Adding MenuItem: {item_data.get('name')}")
+                            menu_item = MenuItem(
+                                id=item_data.get('id'),
+                                cafe_id=cafe_id,
+                                category_id=category_id,
+                                image=item_data.get('image'),
+                                name=item_data.get('name'),
+                                description=item_data.get('description'),
+                                variants=item_data.get('variants'),
+                                addons=item_data.get('addons')
+                            )
+                            db.add(menu_item)
             db.commit()
+            print(f"-> Committed data for cafe: {cafe_id}")
+    
     except Exception as e:
-        print(f"An error occurred during migration: {e}")
-        db.rollback() # Откатываем транзакцию в случае ошибки
+        print(f"\n !!! AN ERROR OCCURRED DURING MIGRATION: {e} !!! \n")
+        db.rollback()
     finally:
-        print(f"Final check - Categories: {db.query(Category).count()}, Menu Items: {db.query(MenuItem).count()}")
+        print(f"\n--- MIGRATION FINISHED ---")
+        print(f"Total Cafes: {db.query(Cafe).count()}")
+        print(f"Total Categories: {db.query(Category).count()}")
+        print(f"Total Menu Items: {db.query(MenuItem).count()}")
         db.close()
-    print("Migration completed successfully!")
 
 if __name__ == "__main__":
     migrate()
