@@ -713,3 +713,44 @@ section {
     font-weight: 500;
     margin-left: 16px;
 }
+
+.sticky-selector {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--bg-color); /* Используем цвет фона для маскировки */
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05); /* Легкая тень для отделения */
+    padding-top: 4px; /* Небольшой отступ сверху */
+}
+/* Убираем лишние паддинги у горизонтального скролла внутри селектора */
+.sticky-selector .cafe-section-horizontal {
+    padding-top: 8px;
+    padding-bottom: 8px;
+}
+
+.sub-category-button {
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--tg-theme-hint-color); /* Неактивная кнопка - цветом подсказки */
+    background-color: transparent;
+    border: 1px solid var(--divider-color);
+    border-radius: 20px;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s ease-out;
+}
+
+.sub-category-button.active {
+    color: var(--tg-theme-button-text-color);
+    background-color: var(--tg-theme-button-color);
+    border-color: var(--tg-theme-button-color);
+}
+
+.sub-category-header {
+    padding: 16px 16px 0 16px;
+    font-size: 20px;
+    font-weight: 500;
+}

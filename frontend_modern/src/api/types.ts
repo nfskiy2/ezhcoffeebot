@@ -73,7 +73,9 @@ export interface MenuItemSchema {
     description?: string;
     variants: MenuItemVariantSchema[];
     addons?: AddonGroup[];
+    subCategory?: string; 
 }
+
 
 export interface CafeSettingsSchema {
     minOrderAmount: number;

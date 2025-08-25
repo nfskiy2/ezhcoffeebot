@@ -47,6 +47,7 @@ class MenuItemSchema(BaseModel):
     description: Optional[str]
     variants: List[MenuItemVariantSchema]
     addons: Optional[List[Any]]
+    sub_category: Optional[str] = Field(None, alias='subCategory') # <-- НОВОЕ ПОЛЕ
 
     class Config:
         from_attributes = True

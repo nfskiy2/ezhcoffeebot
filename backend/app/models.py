@@ -53,6 +53,7 @@ class MenuItem(Base):
     description = Column(String)
     variants = Column(JSON)
     addons = Column(JSON, nullable=True)
+    sub_category = Column(String, nullable=True) # <-- НОВОЕ ПОЛЕ
 
     category = relationship(
         "Category",

@@ -1,12 +1,17 @@
 // frontend_modern/src/pages/CategoryPage.tsx
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-
 import { getCafeCategoryMenu } from '../api';
 import type { MenuItemSchema } from '../api/types';
 import { useCart } from '../store/cart';
 import MenuItemCard from '../components/MenuItemCard';
 import { logger } from '../utils/logger';
+
+// Этот интерфейс теперь будет использоваться
+interface GroupedMenuItems {
+    subCategoryName: string;
+    items: MenuItemSchema[];
+}
 
 const CategoryPage: React.FC = () => {
     const { cafeId, categoryId } = useParams<{ cafeId: string; categoryId: string }>();
@@ -16,6 +21,9 @@ const CategoryPage: React.FC = () => {
     const [menuItems, setMenuItems] = useState<MenuItemSchema[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [activeSubCategory, setActiveSubCategory] = useState<string | null>(null);
+
+    const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     useEffect(() => {
         const loadMenu = async () => {
@@ -38,6 +46,69 @@ const CategoryPage: React.FC = () => {
         };
         loadMenu();
     }, [cafeId, categoryId]);
+
+    const { groupedItems, subCategories } = useMemo(() => {
+        const groups: Record<string, MenuItemSchema[]> = {};
+        const subCategoryOrder: string[] = [];
+
+        menuItems.forEach(item => {
+            const subCat = item.subCategory || 'Прочее';
+            if (!groups[subCat]) {
+                groups[subCat] = [];
+                subCategoryOrder.push(subCat);
+            }
+            groups[subCat].push(item);
+        });
+        
+        // <-- ИСПРАВЛЕНИЕ 2: Явно указываем тип для переменной `grouped`
+        const grouped: GroupedMenuItems[] = subCategoryOrder.map(name => ({
+            subCategoryName: name,
+            items: groups[name],
+        }));
+
+        if (grouped.length > 0 && !activeSubCategory) {
+            setActiveSubCategory(grouped[0].subCategoryName);
+        }
+
+        return { groupedItems: grouped, subCategories: subCategoryOrder };
+    }, [menuItems, activeSubCategory]); // Добавил activeSubCategory в зависимости
+
+    const handleSelectorClick = (subCategoryName: string) => {
+        setActiveSubCategory(subCategoryName);
+        sectionRefs.current[subCategoryName]?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
+    };
+
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            (entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        // Используем requestAnimationFrame чтобы избежать частых обновлений состояния
+                        // во время быстрой прокрутки
+                        window.requestAnimationFrame(() => {
+                            setActiveSubCategory(entry.target.id);
+                        });
+                    }
+                });
+            },
+            // Скорректированный rootMargin: верхняя граница = высота sticky-хедера + небольшой запас
+            { rootMargin: '-70px 0px -80% 0px', threshold: 0 }
+        );
+
+        const currentRefs = Object.values(sectionRefs.current);
+        currentRefs.forEach(ref => {
+            if (ref) observer.observe(ref);
+        });
+
+        return () => {
+            currentRefs.forEach(ref => {
+                if (ref) observer.unobserve(ref);
+            });
+        };
+    }, [groupedItems]);
 
     const handleMainButtonClick = useCallback(() => {
         navigate('/cart');
@@ -79,16 +150,6 @@ const CategoryPage: React.FC = () => {
                     <h6 className="cafe-item-name shimmer" style={{ minWidth: '80%', marginTop: '8px' }}></h6>
                     <p className="small cafe-item-description shimmer" style={{ minWidth: '95%' }}></p>
                 </div>
-                <div className="cafe-item-container">
-                    <div className="cafe-item-image shimmer" style={{ width: '100%', height: 'calc((100vw - 16px * 3) / 2 * 3 / 4)' }}></div>
-                    <h6 className="cafe-item-name shimmer" style={{ minWidth: '80%', marginTop: '8px' }}></h6>
-                    <p className="small cafe-item-description shimmer" style={{ minWidth: '95%' }}></p>
-                </div>
-                <div className="cafe-item-container">
-                    <div className="cafe-item-image shimmer" style={{ width: '100%', height: 'calc((100vw - 16px * 3) / 2 * 3 / 4)' }}></div>
-                    <h6 className="cafe-item-name shimmer" style={{ minWidth: '80%', marginTop: '8px' }}></h6>
-                    <p className="small cafe-item-description shimmer" style={{ minWidth: '95%' }}></p>
-                </div>
             </section>
         );
     }
@@ -98,16 +159,40 @@ const CategoryPage: React.FC = () => {
     }
 
     return (
-        <section>
-            <div id="cafe-category" className="cafe-section-vertical">
-                {menuItems.length > 0 ? (
-                    menuItems.map(item => (
-                        <MenuItemCard key={item.id} item={item} cafeId={cafeId!} />
-                    ))
-                ) : (
-                    <p>В этой категории нет товаров.</p>
-                )}
-            </div>
+        <section style={{ paddingTop: subCategories.length > 1 ? '60px' : '0' }}>
+            {subCategories.length > 1 && (
+                <div className="sticky-selector">
+                    <div className="cafe-section-horizontal">
+                        {subCategories.map(name => (
+                            <button
+                                key={name}
+                                className={`sub-category-button ${activeSubCategory === name ? 'active' : ''}`}
+                                onClick={() => handleSelectorClick(name)}
+                            >
+                                {name}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            {groupedItems.map(({ subCategoryName, items: menuGroupItems }) => (
+                <div 
+                    key={subCategoryName} 
+                    id={subCategoryName}
+                    // <-- ИСПРАВЛЕНИЕ 1: Используем фигурные скобки, чтобы функция ничего не возвращала
+                    ref={el => {
+                        sectionRefs.current[subCategoryName] = el;
+                    }}
+                >
+                    <h3 className="sub-category-header">{subCategoryName}</h3>
+                    <div className="cafe-section-vertical">
+                        {menuGroupItems.map(item => (
+                            <MenuItemCard key={item.id} item={item} cafeId={cafeId!} />
+                        ))}
+                    </div>
+                </div>
+            ))}
         </section>
     );
 };
