@@ -43,6 +43,10 @@ const HomePage: React.FC = () => {
                     getCafeCategories(selectedCafe.id),
                     getCafePopularMenu(selectedCafe.id)
                 ]);
+
+                console.log("API response for categories:", categoriesData);
+                console.log("API response for popular:", popularData);
+
                 setCategories(categoriesData || []);
                 setPopularItems(popularData || []);
             } catch (err: any) {
@@ -131,6 +135,7 @@ const HomePage: React.FC = () => {
             </section>
         );
     }
+    console.log("Rendering HomePage. SelectedCafe:", selectedCafe, "Categories:", categories, "Popular:", popularItems);
 
     // Основной рендеринг страницы
     return (
