@@ -187,7 +187,7 @@ const HomePage: React.FC = () => {
                             <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
                         </>
                     ) : (
-                        categories.length > 0 ? categories.map(category => (
+                        Array.isArray(categories) && categories.length > 0 ? categories.map(category => (
                             <button
                                 key={category.id}
                                 className="cafe-category-container"
@@ -216,7 +216,7 @@ const HomePage: React.FC = () => {
                             <div className="cafe-item-container"><div className="cafe-item-image shimmer"></div></div>
                         </>
                     ) : (
-                        popularItems.length > 0 ? popularItems.map(item => (
+                        Array.isArray(popularItems) && popularItems.length > 0 ? popularItems.map(item => (
                             <MenuItemCard key={item.id} item={item} cafeId={selectedCafe.id} />
                         )) : <p style={{ paddingLeft: '16px' }}>Нет популярных товаров.</p>
                     )}
