@@ -49,7 +49,7 @@ def migrate():
             {
                 "id": "ezh-2",
                 "name": "EZH-2",
-                "cover_image": "https://images.unsplash.com/photo-1495474472106-ccddc55a2977?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "cover_image": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
                 "logo_image": "icons/logo-laurel.svg",
                 "kitchen_categories": "Coffee, Desserts",
                 "rating": "4.8 (98)",
@@ -61,7 +61,7 @@ def migrate():
             {
                 "id": "ezh-3",
                 "name": "EZH-3",
-                "cover_image": "https://images.unsplash.com/photo-1511920183276-5941b6593b4a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+                "cover_image": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
                 "logo_image": "icons/logo-laurel.svg",
                 "kitchen_categories": "Pizza, Pasta",
                 "rating": "4.5 (150)",
