@@ -104,4 +104,12 @@ export interface CartItemRequest {
 export interface OrderRequest {
     auth: string;
     cartItems: CartItemRequest[];
+    fulfillmentMethod: string;
+    deliveryAddress: {
+        street: string;
+        house: string;
+        apartment: string;
+        comment: string;
+    } | null;
+
 }

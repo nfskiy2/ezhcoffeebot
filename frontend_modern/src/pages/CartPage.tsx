@@ -10,6 +10,7 @@ import { TelegramSDK } from '../telegram/telegram';
 import { useSnackbar } from '../components/Snackbar';
 import { useCafe } from '../store/cafe';
 import { logger } from '../utils/logger';
+import { useOrder } from '../store/order'; 
 
 const CartPage: React.FC = () => {
     const { items, increaseQuantity, decreaseQuantity, getItemCount, getTotalCost, clearCart } = useCart();
@@ -17,6 +18,8 @@ const CartPage: React.FC = () => {
     const { selectedCafe } = useCafe();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [minOrderAmount, setMinOrderAmount] = useState<number>(0);
+    const { fulfillmentMethod, deliveryAddress } = useOrder(); // <-- ИСПОЛЬЗУЕМ КОНТЕКСТ
+
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -40,6 +43,11 @@ const CartPage: React.FC = () => {
         }
         if (isSubmitting || getItemCount(items) === 0 || !selectedCafe) return;
 
+        if (fulfillmentMethod === 'delivery' && (!deliveryAddress || !deliveryAddress.street || !deliveryAddress.house)) {
+            TelegramSDK.showAlert("Пожалуйста, укажите полный адрес доставки.");
+            return;
+        }
+
         if (window.Telegram && window.Telegram.WebApp) {
             const initData = TelegramSDK.getInitData();
             if (!initData) {
@@ -58,6 +66,8 @@ const CartPage: React.FC = () => {
                         quantity: item.quantity,
                         categoryId: item.categoryId,
                     })),
+                    fulfillmentMethod: fulfillmentMethod,
+                    deliveryAddress: deliveryAddress,
                 };
                 const response = await createOrder(selectedCafe.id, orderData);
                 TelegramSDK.openInvoice(response.invoiceUrl, (status) => {
@@ -79,7 +89,7 @@ const CartPage: React.FC = () => {
                 setIsSubmitting(false);
             }
         }
-    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart]);
+    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart, fulfillmentMethod, deliveryAddress]); // <-- ДОБАВЛЯЕМ ЗАВИСИМОСТИ
 
     useEffect(() => {
         if (window.Telegram && window.Telegram.WebApp) {

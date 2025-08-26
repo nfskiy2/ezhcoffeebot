@@ -292,14 +292,19 @@ async def create_order(
     new_order = Order(
         cafe_id=cafe_id,
         user_info=user_info_dict,
-        cart_items=[item.dict() for item in order_data.cartItems], # Сохраняем Pydantic модели как dict
+        cart_items=[item.dict() for item in order_data.cartItems],
         total_amount=total_amount_in_minimal_units,
-        currency="RUB" # Или любая ваша валюта
+        currency="RUB",
+        # --- СОХРАНЯЕМ НОВЫЕ ДАННЫЕ ---
+        fulfillment_method=order_data.fulfillmentMethod,
+        delivery_address=order_data.deliveryAddress
+        # -----------------------------
     )
     db.add(new_order)
     db.commit()
-    db.refresh(new_order) # Получаем сгенерированный ID
-    logger.info(f"Order {new_order.id} created and saved to DB.")
+    db.refresh(new_order)
+    logger.info(f"Order {new_order.id} with method '{new_order.fulfillment_method}' created.")
+
 
     # 4. Создаем инвойс, используя ID нашего заказа как payload
     invoice_url = await create_invoice_link( # <--- ДОБАВЬТЕ await

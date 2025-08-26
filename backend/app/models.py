@@ -84,5 +84,8 @@ class Order(Base):
     currency = Column(String(3))
     telegram_payment_charge_id = Column(String, unique=True, nullable=True)
     status = Column(String, default='pending')
+    fulfillment_method = Column(String, default='takeaway', nullable=False) # 'takeaway', 'dine-in', 'delivery'
+    delivery_address = Column(JSON, nullable=True) # Будет заполнен только для 'delivery'
+
 
     cafe = relationship("Cafe", back_populates="orders")
