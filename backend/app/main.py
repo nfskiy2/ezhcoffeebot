@@ -292,18 +292,14 @@ async def create_order(
     new_order = Order(
         cafe_id=cafe_id,
         user_info=user_info_dict,
-        cart_items=[item.dict() for item in order_data.cartItems],
+        cart_items=[item.dict() for item in order_data.cartItems], # Сохраняем Pydantic модели как dict
         total_amount=total_amount_in_minimal_units,
-        currency="RUB",
-        fulfillment_method=order_data.fulfillmentMethod,
-        delivery_address=order_data.deliveryAddress,
-        packing_option=order_data.packingOption
+        currency="RUB" # Или любая ваша валюта
     )
     db.add(new_order)
     db.commit()
-    db.refresh(new_order)
-    logger.info(f"Order {new_order.id} with method '{new_order.fulfillment_method}' created.")
-
+    db.refresh(new_order) # Получаем сгенерированный ID
+    logger.info(f"Order {new_order.id} created and saved to DB.")
 
     # 4. Создаем инвойс, используя ID нашего заказа как payload
     invoice_url = await create_invoice_link( # <--- ДОБАВЬТЕ await
@@ -318,3 +314,11 @@ async def create_order(
 
     logger.info(f"Invoice URL created for order: {invoice_url}")
     return { 'invoiceUrl': invoice_url }
+
+
+    # invoice_url = await create_invoice_link(prices=labeled_prices, bot_instance=bot_instance)
+    # if invoice_url is None:
+    #     logger.error("Failed to get invoice URL from bot.")
+    #     raise HTTPException(status_code=500, detail="Could not create invoice.")
+    # logger.info(f"Invoice URL created for order: {invoice_url}")
+    # return { 'invoiceUrl': invoice_url }

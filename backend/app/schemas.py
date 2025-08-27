@@ -81,5 +81,3 @@ class CartItemRequest(BaseModel):
 class OrderRequest(BaseModel):
     auth: str
     cartItems: List[CartItemRequest]
-    fulfillmentMethod: str
-    deliveryAddress: Optional[dict] = None

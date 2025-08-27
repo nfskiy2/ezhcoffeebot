@@ -140,40 +140,18 @@ async def handle_successful_payment(update: Update, context: CallbackContext) ->
             
             items_text = "\n".join(items_text_list)
 
-            fulfillment_map = {
-                "dine-in": "🍽️ В зале",
-                "takeaway": "🛍️ На вынос",
-                "delivery": "🚚 Доставка"
-            }
-            fulfillment_text = fulfillment_map.get(order_details.fulfillment_method, order_details.fulfillment_method)
-            
-            address_text = ""
-            if order_details.fulfillment_method == 'delivery' and order_details.delivery_address:
-                addr = order_details.delivery_address
-                address_text = (
-                    f"📍 *Адрес доставки:*\n"
-                    f"   `{addr.get('street', '')}, д. {addr.get('house', '')}`\n"
-                    f"   `кв/офис {addr.get('apartment', '')}`\n"
-                    f"   `Комментарий: {addr.get('comment', 'нет')}`\n\n"
-                )
-            # ----------------------------------------
-            
-            # Обновляем shipping_address на наш новый блок, если это доставка
-            shipping_address_block = address_text if order_details.fulfillment_method == 'delivery' else (
-                f"📍 *Адрес получения:*\n"
-                f"   `{shipping_address.country_code}, {shipping_address.state}`\n"
-                f"   `{shipping_address.city}, {shipping_address.street_line1}`\n\n"
-            )
-
             # Форматируем красивое сообщение для сотрудников
             staff_notification_text = (
                 f"🎉 *Новый заказ!* `#{str(order_details.id)[:8]}` 🎉\n\n"
-                f"*{fulfillment_text}*\n\n"  # <-- ДОБАВЛЕНО
                 f"🛍️ *Состав заказа:*\n{items_text}\n\n"
                 f"💰 *Сумма:* {payment.total_amount / 100} {payment.currency}\n"
                 f"👤 *Клиент:* {order_info.name or 'Не указано'}\n"
                 f"📞 *Телефон:* {order_info.phone_number or 'Не указан'}\n\n"
-                f"{shipping_address_block}" # <-- ИЗМЕНЕНО
+                f"📍 *Адрес доставки:*\n"
+                f"   `{shipping_address.country_code}, {shipping_address.state}`\n"
+                f"   `{shipping_address.city}, {shipping_address.street_line1}`\n"
+                f"   `{shipping_address.street_line2 or ''}`\n"
+                f"   `Почтовый индекс: {shipping_address.post_code}`\n\n"
                 f"Проверьте детали в вашей системе."
             )
 
