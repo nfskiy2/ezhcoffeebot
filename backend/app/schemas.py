@@ -36,7 +36,7 @@ class MenuItemVariantSchema(BaseModel):
     id: str
     name: str
     cost: str
-    weight: Optional[str] = None # Сделали опциональным
+    weight: Optional[str] = None
 
 class MenuItemSchema(BaseModel):
     id: str
@@ -47,7 +47,7 @@ class MenuItemSchema(BaseModel):
     description: Optional[str]
     variants: List[MenuItemVariantSchema]
     addons: Optional[List[Any]]
-    sub_category: Optional[str] = Field(None, alias='subCategory') # <-- НОВОЕ ПОЛЕ
+    sub_category: Optional[str] = Field(None, alias='subCategory')
 
     class Config:
         from_attributes = True
@@ -81,3 +81,22 @@ class CartItemRequest(BaseModel):
 class OrderRequest(BaseModel):
     auth: str
     cartItems: List[CartItemRequest]
+
+# --- Схемы для подсказок адреса (Dadata) ---
+
+# Схема для запроса подсказок
+class AddressSuggestionRequest(BaseModel):
+    query: str
+    city: str
+
+# Схемы для ответа от Dadata
+class DadataSuggestionData(BaseModel):
+    street_with_type: Optional[str] = None
+    house: Optional[str] = None
+
+class DadataSuggestion(BaseModel):
+    value: str
+    data: DadataSuggestionData
+
+class DadataSuggestionResponse(BaseModel):
+    suggestions: List[DadataSuggestion] = []
