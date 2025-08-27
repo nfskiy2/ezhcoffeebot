@@ -63,6 +63,12 @@ class CafeSettingsSchema(BaseModel):
         populate_by_name = True
 
 # --- Схемы для заказа (OrderRequest) ---
+class DeliveryAddressSchema(BaseModel):
+    city: Optional[str] = None
+    street: Optional[str] = None
+    house: Optional[str] = None
+    apartment: Optional[str] = None
+    comment: Optional[str] = None
 class OrderItemCafeItem(BaseModel):
     id: str
     name: Optional[str]
@@ -81,7 +87,7 @@ class CartItemRequest(BaseModel):
 class OrderRequest(BaseModel):
     auth: str
     cartItems: List[CartItemRequest]
-    # Поле 'address' было здесь, теперь оно удалено.
+    address: Optional[DeliveryAddressSchema] = None
 
 # --- Схемы для подсказок адреса (Dadata) ---
 class AddressSuggestionRequest(BaseModel):

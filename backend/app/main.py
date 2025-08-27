@@ -343,9 +343,14 @@ async def create_order(
         logger.error(f"Could not parse user info from initData: {e}")
 
     # 3. Создаем и сохраняем заказ в базе данных
+    if order_data.address:
+        # Добавляем адрес в user_info, если он был передан
+        user_info_dict['shipping_address'] = order_data.address.dict()
+
+    # Создаем и сохраняем заказ в базе данных
     new_order = Order(
         cafe_id=cafe_id,
-        user_info=user_info_dict,
+        user_info=user_info_dict, # Теперь здесь может быть и адрес
         cart_items=[item.dict() for item in order_data.cartItems],
         total_amount=total_amount_in_minimal_units,
         currency="RUB"

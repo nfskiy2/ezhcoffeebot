@@ -247,21 +247,24 @@ async def create_invoice_link(prices: list[LabeledPrice], payload: str, bot_inst
     logger.info(f"Prices being sent: {[p.to_dict() for p in prices]}")
 
     try:
-        # ВНИМАНИЕ: create_invoice_link теперь асинхронный
         return await bot_instance.create_invoice_link(
-            title='Заказ в EZH Cafe', # Можно сделать более информативным
+            title='Заказ в EZH Cafe',
             description='Отличный выбор! Осталось только оплатить.',
             payload=payload,
             provider_token=PAYMENT_PROVIDER_TOKEN,
             currency='RUB',
             prices=prices,
-            need_name=False,
-            need_phone_number=False,
+            # --- УСТАНАВЛИВАЕМ FALSE ---
             need_shipping_address=False, 
+            # ---------------------------
+            # Можно оставить True, если хотите подтягивать имя/телефон из TG
+            need_name=True,
+            need_phone_number=True,
         )
     except TelegramError as e:
         logger.error(f"Failed to create invoice link: {e}")
         return None
+
 
 
 # --- Функция для установки вебхука (вызывается из FastAPI startup event) ---
