@@ -3,6 +3,7 @@ import json
 import os
 import asyncio
 import logging
+import httpx
 from fastapi import FastAPI, Request, Depends, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -15,10 +16,14 @@ from . import auth
 from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH
 from .database import engine, SessionLocal
 from .models import Base, Category, MenuItem, Cafe, Order
-from .schemas import CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema
+from .schemas import (
+    CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema,
+    AddressSuggestionRequest, DadataSuggestionResponse
+)
 from telegram import Update, LabeledPrice, Bot
 from telegram.ext import Application
 from urllib.parse import parse_qs
+from pydantic import BaseModel
 
 load_dotenv()
 
@@ -26,6 +31,7 @@ load_dotenv()
 BOT_TOKEN = os.getenv('BOT_TOKEN')
 APP_URL = os.getenv('APP_URL')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
+DADATA_API_KEY = os.getenv('DADATA_API_KEY')
 
 # Настройка логирования
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -110,6 +116,37 @@ def get_application_instance() -> Application:
 @app.get("/")
 async def read_root():
     return {"message": "Welcome to Laurel Cafe API!"}
+
+@app.post("/suggest-address", response_model=DadataSuggestionResponse)
+async def suggest_address(request_data: AddressSuggestionRequest):
+    if not DADATA_API_KEY:
+        raise HTTPException(status_code=500, detail="Address suggestion service is not configured.")
+
+    api_url = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": f"Token {DADATA_API_KEY}"
+    }
+    payload = {
+        "query": request_data.query,
+        "count": 5,
+        "locations": [{"city": request_data.city}],
+        "from_bound": {"value": "street"},
+        "to_bound": {"value": "house"}
+    }
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(api_url, json=payload, headers=headers)
+            response.raise_for_status() # Вызовет исключение для кодов 4xx/5xx
+            return response.json()
+    except httpx.RequestError as e:
+        logger.error(f"Error requesting Dadata: {e}")
+        raise HTTPException(status_code=503, detail="Address suggestion service is unavailable.")
+    except Exception as e:
+        logger.error(f"An unexpected error occurred with Dadata: {e}")
+        raise HTTPException(status_code=500, detail="An internal error occurred.")
 
 @app.post(WEBHOOK_PATH)
 async def bot_webhook(request: Request, application_instance: Application = Depends(get_application_instance)):

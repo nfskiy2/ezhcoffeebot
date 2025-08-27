@@ -853,18 +853,37 @@ section {
     padding: 0;
     background-color: transparent;
     border: none;
+    /* Изменено: теперь кнопка занимает всю ширину для правильного выравнивания */
     display: flex;
+    justify-content: space-between; /* Разносит текст и иконку по краям */
     align-items: center;
+    width: 100%;
     cursor: pointer;
     color: var(--text-color);
     text-align: left;
 }
+
+.header-text-content {
+    display: flex;
+    flex-direction: column;
+}
+
 .header-button h1 {
     margin-right: 4px;
     line-height: 1.2;
 }
+.header-subtitle {
+    font-size: 13px;
+    font-weight: 400;
+    opacity: 0.7;
+    margin-top: 2px;
+    line-height: 1.2;
+}
+
 .header-button .material-symbols-rounded {
     font-size: 28px;
+    flex-shrink: 0; /* Предотвращает сжатие иконки */
+    margin-left: 8px; /* Небольшой отступ слева */
 }
 
 /* --- Стили для кнопки "в корзину" на карточке товара --- */
@@ -931,4 +950,56 @@ section {
 }
 .go-to-cart-fab .material-symbols-rounded {
     font-size: 28px;
+}
+
+/* --- Стили для подсказок адреса --- */
+.street-input-container {
+    position: relative;
+}
+
+.suggestions-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: var(--popover-bg-color);
+    border: 1px solid var(--divider-color);
+    border-radius: 8px;
+    list-style-type: none;
+    padding: 4px 0;
+    margin: 4px 0 0 0;
+    z-index: 100;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.suggestions-list li {
+    padding: 10px 12px;
+    cursor: pointer;
+    font-size: 15px;
+}
+
+.suggestions-list li:hover {
+    background-color: var(--tg-theme-secondary-bg-color);
+}
+
+/* Спиннер загрузки для поля ввода */
+.spinner {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid var(--tg-theme-hint-color);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: translateY(-50%) rotate(360deg);
+    }
 }

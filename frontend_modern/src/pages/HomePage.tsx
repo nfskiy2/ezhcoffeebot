@@ -74,8 +74,10 @@ const HomePage: React.FC = () => {
     }, [items, handleMainButtonClick, getItemCount]);
     
     const formattedAddress = getFormattedAddress();
-    const headerTitle = (orderType === 'delivery' && formattedAddress) ? formattedAddress : selectedCafe?.name;
-    
+    const isDelivery = orderType === 'delivery' && formattedAddress;
+    const headerTitle = isDelivery ? formattedAddress : selectedCafe?.name;
+    const headerSubTitle = isDelivery ? `Готовит: ${selectedCafe?.name}` : null;
+
     if (isCafeLoading) {
         return <section>{/* Можете добавить здесь компонент-заглушку (шиммер) */}</section>;
     }
@@ -106,7 +108,10 @@ const HomePage: React.FC = () => {
                     onClick={() => navigate('/select-location')}
                     className="header-button"
                 >
-                    <h1>{headerTitle}</h1>
+                    <div className="header-text-content">
+                        <h1>{headerTitle}</h1>
+                        {headerSubTitle && <p className="header-subtitle">{headerSubTitle}</p>}
+                    </div>
                     <span className="material-symbols-rounded">arrow_drop_down</span>
                 </button>
                 <p id="cafe-kitchen-categories" className="cafe-kitchen-categories">{selectedCafe.kitchenCategories}</p>

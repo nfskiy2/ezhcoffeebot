@@ -7,6 +7,10 @@ import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, declarative_base
 
+from pydantic import BaseModel, Field
+from typing import List, Any, Optional
+from pydantic.alias_generators import to_camel
+
 Base = declarative_base()
 
 class Cafe(Base):
@@ -86,3 +90,51 @@ class Order(Base):
     status = Column(String, default='pending')
 
     cafe = relationship("Cafe", back_populates="orders")
+
+class CafeSettingsSchema(BaseModel):
+    min_order_amount: int
+
+    class Config:
+        from_attributes = True
+        alias_generator = to_camel
+        populate_by_name = True
+
+# --- Схемы для заказа (OrderRequest) ---
+class OrderItemCafeItem(BaseModel):
+    id: str
+    name: Optional[str]
+
+class OrderItemVariant(BaseModel):
+    id: str
+    name: Optional[str]
+    cost: Optional[str]
+
+class CartItemRequest(BaseModel):
+    cafeItem: OrderItemCafeItem
+    variant: OrderItemVariant
+    quantity: int
+    categoryId: str
+
+class OrderRequest(BaseModel):
+    auth: str
+    cartItems: List[CartItemRequest]
+
+
+# --- Схемы для подсказок адреса (Dadata) ---
+
+# Схема для запроса подсказок
+class AddressSuggestionRequest(BaseModel):
+    query: str
+    city: str
+
+# Схемы для ответа от Dadata
+class DadataSuggestionData(BaseModel):
+    street_with_type: Optional[str] = None
+    house: Optional[str] = None
+
+class DadataSuggestion(BaseModel):
+    value: str
+    data: DadataSuggestionData
+
+class DadataSuggestionResponse(BaseModel):
+    suggestions: List[DadataSuggestion] = []

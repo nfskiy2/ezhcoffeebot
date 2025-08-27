@@ -20,6 +20,7 @@ const apiClient = axios.create({
   },
 });
 
+
 // NEW: Get list of all cafes
 export const getAllCafes = async (): Promise<CafeSchema[]> => {
   try {
@@ -110,4 +111,22 @@ export const getCafePopularMenu = async (cafeId: string): Promise<MenuItemSchema
     logger.error(`Error fetching popular menu for cafe ${cafeId}:`, error);
     throw error;
   }
+};
+
+export interface AddressSuggestion {
+    value: string; // Полный адрес
+    data: {
+        street_with_type: string | null;
+        house: string | null;
+    };
+}
+
+export const getAddressSuggestions = async (query: string, city: string): Promise<AddressSuggestion[]> => {
+    try {
+        const response = await apiClient.post<{ suggestions: AddressSuggestion[] }>('/suggest-address', { query, city });
+        return response.data.suggestions || [];
+    } catch (error) {
+        logger.error("Error fetching address suggestions:", error);
+        return []; // Возвращаем пустой массив в случае ошибки
+    }
 };
