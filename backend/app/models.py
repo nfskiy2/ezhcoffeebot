@@ -65,7 +65,7 @@ class MenuItem(Base):
         back_populates="menu_items",
         overlaps="menu_items"
     )
-    cafe = relationship("Cafe", foreign_keys=[cafe_id], back_populates="menu_items", overlaps="menu_items")
+    cafe = relationship("Cafe", foreign_keys=[cafe_id], back_populates="menu_items", overlaps="category,menu_items")
 
     __table_args__ = (
         PrimaryKeyConstraint('id', 'cafe_id'),
