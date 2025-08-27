@@ -258,7 +258,6 @@ async def create_invoice_link(prices: list[LabeledPrice], payload: str, bot_inst
             need_name=False,
             need_phone_number=False,
             need_shipping_address=False, 
-            provider_token=PAYMENT_PROVIDER_TOKEN,
             currency='RUB',
             prices=prices,
             need_name=True,
