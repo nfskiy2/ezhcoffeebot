@@ -1,3 +1,4 @@
+// frontend_modern/src/pages/HomePage.tsx
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -10,8 +11,6 @@ import { useCafe } from '../store/cafe';
 import { logger } from '../utils/logger';
 import ErrorState from '../components/ErrorState';
 import { getCafeStatus, formatOpeningHours } from '../utils/timeUtils';
-import { useDelivery } from '../store/delivery';
-import DeliveryAddressForm from '../components/DeliveryAddressForm';
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
@@ -24,7 +23,6 @@ const HomePage: React.FC = () => {
         error: cafeError,
         retryLoad: retryLoadCafes
     } = useCafe();
-    const { orderType, setOrderType, getFormattedAddress } = useDelivery();
 
     const [categories, setCategories] = useState<CategorySchema[]>([]);
     const [popularItems, setPopularItems] = useState<MenuItemSchema[]>([]);
@@ -90,22 +88,6 @@ const HomePage: React.FC = () => {
         }
     }, [handleMainButtonClick, getItemCount, items]);
 
-    const formattedAddress = getFormattedAddress();
-
-    const handleHeaderClick = () => {
-        if (orderType === 'delivery') {
-            setOrderType('delivery');
-            setSelectedCafeId(null);
-        } else {
-            setSelectedCafeId(null);
-        }
-    };
-    
-    const headerTitle = orderType === 'delivery' && formattedAddress ? formattedAddress : selectedCafe?.name;
-    const showCafeSelection = orderType === 'in_store' && !selectedCafe;
-    const showAddressForm = orderType === 'delivery' && !formattedAddress;
-    const showContent = (orderType === 'in_store' && selectedCafe) || (orderType === 'delivery' && formattedAddress);
-
     if (isCafeLoading) {
         return (
             <section>
@@ -123,139 +105,128 @@ const HomePage: React.FC = () => {
             </section>
         );
     }
-    
+
     if (cafeError) {
         return <ErrorState message={cafeError} onRetry={retryLoadCafes} />;
     }
 
+    if (!selectedCafe) {
+        return (
+            <section style={{ padding: '24px' }}>
+                <h2 style={{ marginBottom: '16px' }}>Выберите кофейню</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {cafes.map(cafe => (
+                        <button
+                            key={cafe.id}
+                            onClick={() => setSelectedCafeId(cafe.id)}
+                            style={{
+                                width: '100%', textAlign: 'left', padding: '16px',
+                                backgroundColor: 'var(--popover-bg-color)', borderRadius: '12px',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.05)', fontSize: '16px',
+                                fontWeight: 500, color: 'var(--text-color)',
+                                border: '1px solid var(--divider-color)', cursor: 'pointer',
+                                transition: 'background-color 0.2s ease-out'
+                            }}
+                        >
+                            {cafe.name}
+                        </button>
+                    ))}
+                </div>
+            </section>
+        );
+    }
+    console.log("Rendering HomePage. SelectedCafe:", selectedCafe, "Categories:", categories, "Popular:", popularItems);
+
+    // Основной рендеринг страницы
     return (
         <section>
-            <div className="order-type-selector">
+            <div className="cafe-logo-container" onClick={() => setSelectedCafeId(null)} style={{ cursor: 'pointer' }}>
+                <img id="cafe-logo" className="cafe-logo" src={selectedCafe.logoImage || "/icons/icon-transparent.svg"} alt="Логотип кафе"/>
+            </div>
+            <img id="cafe-cover" className="cover" src={selectedCafe.coverImage || "/icons/icon-transparent.svg"} alt="Обложка кафе"/>
+
+            <div id="cafe-info" className="cafe-info-container">
                 <button
-                    className={orderType === 'in_store' ? 'active' : ''}
-                    onClick={() => setOrderType('in_store')}
+                    onClick={() => setSelectedCafeId(null)}
+                    style={{
+                        padding: 0,
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: 'pointer'
+                    }}
                 >
-                    В зале
+                    <h1 style={{ marginRight: '4px' }}>{selectedCafe.name}</h1>
+                    <span className="material-symbols-rounded" style={{ fontSize: '28px', color: 'var(--text-color)' }}>arrow_drop_down</span>
                 </button>
-                <button
-                    className={orderType === 'delivery' ? 'active' : ''}
-                    onClick={() => setOrderType('delivery')}
-                >
-                    Доставка
-                </button>
+                <p id="cafe-kitchen-categories" className="cafe-kitchen-categories">{selectedCafe.kitchenCategories}</p>
+                <div className="cafe-parameters-container">
+                    <div className="cafe-parameter-container">
+                        <img src="/icons/icon-time.svg" className="cafe-parameter-icon" alt="Время работы"/>
+                            <div>
+                                {formatOpeningHours(selectedCafe.openingHours).split(',').map((line, index) => (
+                                    <div key={index} className="cafe-parameter-value" style={{ opacity: 0.72 }}>
+                                        {line.trim()}
+                                    </div>
+                                ))}
+                            </div>
+                    </div>
+                    <div
+                        id="cafe-status"
+                        className="cafe-status"
+                        style={{ backgroundColor: cafeStatus.color }} // Динамический цвет
+                    >
+                        {cafeStatus.status} {/* Динамический текст */}
+                    </div>
+                </div>
             </div>
 
-            {showCafeSelection && (
-                <div className="selection-container">
-                    <h2 style={{ marginBottom: '16px' }}>Выберите кофейню</h2>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {cafes.map(cafe => (
+            <div className="cafe-section-container">
+                <h3 className="cafe-section-title">Категории</h3>
+                <div className="cafe-section-horizontal">
+                    {isLoadingCafeData ? (
+                        <>
+                            <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
+                            <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
+                            <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
+                        </>
+                    ) : (
+                        Array.isArray(categories) && categories.length > 0 ? categories.map(category => (
                             <button
-                                key={cafe.id}
-                                onClick={() => setSelectedCafeId(cafe.id)}
-                                style={{
-                                    width: '100%', textAlign: 'left', padding: '16px',
-                                    backgroundColor: 'var(--popover-bg-color)', borderRadius: '12px',
-                                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)', fontSize: '16px',
-                                    fontWeight: 500, color: 'var(--text-color)',
-                                    border: '1px solid var(--divider-color)', cursor: 'pointer',
-                                    transition: 'background-color 0.2s ease-out'
-                                }}
+                                key={category.id}
+                                className="cafe-category-container"
+                                onClick={() => navigate(`/cafe/${selectedCafe.id}/category/${category.id}`)}
+                                style={{ backgroundColor: category.backgroundColor || '#ccc' }}
                             >
-                                {cafe.name}
+                                <img className="cafe-category-icon" src={category.icon || "/icons/icon-transparent.svg"} alt={category.name + " иконка"}/>
+                                <div
+                                    className="cafe-category-name"
+                                    style={{ color: getContrastingTextColor(category.backgroundColor || '#ccc') }}
+                                >
+                                    {category.name}
+                                </div>
                             </button>
-                        ))}
-                    </div>
+                        )) : <p style={{ paddingLeft: '16px' }}>Нет доступных категорий.</p>
+                    )}
                 </div>
-            )}
+            </div>
 
-            {showAddressForm && (
-                <div className="selection-container">
-                    <DeliveryAddressForm />
+            <div className="cafe-section-container">
+                <h3 className="cafe-section-title">Популярное</h3>
+                <div className="cafe-section-horizontal">
+                    {isLoadingCafeData ? (
+                        <>
+                            <div className="cafe-item-container"><div className="cafe-item-image shimmer"></div></div>
+                            <div className="cafe-item-container"><div className="cafe-item-image shimmer"></div></div>
+                        </>
+                    ) : (
+                        Array.isArray(popularItems) && popularItems.length > 0 ? popularItems.map(item => (
+                            <MenuItemCard key={item.id} item={item} cafeId={selectedCafe.id} />
+                        )) : <p style={{ paddingLeft: '16px' }}>Нет популярных товаров.</p>
+                    )}
                 </div>
-            )}
-
-            {showContent && selectedCafe && (
-                <>
-                    <div className="cafe-logo-container" onClick={handleHeaderClick} style={{ cursor: 'pointer' }}>
-                        <img id="cafe-logo" className="cafe-logo" src={selectedCafe.logoImage || "/icons/icon-transparent.svg"} alt="Логотип"/>
-                    </div>
-                    <img id="cafe-cover" className="cover" src={selectedCafe.coverImage || "/icons/icon-transparent.svg"} alt="Обложка"/>
-
-                    <div id="cafe-info" className="cafe-info-container">
-                        <button onClick={handleHeaderClick} className="header-button">
-                            <h1>{headerTitle}</h1>
-                            <span className="material-symbols-rounded">arrow_drop_down</span>
-                        </button>
-                        <p id="cafe-kitchen-categories" className="cafe-kitchen-categories">{selectedCafe.kitchenCategories}</p>
-                        <div className="cafe-parameters-container">
-                            <div className="cafe-parameter-container">
-                                <img src="/icons/icon-time.svg" className="cafe-parameter-icon" alt="Время работы"/>
-                                    <div>
-                                        {formatOpeningHours(selectedCafe.openingHours).split(',').map((line, index) => (
-                                            <div key={index} className="cafe-parameter-value" style={{ opacity: 0.72 }}>
-                                                {line.trim()}
-                                            </div>
-                                        ))}
-                                    </div>
-                            </div>
-                            <div
-                                id="cafe-status"
-                                className="cafe-status"
-                                style={{ backgroundColor: cafeStatus.color }}
-                            >
-                                {cafeStatus.status}
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="cafe-section-container">
-                        <h3 className="cafe-section-title">Категории</h3>
-                        <div className="cafe-section-horizontal">
-                            {isLoadingCafeData ? (
-                                <>
-                                    <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
-                                    <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
-                                    <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
-                                </>
-                            ) : (
-                                Array.isArray(categories) && categories.length > 0 ? categories.map(category => (
-                                    <button
-                                        key={category.id}
-                                        className="cafe-category-container"
-                                        onClick={() => navigate(`/cafe/${selectedCafe.id}/category/${category.id}`)}
-                                        style={{ backgroundColor: category.backgroundColor || '#ccc' }}
-                                    >
-                                        <img className="cafe-category-icon" src={category.icon || "/icons/icon-transparent.svg"} alt={category.name + " иконка"}/>
-                                        <div
-                                            className="cafe-category-name"
-                                            style={{ color: getContrastingTextColor(category.backgroundColor || '#ccc') }}
-                                        >
-                                            {category.name}
-                                        </div>
-                                    </button>
-                                )) : <p style={{ paddingLeft: '16px' }}>Нет доступных категорий.</p>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="cafe-section-container">
-                        <h3 className="cafe-section-title">Популярное</h3>
-                        <div className="cafe-section-horizontal">
-                            {isLoadingCafeData ? (
-                                <>
-                                    <div className="cafe-item-container"><div className="cafe-item-image shimmer"></div></div>
-                                    <div className="cafe-item-container"><div className="cafe-item-image shimmer"></div></div>
-                                </>
-                            ) : (
-                                Array.isArray(popularItems) && popularItems.length > 0 ? popularItems.map(item => (
-                                    <MenuItemCard key={item.id} item={item} cafeId={selectedCafe.id} />
-                                )) : <p style={{ paddingLeft: '16px' }}>Нет популярных товаров.</p>
-                            )}
-                        </div>
-                    </div>
-                </>
-            )}
+            </div>
         </section>
     );
 };
