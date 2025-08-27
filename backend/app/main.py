@@ -15,7 +15,7 @@ import contextlib
 
 # Импорты компонентов
 from . import auth
-from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH
+from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH, send_new_order_notifications
 from .database import engine, SessionLocal
 from .models import Base, Category, MenuItem, Cafe, Order
 from .schemas import (
@@ -334,12 +334,15 @@ async def create_order(
         )
     
     user_info_dict = {}
+    user_id = None # Нам понадобится ID пользователя
     try:
         parsed_auth_data = parse_qs(order_data.auth)
         if 'user' in parsed_auth_data:
             user_data_json = parsed_auth_data['user'][0]
             user_info_dict = json.loads(user_data_json)
+            user_id = user_info_dict.get('id') # Извлекаем ID
     except Exception as e:
+
         logger.error(f"Could not parse user info from initData: {e}")
 
     # 3. Создаем и сохраняем заказ в базе данных
@@ -350,26 +353,48 @@ async def create_order(
     # Создаем и сохраняем заказ в базе данных
     new_order = Order(
         cafe_id=cafe_id,
-        user_info=user_info_dict, # Теперь здесь может быть и адрес
+        user_info=user_info_dict,
         cart_items=[item.dict() for item in order_data.cartItems],
         total_amount=total_amount_in_minimal_units,
-        currency="RUB"
+        currency="RUB",
+        # Устанавливаем статус в зависимости от способа оплаты
+        status='pending' if order_data.paymentMethod != 'online' else 'awaiting_payment'
     )
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
-    logger.info(f"Order {new_order.id} created and saved to DB.")
+    logger.info(f"Order {new_order.id} for payment method '{order_data.paymentMethod}' created and saved to DB.")
 
-    # 4. Создаем инвойс, используя ID нашего заказа как payload
-    invoice_url = await create_invoice_link(
-        prices=labeled_prices,
-        payload=str(new_order.id),
-        bot_instance=bot_instance
-    )
-
-    if invoice_url is None:
-        logger.error("Failed to get invoice URL from bot.")
-        raise HTTPException(status_code=500, detail="Could not create invoice.")
-
-    logger.info(f"Invoice URL created for order: {invoice_url}")
-    return { 'invoiceUrl': invoice_url }
+    if order_data.paymentMethod == 'online':
+        # --- Случай 1: Оплата онлайн ---
+        # Отправляем подтверждение пользователю ДО оплаты
+        if user_id:
+            await send_new_order_notifications(
+                order=new_order, 
+                bot_instance=bot_instance, 
+                user_id_to_notify=user_id, 
+                staff_group_to_notify=None # Персонал уведомим после оплаты
+            )
+        
+        # Создаем и возвращаем ссылку на инвойс
+        invoice_url = await create_invoice_link(
+            prices=labeled_prices,
+            payload=str(new_order.id),
+            bot_instance=bot_instance
+        )
+        if invoice_url is None:
+            raise HTTPException(status_code=500, detail="Could not create invoice.")
+        logger.info(f"Invoice URL created for order: {invoice_url}")
+        return { 'invoiceUrl': invoice_url }
+    
+    else:
+        # --- Случай 2: Оплата при получении ---
+        # Отправляем уведомления и пользователю, и персоналу
+        await send_new_order_notifications(
+            order=new_order, 
+            bot_instance=bot_instance, 
+            user_id_to_notify=user_id,
+            staff_group_to_notify=os.getenv('STAFF_GROUP_ID') # ID группы из .env
+        )
+        # Возвращаем успешный ответ, но без ссылки на инвойс
+        return { "message": "Order accepted" }

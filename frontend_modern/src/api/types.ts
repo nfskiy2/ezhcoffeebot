@@ -103,7 +103,16 @@ export interface CartItemRequest {
 export interface OrderRequest {
     auth: string;
     cartItems: CartItemRequest[];
-    // Поле 'address' было здесь, теперь оно удалено.
+    address: DeliveryAddress | null; // Убедитесь, что этот тип есть
+    paymentMethod: string; // Добавляем новое поле
+}
+// ...
+export interface DeliveryAddress { // Убедитесь, что этот тип есть
+    city: string;
+    street: string;
+    house: string;
+    apartment: string;
+    comment: string;
 }
 
 // --- Типы для подсказок адреса ---

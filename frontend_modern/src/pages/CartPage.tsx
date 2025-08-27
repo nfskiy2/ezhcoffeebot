@@ -18,7 +18,7 @@ const CartPage: React.FC = () => {
     const { items, increaseQuantity, decreaseQuantity, getItemCount, getTotalCost, clearCart } = useCart();
     const { showSnackbar } = useSnackbar();
     const { selectedCafe } = useCafe();
-    const { orderType, getFormattedAddress } = useDelivery();
+    const { orderType, getFormattedAddress, address } = useDelivery();
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [minOrderAmount, setMinOrderAmount] = useState<number>(0);
@@ -47,31 +47,35 @@ const CartPage: React.FC = () => {
         }
         if (isSubmitting || getItemCount(items) === 0 || !selectedCafe) return;
 
-        if (paymentMethod === 'online') {
-            if (window.Telegram && window.Telegram.WebApp) {
-                const initData = TelegramSDK.getInitData();
-                if (!initData) {
-                    TelegramSDK.showAlert("Ошибка: данные пользователя Telegram недоступны.");
-                    return;
-                }
+        if (window.Telegram && window.Telegram.WebApp) {
+            const initData = TelegramSDK.getInitData();
+            if (!initData) {
+                TelegramSDK.showAlert("Ошибка: данные пользователя Telegram недоступны.");
+                return;
+            }
 
-                TelegramSDK.setMainButtonLoading(true);
-                setIsSubmitting(true);
-                try {
-                    const orderData: OrderRequest = {
-                        auth: initData,
-                        cartItems: items.map(item => ({
-                            cafeItem: { id: item.cafeItem.id, name: item.cafeItem.name },
-                            variant: { id: item.variant.id, name: item.variant.name, cost: item.variant.cost },
-                            quantity: item.quantity,
-                            categoryId: item.categoryId,
-                        })),
-                        // Поле 'address' было здесь, теперь оно удалено.
-                    };
-                    
-                    const response = await createOrder(selectedCafe.id, orderData);
+            TelegramSDK.setMainButtonLoading(true);
+            setIsSubmitting(true);
+            try {
+                const orderData: OrderRequest = {
+                    auth: initData,
+                    cartItems: items.map(item => ({
+                        cafeItem: { id: item.cafeItem.id, name: item.cafeItem.name },
+                        variant: { id: item.variant.id, name: item.variant.name, cost: item.variant.cost },
+                        quantity: item.quantity,
+                        categoryId: item.categoryId,
+                    })),
+                    address: address,
+                    paymentMethod: paymentMethod
+                };
+
+                const response = await createOrder(selectedCafe.id, orderData);
+
+                if (response.invoiceUrl) {
+                    // Случай 1: Онлайн-оплата
                     TelegramSDK.openInvoice(response.invoiceUrl, (status) => {
                         if (status === 'paid') {
+                            // Уведомление об успехе здесь не нужно, т.к. его пришлет бот
                             clearCart();
                             TelegramSDK.close();
                         } else if (status === 'failed') {
@@ -82,20 +86,24 @@ const CartPage: React.FC = () => {
                         TelegramSDK.setMainButtonLoading(false);
                         setIsSubmitting(false);
                     });
-                } catch (err: any) {
-                    logger.error("Error creating order:", err);
-                    const errorMessage = err.response?.data?.detail?.[0]?.message || err.message || "Не удалось создать заказ. Попробуйте позже.";
-                    TelegramSDK.showAlert(errorMessage);
-                    TelegramSDK.setMainButtonLoading(false);
-                    setIsSubmitting(false);
+                } else {
+                    // Случай 2: Оплата при получении
+                    // Бот уже отправил уведомление, здесь можно ничего не показывать или 
+                    // показать общее сообщение и закрыть приложение
+                    TelegramSDK.showAlert("Ваш заказ успешно оформлен! Мы скоро с вами свяжемся.");
+                    clearCart();
+                    TelegramSDK.close();
                 }
+
+            } catch (err: any) {
+                logger.error("Error creating order:", err);
+                const errorMessage = err.response?.data?.detail?.[0]?.message || err.message || "Не удалось создать заказ. Попробуйте позже.";
+                TelegramSDK.showAlert(errorMessage);
+                TelegramSDK.setMainButtonLoading(false);
+                setIsSubmitting(false);
             }
-        } else {
-            TelegramSDK.showAlert(`Ваш заказ принят! Способ оплаты: ${paymentMethod === 'cash_on_delivery' ? 'наличными' : 'картой'} курьеру. С вами свяжутся для подтверждения.`);
-            clearCart();
-            TelegramSDK.close();
         }
-    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart, packaging, paymentMethod]);
+    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart, packaging, address, paymentMethod]);
 
     useEffect(() => {
         if (window.Telegram && window.Telegram.WebApp) {

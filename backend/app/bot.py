@@ -3,7 +3,8 @@ import os
 import re
 import asyncio
 from .database import SessionLocal
-from .models import Order
+from .models import Order # Импортируем модель Order
+from typing import Optional # Импортируем Optional
 import uuid
 
 # Импорты из python-telegram-bot
@@ -92,6 +93,72 @@ async def handle_successful_payment(update: Update, context: CallbackContext) ->
     except TelegramError as e:
         logger.error(f"Failed to send success message: {e}")
 
+async def send_new_order_notifications(
+    order: Order, 
+    bot_instance: Bot, 
+    user_id_to_notify: Optional[int],
+    staff_group_to_notify: Optional[str]
+):
+    """Отправляет уведомления о новом заказе пользователю и/или персоналу."""
+    if not order:
+        return
+
+    # Форматируем список товаров
+    items_text_list = []
+    for item in order.cart_items:
+        item_name = item.get('cafeItem', {}).get('name', 'Unknown Item')
+        variant_name = item.get('variant', {}).get('name', 'Standard')
+        quantity = item.get('quantity', 0)
+        items_text_list.append(f"  - {item_name} ({variant_name}) x {quantity}")
+    items_text = "\n".join(items_text_list)
+    total_amount_str = f"{order.total_amount / 100} {order.currency}"
+    
+    # --- Сообщение для пользователя ---
+    if user_id_to_notify:
+        try:
+            user_text = (
+                f"✅ *Ваш заказ `#{str(order.id)[:8]}` принят!* 🎉\n\n"
+                f"🌿 *Состав заказа:*\n{items_text}\n\n"
+                f"💰 *Итого:* {total_amount_str}\n\n"
+                "Мы скоро начнем готовить. Ожидайте, пожалуйста!"
+            )
+            await bot_instance.send_message(
+                chat_id=user_id_to_notify,
+                text=user_text,
+                parse_mode='Markdown'
+            )
+            logger.info(f"Successfully sent order confirmation to user {user_id_to_notify}")
+        except TelegramError as e:
+            logger.error(f"Failed to send confirmation to user {user_id_to_notify}: {e}")
+
+    # --- Сообщение для персонала (если указана группа) ---
+    if staff_group_to_notify:
+        try:
+            user_info = order.user_info or {}
+            shipping_address = user_info.get('shipping_address', {})
+            address_lines = [
+                f"`{shipping_address.get('city', '')}, {shipping_address.get('street', '')}, д. {shipping_address.get('house', '')}`",
+                f"`кв./офис: {shipping_address.get('apartment', '')}`" if shipping_address.get('apartment') else "",
+                f"`Комментарий: {shipping_address.get('comment', 'нет')}`"
+            ]
+            address_text = "\n".join(filter(None, address_lines))
+
+            staff_text = (
+                f"🔥 *Новый заказ (оплата при получении)!* `#{str(order.id)[:8]}` 🔥\n\n"
+                f"🛍️ *Состав заказа:*\n{items_text}\n\n"
+                f"💰 *Сумма:* {total_amount_str}\n"
+                f"👤 *Клиент:* {user_info.get('first_name', 'Не указано')}\n\n"
+                f"📍 *Адрес доставки:*\n{address_text}\n\n"
+                "Необходимо связаться с клиентом для подтверждения."
+            )
+            await bot_instance.send_message(
+                chat_id=staff_group_to_notify,
+                text=staff_text,
+                parse_mode='Markdown'
+            )
+            logger.info(f"Successfully sent order notification to staff group {staff_group_to_notify}")
+        except TelegramError as e:
+            logger.error(f"Failed to send order notification to staff group {staff_group_to_notify}: {e}")
 
 async def handle_successful_payment(update: Update, context: CallbackContext) -> None:
     """Обработка успешного платежа."""

@@ -88,6 +88,8 @@ class OrderRequest(BaseModel):
     auth: str
     cartItems: List[CartItemRequest]
     address: Optional[DeliveryAddressSchema] = None
+    paymentMethod: str 
+
 
 # --- Схемы для подсказок адреса (Dadata) ---
 class AddressSuggestionRequest(BaseModel):
