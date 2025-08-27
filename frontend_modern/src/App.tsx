@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage';
 import CategoryPage from './pages/CategoryPage';
 import DetailsPage from './pages/DetailsPage';
 import CartPage from './pages/CartPage';
+import SelectionPage from './pages/SelectionPage';
 
 const App: React.FC = () => {
     const location = useLocation();
@@ -61,7 +62,7 @@ const App: React.FC = () => {
             <Routes>
                 {/* Главная страница */}
                 <Route path="/" element={<HomePage />} />
-
+                <Route path="/select-location" element={<SelectionPage />} />
                 {/* НОВЫЕ МАРШРУТЫ С cafeId */}
                 <Route path="/cafe/:cafeId/category/:categoryId" element={<CategoryPage />} />
                 <Route path="/cafe/:cafeId/details/:itemId" element={<DetailsPage />} />
