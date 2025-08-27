@@ -258,11 +258,6 @@ async def create_invoice_link(prices: list[LabeledPrice], payload: str, bot_inst
             need_name=False,
             need_phone_number=False,
             need_shipping_address=False, 
-            currency='RUB',
-            prices=prices,
-            need_name=True,
-            need_phone_number=True,
-            need_shipping_address=True,
         )
     except TelegramError as e:
         logger.error(f"Failed to create invoice link: {e}")
