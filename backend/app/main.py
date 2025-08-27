@@ -10,6 +10,9 @@ from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from typing import Any, Optional, List
 import contextlib
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+
 
 # Импорты компонентов
 from . import auth
@@ -68,6 +71,26 @@ async def lifespan(app: FastAPI):
 
 # --- Инициализация FastAPI ---
 app = FastAPI(lifespan=lifespan)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # Преобразуем ошибки в более читаемый формат
+    readable_errors = []
+    for error in exc.errors():
+        readable_errors.append({
+            "location": ".".join(map(str, error["loc"])),
+            "message": error["msg"],
+            "type": error["type"]
+        })
+    
+    # Выводим детальную информацию в лог сервера
+    logger.error(f"Validation error for request {request.method} {request.url}:")
+    logger.error(json.dumps(readable_errors, indent=2, ensure_ascii=False))
+    
+    return JSONResponse(
+        status_code=422,
+        content={"detail": readable_errors},
+    )
 
 # --- Настройка CORS ---
 allowed_origins = []

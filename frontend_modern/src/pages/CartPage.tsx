@@ -10,13 +10,21 @@ import { TelegramSDK } from '../telegram/telegram';
 import { useSnackbar } from '../components/Snackbar';
 import { useCafe } from '../store/cafe';
 import { logger } from '../utils/logger';
+import { useDelivery } from '../store/delivery';
+
+type PackagingType = 'dine-in' | 'take-away';
+
 
 const CartPage: React.FC = () => {
     const { items, increaseQuantity, decreaseQuantity, getItemCount, getTotalCost, clearCart } = useCart();
     const { showSnackbar } = useSnackbar();
     const { selectedCafe } = useCafe();
+    const { orderType, getFormattedAddress } = useDelivery();
+
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [minOrderAmount, setMinOrderAmount] = useState<number>(0);
+    const [packaging, setPackaging] = useState<PackagingType>('take-away');
+
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -53,20 +61,14 @@ const CartPage: React.FC = () => {
                 const orderData: OrderRequest = {
                     auth: initData,
                     cartItems: items.map(item => ({
-                        // Явно создаем объекты с нужными полями, отбрасывая лишние
-                        cafeItem: {
-                            id: item.cafeItem.id,
-                            name: item.cafeItem.name
-                        },
-                        variant: {
-                            id: item.variant.id,
-                            name: item.variant.name,
-                            cost: item.variant.cost
-                        },
+                        cafeItem: { id: item.cafeItem.id, name: item.cafeItem.name },
+                        variant: { id: item.variant.id, name: item.variant.name, cost: item.variant.cost },
                         quantity: item.quantity,
                         categoryId: item.categoryId,
                     })),
                 };
+                console.log('Отправляемые данные заказа:', JSON.stringify(orderData, null, 2));
+
                 const response = await createOrder(selectedCafe.id, orderData);
                 TelegramSDK.openInvoice(response.invoiceUrl, (status) => {
                     if (status === 'paid') {
@@ -87,7 +89,7 @@ const CartPage: React.FC = () => {
                 setIsSubmitting(false);
             }
         }
-    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart]);
+    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart, packaging]);
 
     useEffect(() => {
         if (window.Telegram && window.Telegram.WebApp) {
@@ -117,10 +119,35 @@ const CartPage: React.FC = () => {
             };
         }
     }, [items, isSubmitting, selectedCafe, minOrderAmount, handleCheckout, getItemCount, getTotalCost]);
+   
+    const formattedAddress = getFormattedAddress();
 
-    return (
-        <section className="cart-items-container">
-            <h2>Ваша корзина {selectedCafe ? `в "${selectedCafe.name}"` : ''}</h2>
+
+        return (
+        <section className="cart-page-container">
+            <h2>Ваша корзина</h2>
+
+            <div className="order-info-summary">
+                {orderType === 'delivery' && formattedAddress ? (
+                    <div className="info-row">
+                        <span className="material-symbols-rounded">delivery_dining</span>
+                        <span>Доставка на: <strong>{formattedAddress}</strong></span>
+                    </div>
+                ) : (
+                    <div className="info-row">
+                        <span className="material-symbols-rounded">storefront</span>
+                        <span>Самовывоз из: <strong>{selectedCafe?.name}</strong></span>
+                    </div>
+                )}
+                <div className="info-row packaging-selector">
+                    <span className="material-symbols-rounded">lunch_dining</span>
+                    <div className="tab-selector small">
+                        <button className={packaging === 'dine-in' ? 'active' : ''} onClick={() => setPackaging('dine-in')}>В зале</button>
+                        <button className={packaging === 'take-away' ? 'active' : ''} onClick={() => setPackaging('take-away')}>С собой</button>
+                    </div>
+                </div>
+            </div>
+
             {items.length === 0 ? (
                 <div id="cart-empty-placeholder" className="cart-empty-placeholder">
                     <Lottie animationData={emptyCartAnimation} loop={true} style={{ width: 150, height: 150 }}/>

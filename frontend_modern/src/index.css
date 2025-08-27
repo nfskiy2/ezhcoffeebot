@@ -1031,3 +1031,18 @@ section {
     font-size: 20px;
     opacity: 0.7;
 }
+
+.packaging-selector {
+    justify-content: space-between;
+}
+
+.tab-selector.small {
+    padding: 2px;
+    border-radius: 8px;
+}
+
+.tab-selector.small button {
+    padding: 6px 12px;
+    font-size: 13px;
+    border-radius: 7px;
+}
