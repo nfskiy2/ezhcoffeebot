@@ -6,13 +6,12 @@ import logging
 import httpx
 from fastapi import FastAPI, Request, Depends, HTTPException, Path
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from typing import Any, Optional, List
 import contextlib
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-
 
 # Импорты компонентов
 from . import auth
@@ -26,7 +25,6 @@ from .schemas import (
 from telegram import Update, LabeledPrice, Bot
 from telegram.ext import Application
 from urllib.parse import parse_qs
-from pydantic import BaseModel
 
 load_dotenv()
 
@@ -74,7 +72,6 @@ app = FastAPI(lifespan=lifespan)
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    # Преобразуем ошибки в более читаемый формат
     readable_errors = []
     for error in exc.errors():
         readable_errors.append({
@@ -83,7 +80,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             "type": error["type"]
         })
     
-    # Выводим детальную информацию в лог сервера
     logger.error(f"Validation error for request {request.method} {request.url}:")
     logger.error(json.dumps(readable_errors, indent=2, ensure_ascii=False))
     
@@ -140,6 +136,17 @@ def get_application_instance() -> Application:
 async def read_root():
     return {"message": "Welcome to Laurel Cafe API!"}
 
+@app.post(WEBHOOK_PATH)
+async def bot_webhook(request: Request, application_instance: Application = Depends(get_application_instance)):
+    try:
+        update_json = await request.json()
+        update = Update.de_json(update_json, application_instance.bot)
+        await application_instance.process_update(update)
+        return {"message": "OK"}
+    except Exception as e:
+        logger.error(f"Error processing webhook update: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Error processing update.")
+
 @app.post("/suggest-address", response_model=DadataSuggestionResponse)
 async def suggest_address(request_data: AddressSuggestionRequest):
     if not DADATA_API_KEY:
@@ -162,7 +169,7 @@ async def suggest_address(request_data: AddressSuggestionRequest):
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(api_url, json=payload, headers=headers)
-            response.raise_for_status() # Вызовет исключение для кодов 4xx/5xx
+            response.raise_for_status()
             return response.json()
     except httpx.RequestError as e:
         logger.error(f"Error requesting Dadata: {e}")
@@ -170,17 +177,6 @@ async def suggest_address(request_data: AddressSuggestionRequest):
     except Exception as e:
         logger.error(f"An unexpected error occurred with Dadata: {e}")
         raise HTTPException(status_code=500, detail="An internal error occurred.")
-
-@app.post(WEBHOOK_PATH)
-async def bot_webhook(request: Request, application_instance: Application = Depends(get_application_instance)):
-    try:
-        update_json = await request.json()
-        update = Update.de_json(update_json, application_instance.bot)
-        await application_instance.process_update(update)
-        return {"message": "OK"}
-    except Exception as e:
-        logger.error(f"Error processing webhook update: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Error processing update.")
 
 @app.get("/cafes", response_model=List[CafeSchema])
 def get_all_cafes(db: Session = Depends(get_db_session)):
@@ -339,33 +335,28 @@ async def create_order(
     
     user_info_dict = {}
     try:
-        # initData - это URL-encoded строка, парсим ее
         parsed_auth_data = parse_qs(order_data.auth)
         if 'user' in parsed_auth_data:
             user_data_json = parsed_auth_data['user'][0]
             user_info_dict = json.loads(user_data_json)
     except Exception as e:
         logger.error(f"Could not parse user info from initData: {e}")
-        # Не блокируем заказ, если не удалось распарсить, но логируем
 
-    if order_data.address:
-        user_info_dict['shipping_address'] = order_data.address.dict()
-        
     # 3. Создаем и сохраняем заказ в базе данных
     new_order = Order(
         cafe_id=cafe_id,
-        user_info=user_info_dict, # Теперь здесь может быть и адрес
+        user_info=user_info_dict,
         cart_items=[item.dict() for item in order_data.cartItems],
         total_amount=total_amount_in_minimal_units,
         currency="RUB"
     )
     db.add(new_order)
     db.commit()
-    db.refresh(new_order) # Получаем сгенерированный ID
+    db.refresh(new_order)
     logger.info(f"Order {new_order.id} created and saved to DB.")
 
     # 4. Создаем инвойс, используя ID нашего заказа как payload
-    invoice_url = await create_invoice_link( # <--- ДОБАВЬТЕ await
+    invoice_url = await create_invoice_link(
         prices=labeled_prices,
         payload=str(new_order.id),
         bot_instance=bot_instance
