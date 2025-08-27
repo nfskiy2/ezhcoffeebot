@@ -31,7 +31,7 @@ def migrate():
     try:
         print("\n--- STARTING MIGRATION ---")
 
-        # 1. МИГРАЦИЯ КОФЕЕН
+                # 1. МИГРАЦИЯ КОФЕЕН И ДОСТАВКИ
         print("Migrating cafes...")
         cafes_data = [
             {
@@ -69,16 +69,29 @@ def migrate():
                 "status": "Open",
                 "opening_hours": "пн-вс: 11:00-22:00",
                 "min_order_amount": 12000
+            },
+            # НОВОЕ ВИРТУАЛЬНОЕ КАФЕ ДЛЯ ДОСТАВКИ
+            {
+                "id": "delivery-tomsk",
+                "name": "Доставка по Томску",
+                "cover_image": "https://images.unsplash.com/photo-1588001405580-86d354a8a8a4?auto=format&fit=crop&q=80&w=1974",
+                "logo_image": "icons/icon-delivery.svg",
+                "kitchen_categories": "Все меню на доставку",
+                "rating": "",
+                "cooking_time": "30-60 мин",
+                "status": "Доступна",
+                "opening_hours": "пн-вс: 10:00-21:00",
+                "min_order_amount": 15000 # Минимальная сумма для доставки
             }
         ]
         
         for cafe_data in cafes_data:
-            cafe = Cafe(**cafe_data)
-            db.add(cafe)
+            # Используем merge для идемпотентности
+            db.merge(Cafe(**cafe_data))
         
-        # <-- ИСПРАВЛЕНИЕ: Коммитим кофейни ЗДЕСЬ, до добавления категорий.
         db.commit()
         print(f"-> Cafes committed. Total in DB: {db.query(Cafe).count()}")
+
         # 2. МИГРАЦИЯ КАТЕГОРИЙ И МЕНЮ
         categories_data_path = 'data/categories.json'
         with open(categories_data_path, 'r', encoding='utf-8') as f:
@@ -88,7 +101,8 @@ def migrate():
         cafe_category_mapping = {
             "ezh-1": all_category_ids,
             "ezh-2": [cid for cid in all_category_ids if 'kofe' in cid or 'coffee' in cid],
-            "ezh-3": [cid for cid in all_category_ids if 'picca' in cid or 'pasta' in cid]
+            "ezh-3": [cid for cid in all_category_ids if 'picca' in cid or 'pasta' in cid],
+            "delivery-tomsk": all_category_ids 
         }
 
         for cafe_id, category_ids in cafe_category_mapping.items():

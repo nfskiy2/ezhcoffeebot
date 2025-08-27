@@ -19,7 +19,7 @@ const useDebounce = (value: string, delay: number) => {
 };
 
 interface DeliveryAddressFormProps {
-    onSave: () => void;
+    onSave: (city: string) => void; // Изменили сигнатуру
 }
 
 const DeliveryAddressForm: React.FC<DeliveryAddressFormProps> = ({ onSave }) => {
@@ -85,7 +85,7 @@ const DeliveryAddressForm: React.FC<DeliveryAddressFormProps> = ({ onSave }) => 
     const handleSave = () => {
         if (!validateForm()) return;
         saveAddress(address);
-        onSave();
+        onSave(address.city); // Передаем город при сохранении
     };
 
     return (

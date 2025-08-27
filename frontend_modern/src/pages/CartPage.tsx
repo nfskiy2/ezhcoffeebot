@@ -53,8 +53,16 @@ const CartPage: React.FC = () => {
                 const orderData: OrderRequest = {
                     auth: initData,
                     cartItems: items.map(item => ({
-                        cafeItem: item.cafeItem,
-                        variant: item.variant,
+                        // Явно создаем объекты с нужными полями, отбрасывая лишние
+                        cafeItem: {
+                            id: item.cafeItem.id,
+                            name: item.cafeItem.name
+                        },
+                        variant: {
+                            id: item.variant.id,
+                            name: item.variant.name,
+                            cost: item.variant.cost
+                        },
                         quantity: item.quantity,
                         categoryId: item.categoryId,
                     })),
