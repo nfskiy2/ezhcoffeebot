@@ -111,5 +111,7 @@ export interface OrderRequest {
         apartment: string;
         comment: string;
     } | null;
+    packingOption?: string | null;
+
 
 }

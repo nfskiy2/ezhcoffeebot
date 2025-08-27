@@ -295,10 +295,9 @@ async def create_order(
         cart_items=[item.dict() for item in order_data.cartItems],
         total_amount=total_amount_in_minimal_units,
         currency="RUB",
-        # --- СОХРАНЯЕМ НОВЫЕ ДАННЫЕ ---
         fulfillment_method=order_data.fulfillmentMethod,
-        delivery_address=order_data.deliveryAddress
-        # -----------------------------
+        delivery_address=order_data.deliveryAddress,
+        packing_option=order_data.packingOption
     )
     db.add(new_order)
     db.commit()
@@ -319,11 +318,3 @@ async def create_order(
 
     logger.info(f"Invoice URL created for order: {invoice_url}")
     return { 'invoiceUrl': invoice_url }
-
-
-    # invoice_url = await create_invoice_link(prices=labeled_prices, bot_instance=bot_instance)
-    # if invoice_url is None:
-    #     logger.error("Failed to get invoice URL from bot.")
-    #     raise HTTPException(status_code=500, detail="Could not create invoice.")
-    # logger.info(f"Invoice URL created for order: {invoice_url}")
-    # return { 'invoiceUrl': invoice_url }
