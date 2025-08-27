@@ -63,7 +63,7 @@
     <!-- Vite автоматически управляет этой строкой. Вам не нужно ее добавлять вручную,
          если только вы не отключили эту функцию в конфиге Vite.
          Если стандартный index.html из тестового проекта работал, эта строка инжектируется. -->
-    <script type="module" src="/src/main.tsx"></script>
+    <script type="module" src="/src/main.tsx?t=<%= Date.now() %>"></script>
 
   </body>
 </html>

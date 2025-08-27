@@ -1,4 +1,3 @@
-// frontend_modern/src/pages/CartPage.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import Lottie from 'lottie-react';
 import type { OrderRequest } from '../api/types';
@@ -14,7 +13,6 @@ import { useDelivery } from '../store/delivery';
 
 type PackagingType = 'dine-in' | 'take-away';
 
-
 const CartPage: React.FC = () => {
     const { items, increaseQuantity, decreaseQuantity, getItemCount, getTotalCost, clearCart } = useCart();
     const { showSnackbar } = useSnackbar();
@@ -24,7 +22,6 @@ const CartPage: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [minOrderAmount, setMinOrderAmount] = useState<number>(0);
     const [packaging, setPackaging] = useState<PackagingType>('take-away');
-
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -64,9 +61,10 @@ const CartPage: React.FC = () => {
                         cafeItem: { id: item.cafeItem.id, name: item.cafeItem.name },
                         variant: { id: item.variant.id, name: item.variant.name, cost: item.variant.cost },
                         quantity: item.quantity,
-                        categoryId: item.categoryId,
+                        categoryId: item.categoryId, // <-- УБЕДИТЕСЬ, ЧТО ЭТА СТРОКА ЕСТЬ
                     })),
                 };
+                
                 console.log('Отправляемые данные заказа:', JSON.stringify(orderData, null, 2));
 
                 const response = await createOrder(selectedCafe.id, orderData);
@@ -83,8 +81,10 @@ const CartPage: React.FC = () => {
                     setIsSubmitting(false);
                 });
             } catch (err: any) {
-                logger.error("Failed to create order:", err);
-                TelegramSDK.showAlert(err.message || "Не удалось создать заказ. Попробуйте позже.");
+                logger.error("Error creating order:", err);
+                // Улучшенное отображение ошибки для пользователя
+                const errorMessage = err.response?.data?.detail?.[0]?.message || err.message || "Не удалось создать заказ. Попробуйте позже.";
+                TelegramSDK.showAlert(errorMessage);
                 TelegramSDK.setMainButtonLoading(false);
                 setIsSubmitting(false);
             }
@@ -119,11 +119,10 @@ const CartPage: React.FC = () => {
             };
         }
     }, [items, isSubmitting, selectedCafe, minOrderAmount, handleCheckout, getItemCount, getTotalCost]);
-   
+
     const formattedAddress = getFormattedAddress();
 
-
-        return (
+    return (
         <section className="cart-page-container">
             <h2>Ваша корзина</h2>
 
@@ -173,15 +172,12 @@ const CartPage: React.FC = () => {
                                         ))}
                                     </div>
                                 )}
-
                                 <div className="cart-item-cost">
-                                    {/* Теперь эта цена будет правильной, так как getTotalCost обновлен */}
                                     {toDisplayCost(
                                         (parseInt(item.variant.cost, 10) + 
                                         (item.selectedAddons?.reduce((sum, addon) => sum + parseInt(addon.cost, 10), 0) || 0)) * item.quantity
                                     )}
                                 </div>
-                        
                             </div>
                             <div className="cart-item-quantity-container">
                                 <button 

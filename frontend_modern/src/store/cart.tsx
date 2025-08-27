@@ -1,4 +1,3 @@
-// frontend_modern/src/store/cart.tsx
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { logger } from '../utils/logger';
 import type { CartItem, SelectedAddon } from '../api/types';
@@ -26,6 +25,21 @@ export const useCart = () => {
     return context;
 };
 
+// Функция-валидатор, проверяющая, что один элемент корзины соответствует новой структуре
+const isCartItemValid = (item: any): item is CartItem => {
+    return (
+        item &&
+        typeof item === 'object' &&
+        typeof item.quantity === 'number' && item.quantity >= 0 &&
+        item.cafeItem && typeof item.cafeItem === 'object' && typeof item.cafeItem.id === 'string' &&
+        item.variant && typeof item.variant === 'object' && typeof item.variant.id === 'string' &&
+        // Ключевая проверка: убеждаемся, что categoryId существует и является строкой
+        typeof item.cafeId === 'string' &&
+        typeof item.categoryId === 'string'
+    );
+};
+
+
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
@@ -35,28 +49,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const savedCart = localStorage.getItem(LOCAL_STORAGE_KEY);
             if (savedCart) {
                 const parsedCart: unknown = JSON.parse(savedCart);
-                if (
-                    Array.isArray(parsedCart) &&
-                    parsedCart.every(item =>
-                        item &&
-                        typeof item === 'object' &&
-                        typeof item.quantity === 'number' && item.quantity >= 0 &&
-                        item.cafeItem && typeof item.cafeItem === 'object' && typeof item.cafeItem.id === 'string' && typeof item.cafeItem.name === 'string' &&
-                        ('image' in item.cafeItem ? typeof item.cafeItem.image === 'string' : true) &&
-                        item.variant && typeof item.variant === 'object' && typeof item.variant.id === 'string' && typeof item.variant.name === 'string' && typeof item.variant.cost === 'string' &&
-                        'cafeId' in item && typeof item.cafeId === 'string' &&
-                        'categoryId' in item && typeof item.categoryId === 'string'
-                    )
-                ) {
-                    logger.log("Cart loaded from localStorage.");
-                    setCartItems(parsedCart as CartItem[]);
+                if (Array.isArray(parsedCart)) {
+                    // УЛУЧШЕНИЕ: Используем filter вместо every.
+                    // Это отбросит старые, невалидные товары, но сохранит новые.
+                    const validItems = parsedCart.filter(isCartItemValid);
+                    
+                    if (validItems.length < parsedCart.length) {
+                        logger.warn("Removed invalid items from cart found in localStorage.");
+                    }
+
+                    logger.log("Cart loaded and validated from localStorage.");
+                    setCartItems(validItems);
                 } else {
-                    logger.warn("Invalid data in localStorage for cart. Starting with empty cart.");
                     setCartItems([]);
                 }
-            } else {
-                logger.log("No cart found in localStorage. Starting with empty cart.");
-                setCartItems([]);
             }
         } catch (e) {
             logger.error("Failed to load cart from localStorage:", e);
@@ -65,102 +71,65 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     useEffect(() => {
-        logger.log("Cart state changed. Attempting to save to localStorage...", cartItems);
-        if (cartItems !== undefined && cartItems !== null) {
-            try {
-                localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cartItems));
-                logger.log("Cart saved to localStorage.");
-            } catch (e) {
-                logger.error("Failed to save cart to localStorage:", e);
-            }
+        logger.log("Cart state changed. Saving to localStorage...", cartItems);
+        try {
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(cartItems));
+        } catch (e) {
+            logger.error("Failed to save cart to localStorage:", e);
         }
     }, [cartItems]);
 
     const addItem = useCallback((newItem: CartItem) => {
-        if (newItem.quantity <= 0) {
-            logger.warn("Attempted to add item with quantity 0 or less.");
-            return;
-        }
+        if (newItem.quantity <= 0) return;
 
         setCartItems(prevItems => {
-            // ИСПРАВЛЕНИЕ: Усложняем логику поиска существующего элемента
-
-            // 1. Создаем "ключ" для набора добавок (отсортированные ID)
             const getAddonsKey = (addons?: SelectedAddon[]) => {
-                if (!addons || addons.length === 0) {
-                    return ''; // Пустой ключ, если добавок нет
-                }
-                // Сортируем ID, чтобы порядок не имел значения, и объединяем в строку
+                if (!addons || addons.length === 0) return '';
                 return addons.map(a => a.id).sort().join(',');
             };
 
             const newItemAddonsKey = getAddonsKey(newItem.selectedAddons);
 
-            // 2. Ищем элемент с таким же товаром, вариантом И набором добавок
             const existingItemIndex = prevItems.findIndex(item =>
-                item.cafeId === newItem.cafeId &&
                 item.cafeItem.id === newItem.cafeItem.id &&
                 item.variant.id === newItem.variant.id &&
                 getAddonsKey(item.selectedAddons) === newItemAddonsKey
             );
 
             if (existingItemIndex > -1) {
-                // Если НАЙДЕН полный аналог (включая добавки), увеличиваем количество
                 const updatedItems = [...prevItems];
-                updatedItems[existingItemIndex] = {
-                    ...updatedItems[existingItemIndex],
-                    quantity: updatedItems[existingItemIndex].quantity + newItem.quantity
-                };
-                logger.log(`Increased quantity for existing item with same addons.`);
+                updatedItems[existingItemIndex].quantity += newItem.quantity;
                 return updatedItems;
             } else {
-                // Если полный аналог НЕ НАЙДЕН, добавляем как новую позицию
-                logger.log(`Added as new item (different addons or new item).`);
                 return [...prevItems, newItem];
             }
         });
     }, []);
 
-
     const increaseQuantity = useCallback((itemId: string, variantId: string, quantityToIncrease: number = 1) => {
-        if (quantityToIncrease <= 0) return;
-        setCartItems(prevItems => prevItems.map(item => {
-            if (item.cafeItem.id === itemId && item.variant.id === variantId) {
-                logger.log(`Increasing quantity for item ${item.cafeItem.name} (${item.variant.name}).`);
-                return { ...item, quantity: item.quantity + quantityToIncrease };
-            }
-            return item;
-        }));
+        setCartItems(prevItems => prevItems.map(item => 
+            (item.cafeItem.id === itemId && item.variant.id === variantId)
+                ? { ...item, quantity: item.quantity + quantityToIncrease }
+                : item
+        ));
     }, []);
 
     const decreaseQuantity = useCallback((itemId: string, variantId: string, quantityToDecrease: number = 1) => {
-        if (quantityToDecrease <= 0) return;
-        setCartItems(prevItems => {
-            const updatedItems = prevItems.map(item => {
-                if (item.cafeItem.id === itemId && item.variant.id === variantId) {
-                    logger.log(`Decreasing quantity for item ${item.cafeItem.name} (${item.variant.name}).`);
-                    const newQuantity = item.quantity - quantityToDecrease;
-                    return { ...item, quantity: Math.max(0, newQuantity) };
-                }
-                return item;
-            });
-            return updatedItems.filter(item => item.quantity > 0);
-        });
+        setCartItems(prevItems => 
+            prevItems.map(item => 
+                (item.cafeItem.id === itemId && item.variant.id === variantId)
+                    ? { ...item, quantity: Math.max(0, item.quantity - quantityToDecrease) }
+                    : item
+            ).filter(item => item.quantity > 0)
+        );
     }, []);
 
     const removeItem = useCallback((itemId: string, variantId: string) => {
-        setCartItems(prevItems => {
-            const updatedItems = prevItems.filter(
-                item => !(item.cafeItem.id === itemId && item.variant.id === variantId)
-            );
-            logger.log(`Removed item with ID ${itemId} and variant ${variantId}.`);
-            return updatedItems;
-        });
+        setCartItems(prevItems => prevItems.filter(item => !(item.cafeItem.id === itemId && item.variant.id === variantId)));
     }, []);
 
     const clearCart = useCallback(() => {
         setCartItems([]);
-        logger.log("Cart cleared.");
     }, []);
 
     const contextValue: CartContextType = {
@@ -170,7 +139,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         decreaseQuantity,
         removeItem,
         clearCart,
-        getItemCount, // ИСПРАВЛЕНО
+        getItemCount,
         getTotalCost,
     };
 
@@ -183,21 +152,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
 function getTotalCost(items: CartItem[]): number {
     return items.reduce((total, item) => {
-        // Стоимость основного варианта
         const variantCost = parseInt(item.variant.cost, 10);
-
-        // Считаем стоимость всех добавок для этого товара
-        const addonsCost = item.selectedAddons?.reduce((addonTotal, addon) => {
-            return addonTotal + parseInt(addon.cost, 10);
-        }, 0) || 0; // || 0 на случай, если selectedAddons не существует
-
-        // Суммируем (цена варианта + цена добавок) * количество
+        const addonsCost = item.selectedAddons?.reduce((addonTotal, addon) => addonTotal + parseInt(addon.cost, 10), 0) || 0;
         const totalItemCost = (variantCost + addonsCost) * item.quantity;
-        
         return total + (isNaN(totalItemCost) ? 0 : totalItemCost);
     }, 0);
 }
-
 
 function getItemCount(items: CartItem[]): number {
     return items.reduce((total, item) => total + item.quantity, 0);

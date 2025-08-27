@@ -66,8 +66,8 @@ export interface MenuItemVariantSchema {
 
 export interface MenuItemSchema {
     id: string;
-    cafe_id: string;
-    category_id: string;
+    cafeId: string;
+    categoryId: string;
     image?: string;
     name?: string;
     description?: string;

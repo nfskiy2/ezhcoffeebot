@@ -1,4 +1,3 @@
-// frontend_modern/src/pages/DetailsPage.tsx
 import React, { useEffect, useState, useCallback, useMemo, useLayoutEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCafeMenuItemDetails } from '../api';
@@ -24,16 +23,12 @@ const DetailsPage: React.FC = () => {
     const [selectedVariant, setSelectedVariant] = useState<MenuItemVariantSchema | null>(null);
     const [quantity, setQuantity] = useState(1);
     const [selectedAddons, setSelectedAddons] = useState<{ [key: string]: boolean }>({});
-    
+
     const isCartNotEmpty = cartItems.length > 0;
 
     const handleAddonToggle = (addonId: string) => {
-        setSelectedAddons(prev => ({
-            ...prev,
-            [addonId]: !prev[addonId]
-        }));
+        setSelectedAddons(prev => ({ ...prev, [addonId]: !prev[addonId] }));
     };
-
 
     useEffect(() => {
         const loadDetails = async () => {
@@ -78,21 +73,16 @@ const DetailsPage: React.FC = () => {
 
     const totalCost = useMemo(() => {
         if (!selectedVariant) return 0;
-        
         let addonsCost = 0;
         if (menuItem?.addons) {
-            // Проходим по всем группам добавок
             for (const group of menuItem.addons) {
-                // Проходим по всем добавкам в группе
                 for (const addon of group.items) {
-                    // Если добавка выбрана, прибавляем ее стоимость
                     if (selectedAddons[addon.id]) {
                         addonsCost += parseInt(addon.cost, 10);
                     }
                 }
             }
         }
-        
         const variantCost = parseInt(selectedVariant.cost, 10);
         return (variantCost + addonsCost) * quantity;
     }, [selectedVariant, selectedAddons, quantity, menuItem]);
@@ -104,18 +94,13 @@ const DetailsPage: React.FC = () => {
                 for (const group of menuItem.addons) {
                     for (const addon of group.items) {
                         if (selectedAddons[addon.id]) {
-                            addonsList.push({
-                                id: addon.id,
-                                name: addon.name,
-                                cost: addon.cost,
-                            });
+                            addonsList.push({ id: addon.id, name: addon.name, cost: addon.cost });
                         }
                     }
                 }
             }
 
             const cartItemToAdd: CartItem = {
-                
                 cafeItem: {
                     id: menuItem.id,
                     name: menuItem.name || 'Неизвестный товар',
@@ -124,12 +109,12 @@ const DetailsPage: React.FC = () => {
                 variant: selectedVariant,
                 quantity: quantity,
                 cafeId: selectedCafe.id,
-                categoryId: menuItem.category_id,
+                categoryId: menuItem.categoryId,
                 selectedAddons: addonsList,
             };
             addItem(cartItemToAdd);
             setQuantity(1);
-            setSelectedAddons({}); 
+            setSelectedAddons({});
             showSnackbar('Успешно добавлено в корзину!', { style: 'success', backgroundColor: 'var(--success-color)' });
         } else {
             showSnackbar('Не удалось добавить товар. Пожалуйста, выберите опцию.', { style: 'warning' });
@@ -138,15 +123,13 @@ const DetailsPage: React.FC = () => {
 
     useLayoutEffect(() => {
         const tg = window.Telegram?.WebApp;
-        if (!tg) return; 
+        if (!tg) return;
 
         if (menuItem && selectedVariant && quantity > 0) {
             const displayText = `ДОБАВИТЬ В КОРЗИНУ • ${toDisplayCost(totalCost)}`;
-            
             if (tg.MainButton.text !== displayText) {
                 tg.MainButton.hide();
             }
-
             tg.MainButton.setText(displayText);
             tg.MainButton.show();
             tg.MainButton.onClick(handleAddToCart);
@@ -155,16 +138,14 @@ const DetailsPage: React.FC = () => {
             tg.MainButton.hide();
         }
         
-        // ИСПРАВЛЕНИЕ: Функция очистки, которая будет вызвана при уходе со страницы
         return () => {
             if (window.Telegram && window.Telegram.WebApp) {
                 const tg_cleanup = window.Telegram.WebApp;
-                tg_cleanup.MainButton.offClick(handleAddToCart); // Удаляем обработчик
-                tg_cleanup.MainButton.hide(); // <--- ГАРАНТИРОВАННО СКРЫВАЕМ КНОПКУ
+                tg_cleanup.MainButton.offClick(handleAddToCart);
+                tg_cleanup.MainButton.hide();
             }
         };
     }, [menuItem, selectedVariant, quantity, handleAddToCart, totalCost]);
-
 
     if (loading) return <section>{/* Shimmer */}</section>;
     if (error) return <div>Ошибка: {error}</div>;
@@ -172,9 +153,9 @@ const DetailsPage: React.FC = () => {
 
     return (
         <section className="cafe-item-details-container">
+            {/* ... JSX остается без изменений ... */}
             <div className="cafe-item-details-content">
                 <img className="cover" src={menuItem.image || "/icons/icon-transparent.svg"} alt={menuItem.name || 'Товар'}/>
-                
                 <div className="cafe-item-details-title-container">
                     <h1 id="cafe-item-details-name">{menuItem.name}</h1>
                 </div>
@@ -183,9 +164,7 @@ const DetailsPage: React.FC = () => {
                         {selectedVariant.weight}
                     </p>
                 )}
-                
                 <p className="cafe-item-details-description">{menuItem.description}</p>
-                
                 {menuItem.variants.length > 0 && (
                     <div className="cafe-item-details-section-price">
                         <div className="cafe-item-details-variants">
@@ -201,19 +180,17 @@ const DetailsPage: React.FC = () => {
                         </div>
                         {selectedVariant && (
                             <h2 className="cafe-item-details-selected-variant-price">
-                                {toDisplayCost(totalCost / quantity)} 
+                                {toDisplayCost(totalCost / quantity)}
                             </h2>
                         )}
                     </div>
                 )}
-                
-                
                 {menuItem.addons && menuItem.addons.length > 0 && (
                     <>
                         <h3 className="cafe-item-details-section-title">Добавки</h3>
                         {menuItem.addons.map((addonGroup: AddonGroup) => (
                             <Accordion key={addonGroup.id} title={addonGroup.name}>
-                                {addonGroup.items.map((addon: AddonItem) => ( 
+                                {addonGroup.items.map((addon: AddonItem) => (
                                     <div key={addon.id} className="addon-item">
                                         <div>
                                             <span className="addon-item-name">{addon.name}</span>
@@ -231,13 +208,11 @@ const DetailsPage: React.FC = () => {
                     </>
                 )}
             </div>
-            
             <div className="cafe-item-details-quantity-selector-container">
                 <button className="material-symbols-rounded icon-button" onClick={handleDecreaseQuantity}>remove</button>
                 <h2 className="cafe-item-details-quantity-selector-value">{quantity}</h2>
                 <button className="material-symbols-rounded icon-button" onClick={handleIncreaseQuantity}>add</button>
             </div>
-
             {isCartNotEmpty && (
                 <button className="go-to-cart-fab" onClick={() => navigate('/cart')}>
                     <span className="material-symbols-rounded">shopping_cart</span>
