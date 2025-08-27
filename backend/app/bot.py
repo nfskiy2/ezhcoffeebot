@@ -249,9 +249,15 @@ async def create_invoice_link(prices: list[LabeledPrice], payload: str, bot_inst
     try:
         # ВНИМАНИЕ: create_invoice_link теперь асинхронный
         return await bot_instance.create_invoice_link(
-            title='Заказ #1',
-            description='Отличный выбор! Еще пара шагов, и приступим к готовке ;)',
-            payload=payload, # <--- ИСПОЛЬЗУЕМ ПЕРЕДАННЫЙ payload
+            title='Заказ в EZH Cafe', # Можно сделать более информативным
+            description='Отличный выбор! Осталось только оплатить.',
+            payload=payload,
+            provider_token=PAYMENT_PROVIDER_TOKEN,
+            currency='RUB',
+            prices=prices,
+            need_name=False,
+            need_phone_number=False,
+            need_shipping_address=False, 
             provider_token=PAYMENT_PROVIDER_TOKEN,
             currency='RUB',
             prices=prices,

@@ -81,15 +81,13 @@ class CartItemRequest(BaseModel):
 class OrderRequest(BaseModel):
     auth: str
     cartItems: List[CartItemRequest]
+    # Поле 'address' было здесь, теперь оно удалено.
 
 # --- Схемы для подсказок адреса (Dadata) ---
-
-# Схема для запроса подсказок
 class AddressSuggestionRequest(BaseModel):
     query: str
     city: str
 
-# Схемы для ответа от Dadata
 class DadataSuggestionData(BaseModel):
     street_with_type: Optional[str] = None
     house: Optional[str] = None

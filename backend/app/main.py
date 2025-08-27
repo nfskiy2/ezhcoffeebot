@@ -348,13 +348,16 @@ async def create_order(
         logger.error(f"Could not parse user info from initData: {e}")
         # Не блокируем заказ, если не удалось распарсить, но логируем
 
+    if order_data.address:
+        user_info_dict['shipping_address'] = order_data.address.dict()
+        
     # 3. Создаем и сохраняем заказ в базе данных
     new_order = Order(
         cafe_id=cafe_id,
-        user_info=user_info_dict,
-        cart_items=[item.dict() for item in order_data.cartItems], # Сохраняем Pydantic модели как dict
+        user_info=user_info_dict, # Теперь здесь может быть и адрес
+        cart_items=[item.dict() for item in order_data.cartItems],
         total_amount=total_amount_in_minimal_units,
-        currency="RUB" # Или любая ваша валюта
+        currency="RUB"
     )
     db.add(new_order)
     db.commit()
@@ -374,11 +377,3 @@ async def create_order(
 
     logger.info(f"Invoice URL created for order: {invoice_url}")
     return { 'invoiceUrl': invoice_url }
-
-
-    # invoice_url = await create_invoice_link(prices=labeled_prices, bot_instance=bot_instance)
-    # if invoice_url is None:
-    #     logger.error("Failed to get invoice URL from bot.")
-    #     raise HTTPException(status_code=500, detail="Could not create invoice.")
-    # logger.info(f"Invoice URL created for order: {invoice_url}")
-    # return { 'invoiceUrl': invoice_url }

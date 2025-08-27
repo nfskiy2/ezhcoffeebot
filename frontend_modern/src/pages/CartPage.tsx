@@ -12,6 +12,7 @@ import { logger } from '../utils/logger';
 import { useDelivery } from '../store/delivery';
 
 type PackagingType = 'dine-in' | 'take-away';
+type PaymentMethod = 'online' | 'card_on_delivery' | 'cash_on_delivery';
 
 const CartPage: React.FC = () => {
     const { items, increaseQuantity, decreaseQuantity, getItemCount, getTotalCost, clearCart } = useCart();
@@ -22,6 +23,7 @@ const CartPage: React.FC = () => {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [minOrderAmount, setMinOrderAmount] = useState<number>(0);
     const [packaging, setPackaging] = useState<PackagingType>('take-away');
+    const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('online');
 
     useEffect(() => {
         const loadSettings = async () => {
@@ -45,51 +47,55 @@ const CartPage: React.FC = () => {
         }
         if (isSubmitting || getItemCount(items) === 0 || !selectedCafe) return;
 
-        if (window.Telegram && window.Telegram.WebApp) {
-            const initData = TelegramSDK.getInitData();
-            if (!initData) {
-                TelegramSDK.showAlert("Ошибка: данные пользователя Telegram недоступны.");
-                return;
-            }
+        if (paymentMethod === 'online') {
+            if (window.Telegram && window.Telegram.WebApp) {
+                const initData = TelegramSDK.getInitData();
+                if (!initData) {
+                    TelegramSDK.showAlert("Ошибка: данные пользователя Telegram недоступны.");
+                    return;
+                }
 
-            TelegramSDK.setMainButtonLoading(true);
-            setIsSubmitting(true);
-            try {
-                const orderData: OrderRequest = {
-                    auth: initData,
-                    cartItems: items.map(item => ({
-                        cafeItem: { id: item.cafeItem.id, name: item.cafeItem.name },
-                        variant: { id: item.variant.id, name: item.variant.name, cost: item.variant.cost },
-                        quantity: item.quantity,
-                        categoryId: item.categoryId, // <-- УБЕДИТЕСЬ, ЧТО ЭТА СТРОКА ЕСТЬ
-                    })),
-                };
-                
-                console.log('Отправляемые данные заказа:', JSON.stringify(orderData, null, 2));
-
-                const response = await createOrder(selectedCafe.id, orderData);
-                TelegramSDK.openInvoice(response.invoiceUrl, (status) => {
-                    if (status === 'paid') {
-                        clearCart();
-                        TelegramSDK.close();
-                    } else if (status === 'failed') {
-                        TelegramSDK.showAlert("Оплата не удалась. Пожалуйста, попробуйте снова.");
-                    } else {
-                        TelegramSDK.showAlert("Ваш заказ был отменен.");
-                    }
+                TelegramSDK.setMainButtonLoading(true);
+                setIsSubmitting(true);
+                try {
+                    const orderData: OrderRequest = {
+                        auth: initData,
+                        cartItems: items.map(item => ({
+                            cafeItem: { id: item.cafeItem.id, name: item.cafeItem.name },
+                            variant: { id: item.variant.id, name: item.variant.name, cost: item.variant.cost },
+                            quantity: item.quantity,
+                            categoryId: item.categoryId,
+                        })),
+                        // Поле 'address' было здесь, теперь оно удалено.
+                    };
+                    
+                    const response = await createOrder(selectedCafe.id, orderData);
+                    TelegramSDK.openInvoice(response.invoiceUrl, (status) => {
+                        if (status === 'paid') {
+                            clearCart();
+                            TelegramSDK.close();
+                        } else if (status === 'failed') {
+                            TelegramSDK.showAlert("Оплата не удалась. Пожалуйста, попробуйте снова.");
+                        } else {
+                            TelegramSDK.showAlert("Ваш заказ был отменен.");
+                        }
+                        TelegramSDK.setMainButtonLoading(false);
+                        setIsSubmitting(false);
+                    });
+                } catch (err: any) {
+                    logger.error("Error creating order:", err);
+                    const errorMessage = err.response?.data?.detail?.[0]?.message || err.message || "Не удалось создать заказ. Попробуйте позже.";
+                    TelegramSDK.showAlert(errorMessage);
                     TelegramSDK.setMainButtonLoading(false);
                     setIsSubmitting(false);
-                });
-            } catch (err: any) {
-                logger.error("Error creating order:", err);
-                // Улучшенное отображение ошибки для пользователя
-                const errorMessage = err.response?.data?.detail?.[0]?.message || err.message || "Не удалось создать заказ. Попробуйте позже.";
-                TelegramSDK.showAlert(errorMessage);
-                TelegramSDK.setMainButtonLoading(false);
-                setIsSubmitting(false);
+                }
             }
+        } else {
+            TelegramSDK.showAlert(`Ваш заказ принят! Способ оплаты: ${paymentMethod === 'cash_on_delivery' ? 'наличными' : 'картой'} курьеру. С вами свяжутся для подтверждения.`);
+            clearCart();
+            TelegramSDK.close();
         }
-    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart, packaging]);
+    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart, packaging, paymentMethod]);
 
     useEffect(() => {
         if (window.Telegram && window.Telegram.WebApp) {
@@ -138,12 +144,33 @@ const CartPage: React.FC = () => {
                         <span>Самовывоз из: <strong>{selectedCafe?.name}</strong></span>
                     </div>
                 )}
-                <div className="info-row packaging-selector">
-                    <span className="material-symbols-rounded">lunch_dining</span>
-                    <div className="tab-selector small">
-                        <button className={packaging === 'dine-in' ? 'active' : ''} onClick={() => setPackaging('dine-in')}>В зале</button>
-                        <button className={packaging === 'take-away' ? 'active' : ''} onClick={() => setPackaging('take-away')}>С собой</button>
+                
+                {orderType !== 'delivery' && (
+                    <div className="info-row packaging-selector">
+                        <span className="material-symbols-rounded">lunch_dining</span>
+                        <div className="tab-selector small">
+                            <button className={packaging === 'dine-in' ? 'active' : ''} onClick={() => setPackaging('dine-in')}>В зале</button>
+                            <button className={packaging === 'take-away' ? 'active' : ''} onClick={() => setPackaging('take-away')}>С собой</button>
+                        </div>
                     </div>
+                )}
+            </div>
+
+            <div className="payment-method-container">
+                <h3>Способ оплаты</h3>
+                <div className="payment-options">
+                    <button className={`payment-option ${paymentMethod === 'online' ? 'active' : ''}`} onClick={() => setPaymentMethod('online')}>
+                        <span className="material-symbols-rounded">credit_card</span>
+                        Картой онлайн
+                    </button>
+                    <button className={`payment-option ${paymentMethod === 'card_on_delivery' ? 'active' : ''}`} onClick={() => setPaymentMethod('card_on_delivery')}>
+                        <span className="material-symbols-rounded">payment</span>
+                        Картой курьеру
+                    </button>
+                    <button className={`payment-option ${paymentMethod === 'cash_on_delivery' ? 'active' : ''}`} onClick={() => setPaymentMethod('cash_on_delivery')}>
+                        <span className="material-symbols-rounded">payments</span>
+                        Наличными
+                    </button>
                 </div>
             </div>
 

@@ -1046,3 +1046,49 @@ section {
     font-size: 13px;
     border-radius: 7px;
 }
+
+/* --- Стили для выбора способа оплаты --- */
+.payment-method-container {
+    margin-bottom: 24px;
+}
+
+.payment-method-container h3 {
+    font-size: 16px;
+    font-weight: 500;
+    margin-bottom: 12px;
+}
+
+.payment-options {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.payment-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 12px;
+    border: 2px solid var(--divider-color);
+    background-color: var(--tg-theme-secondary-bg-color);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--tg-theme-text-color);
+    transition: all 0.2s ease-out;
+}
+
+.payment-option .material-symbols-rounded {
+    font-size: 24px;
+    opacity: 0.8;
+}
+
+.payment-option.active {
+    border-color: var(--accent-color);
+    background-color: var(--tg-theme-bg-color);
+    color: var(--accent-color);
+}
+
+.payment-option.active .material-symbols-rounded {
+    opacity: 1;
+}

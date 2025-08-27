@@ -51,7 +51,7 @@ export interface CafeSchema {
 
 export interface CategorySchema {
     id: string;
-    cafe_id: string;
+    cafeId: string;
     icon?: string;
     name?: string;
     backgroundColor?: string;
@@ -76,7 +76,6 @@ export interface MenuItemSchema {
     subCategory?: string; 
 }
 
-
 export interface CafeSettingsSchema {
     minOrderAmount: number;
 }
@@ -100,8 +99,18 @@ export interface CartItemRequest {
     categoryId: string;
 }
 
-// Главная схема запроса заказа (соответствует backend/app/schemas.py)
+// Главная схема запроса заказа
 export interface OrderRequest {
     auth: string;
     cartItems: CartItemRequest[];
+    // Поле 'address' было здесь, теперь оно удалено.
+}
+
+// --- Типы для подсказок адреса ---
+export interface AddressSuggestion {
+    value: string;
+    data: {
+        street_with_type: string | null;
+        house: string | null;
+    };
 }
