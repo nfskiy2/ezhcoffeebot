@@ -872,29 +872,6 @@ section {
     position: relative;
     width: 100%;
 }
-.go-to-cart-button {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background-color: rgba(0, 0, 0, 0.4);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: transform 0.1s ease-out;
-}
-.go-to-cart-button:active {
-    transform: scale(0.9);
-}
-.go-to-cart-button .material-symbols-rounded {
-    font-size: 20px;
-}
 
 /* --- Заглушка для первого входа --- */
 .selection-redirect {
@@ -916,4 +893,42 @@ section {
     border-radius: 12px;
     background-color: var(--accent-color);
     color: var(--on-accent-color);
+}
+
+.delivery-address-form .form-error {
+    font-size: 12px;
+    color: var(--error-color);
+    margin-top: -8px; /* Поднимаем сообщение ближе к полю */
+    margin-bottom: 4px;
+}
+
+.delivery-address-form .input-error {
+    border-color: var(--error-color);
+}
+.delivery-address-form .form-row > div {
+    flex-grow: 1; /* Позволяет контейнерам в ряду растягиваться */
+}
+
+/* --- Стили для плавающей кнопки корзины (FAB) --- */
+.go-to-cart-fab {
+    position: fixed;
+    bottom: 96px; /* Располагаем над MainButton и селектором количества */
+    right: 16px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background-color: var(--accent-color);
+    color: var(--on-accent-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 100;
+    transition: transform 0.2s ease-out;
+}
+.go-to-cart-fab:active {
+    transform: scale(0.92);
+}
+.go-to-cart-fab .material-symbols-rounded {
+    font-size: 28px;
 }

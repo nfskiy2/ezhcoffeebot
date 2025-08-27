@@ -1,6 +1,6 @@
 // frontend_modern/src/pages/DetailsPage.tsx
-import React, { useEffect, useState, useCallback, useMemo, useLayoutEffect  } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useState, useCallback, useMemo, useLayoutEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getCafeMenuItemDetails } from '../api';
 import type { MenuItemSchema, MenuItemVariantSchema, AddonGroup, AddonItem, CartItem, SelectedAddon} from '../api/types';
 import { toDisplayCost } from '../utils/currency';
@@ -13,9 +13,10 @@ import Accordion from '../components/Accordion';
 
 const DetailsPage: React.FC = () => {
     const { cafeId, itemId } = useParams<{ cafeId: string; itemId: string }>();
-    const { addItem } = useCart();
+    const { items: cartItems, addItem } = useCart();
     const { showSnackbar } = useSnackbar();
     const { selectedCafe } = useCafe();
+    const navigate = useNavigate();
 
     const [menuItem, setMenuItem] = useState<MenuItemSchema | null>(null);
     const [loading, setLoading] = useState(true);
@@ -23,6 +24,8 @@ const DetailsPage: React.FC = () => {
     const [selectedVariant, setSelectedVariant] = useState<MenuItemVariantSchema | null>(null);
     const [quantity, setQuantity] = useState(1);
     const [selectedAddons, setSelectedAddons] = useState<{ [key: string]: boolean }>({});
+    
+    const isCartNotEmpty = cartItems.length > 0;
 
     const handleAddonToggle = (addonId: string) => {
         setSelectedAddons(prev => ({
@@ -126,7 +129,7 @@ const DetailsPage: React.FC = () => {
             };
             addItem(cartItemToAdd);
             setQuantity(1);
-            setSelectedAddons({}); // Сбрасываем выбор добавок
+            setSelectedAddons({}); 
             showSnackbar('Успешно добавлено в корзину!', { style: 'success', backgroundColor: 'var(--success-color)' });
         } else {
             showSnackbar('Не удалось добавить товар. Пожалуйста, выберите опцию.', { style: 'warning' });
@@ -135,7 +138,7 @@ const DetailsPage: React.FC = () => {
 
     useLayoutEffect(() => {
         const tg = window.Telegram?.WebApp;
-        if (!tg) return; // Если SDK не доступен, ничего не делаем
+        if (!tg) return; 
 
         if (menuItem && selectedVariant && quantity > 0) {
             const displayText = `ДОБАВИТЬ В КОРЗИНУ • ${toDisplayCost(totalCost)}`;
@@ -183,7 +186,6 @@ const DetailsPage: React.FC = () => {
                 
                 <p className="cafe-item-details-description">{menuItem.description}</p>
                 
-                {/* ИСПРАВЛЕННЫЙ БЛОК С ОПЦИЯМИ И ЦЕНОЙ */}
                 {menuItem.variants.length > 0 && (
                     <div className="cafe-item-details-section-price">
                         <div className="cafe-item-details-variants">
@@ -199,19 +201,19 @@ const DetailsPage: React.FC = () => {
                         </div>
                         {selectedVariant && (
                             <h2 className="cafe-item-details-selected-variant-price">
-                                {toDisplayCost(totalCost / quantity)} {/* Показываем цену за 1 шт с добавками */}
+                                {toDisplayCost(totalCost / quantity)} 
                             </h2>
                         )}
                     </div>
                 )}
                 
-                {/* Здесь будет секция с добавками */}
+                
                 {menuItem.addons && menuItem.addons.length > 0 && (
                     <>
                         <h3 className="cafe-item-details-section-title">Добавки</h3>
-                        {menuItem.addons.map((addonGroup: AddonGroup) => ( // <--- ЯВНО УКАЗЫВАЕМ ТИП
+                        {menuItem.addons.map((addonGroup: AddonGroup) => (
                             <Accordion key={addonGroup.id} title={addonGroup.name}>
-                                {addonGroup.items.map((addon: AddonItem) => ( // <--- ЯВНО УКАЗЫВАЕМ ТИП
+                                {addonGroup.items.map((addon: AddonItem) => ( 
                                     <div key={addon.id} className="addon-item">
                                         <div>
                                             <span className="addon-item-name">{addon.name}</span>
@@ -235,6 +237,12 @@ const DetailsPage: React.FC = () => {
                 <h2 className="cafe-item-details-quantity-selector-value">{quantity}</h2>
                 <button className="material-symbols-rounded icon-button" onClick={handleIncreaseQuantity}>add</button>
             </div>
+
+            {isCartNotEmpty && (
+                <button className="go-to-cart-fab" onClick={() => navigate('/cart')}>
+                    <span className="material-symbols-rounded">shopping_cart</span>
+                </button>
+            )}
         </section>
     );
 };
