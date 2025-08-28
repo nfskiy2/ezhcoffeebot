@@ -3,14 +3,12 @@ import json
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-# Убедитесь, что импортируются все нужные модели
 from app.models import Base, Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise Exception("FATAL: DATABASE_URL not set!")
 
-# ... (код подключения к БД, как и раньше) ...
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -21,76 +19,66 @@ def migrate():
         
         # 1. Очистка таблиц в правильном порядке
         print("-> Clearing old data...")
+        db.query(Order).delete()
         db.query(VenueMenuItem).delete()
         db.query(GlobalProductVariant).delete()
         db.query(GlobalProduct).delete()
         db.query(Category).delete()
         db.query(Cafe).delete()
-        db.query(Order).delete()
         db.commit()
 
-        # 2. Загрузка глобального каталога
+        # 2. Загрузка глобального каталога (товары без цен)
         print("-> Migrating Global Catalog...")
         with open('data/global_catalog.json', 'r', encoding='utf-8') as f:
             catalog = json.load(f)
 
         for cat_data in catalog['categories']:
-            # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
-            # Переименовываем ключ из camelCase в snake_case, если он существует
             if 'backgroundColor' in cat_data:
                 cat_data['background_color'] = cat_data.pop('backgroundColor')
-            # ---------------------------
             db.add(Category(**cat_data))
         
         for prod_data in catalog['products']:
-            variants = prod_data.pop('variants', [])
+            variants_data = prod_data.pop('variants', [])
             product = GlobalProduct(**prod_data)
             db.add(product)
-            for var_data in variants:
+            for var_data in variants_data:
                 variant = GlobalProductVariant(global_product_id=product.id, **var_data)
                 db.add(variant)
         db.commit()
         print("-> Global Catalog migrated successfully.")
 
-        # 3. Загрузка заведений (кофеен и доставок)
-        print("-> Migrating Venues (Cafes)...")
+        # 3. Загрузка ВСЕХ заведений (и реальных, и виртуальных)
+        print("-> Migrating Venues (Cafes and Deliveries)...")
+        
+        # Сначала реальные кофейни из info.json
         with open('data/info.json', 'r', encoding='utf-8') as f:
             all_venues_info = json.load(f)
-        
-        # Добавляем информацию о доставке
+
+        # Затем добавляем виртуальные заведения для доставки
         DELIVERY_CITIES = ["Томск", "Северск", "Новосибирск"]
         for city in DELIVERY_CITIES:
-            city_id = city.lower() # "Томск" -> "tomsk"
+            city_id = city.lower()
             all_venues_info.append({
-                "id": f"delivery-{city_id}",
-                "name": f"Доставка по г. {city}",
+                "id": f"delivery-{city_id}", "name": f"Доставка по г. {city}",
                 "coverImage": "https://images.unsplash.com/photo-1588001405580-86d354a8a8a4?auto=format&fit=crop&q=80&w=1974",
-                "logoImage": "icons/icon-delivery.svg",
-                "kitchenCategories": "Все меню на доставку",
-                "rating": "",
-                "cookingTime": "45-75 мин",
-                "status": "Доступна",
-                "openingHours": "пн-вс: 10:00-21:00",
-                "minOrderAmount": 15000
+                "logoImage": "icons/icon-delivery.svg", "kitchenCategories": "Все меню на доставку",
+                "rating": "", "cookingTime": "45-75 мин", "status": "Доступна",
+                "openingHours": "пн-вс: 10:00-21:00", "minOrderAmount": 15000
             })
 
         for venue_data in all_venues_info:
-            # Приводим ключи из info.json к snake_case для модели Cafe
             venue_data_for_db = {
-                'id': venue_data.get('id'),
-                'name': venue_data.get('name'),
-                'cover_image': venue_data.get('coverImage'),
-                'logo_image': venue_data.get('logoImage'),
-                'kitchen_categories': venue_data.get('kitchenCategories'),
-                'rating': venue_data.get('rating'),
-                'cooking_time': venue_data.get('cookingTime'),
-                'status': venue_data.get('status'),
-                'opening_hours': venue_data.get('openingHours'),
-                'min_order_amount': venue_data.get('minOrderAmount')
+                'id': venue_data.get('id'), 'name': venue_data.get('name'),
+                'cover_image': venue_data.get('coverImage'), 'logo_image': venue_data.get('logoImage'),
+                'kitchen_categories': venue_data.get('kitchenCategories'), 'rating': venue_data.get('rating'),
+                'cooking_time': venue_data.get('cookingTime'), 'status': venue_data.get('status'),
+                'opening_hours': venue_data.get('openingHours'), 'min_order_amount': venue_data.get('minOrderAmount')
             }
             db.add(Cafe(**venue_data_for_db))
+        
+        # --- ВАЖНОЕ ИЗМЕНЕНИЕ: Коммитим все заведения ЗДЕСЬ ---
         db.commit()
-        print(f"-> Venues committed. Total in DB: {db.query(Cafe).count()}")
+        print(f"-> All Venues committed. Total in DB: {db.query(Cafe).count()}")
 
         # 4. Загрузка цен и наличия для каждого заведения
         print("-> Migrating Venue-specific menus (prices & availability)...")
@@ -108,6 +96,8 @@ def migrate():
                             price=item_config['price'],
                             is_available=item_config.get('is_available', True)
                         ))
+        
+        # Коммитим все "ценники" в конце
         db.commit()
         print("-> Venue menus migrated successfully.")
 
