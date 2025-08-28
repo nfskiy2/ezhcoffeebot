@@ -33,22 +33,24 @@ logger = logging.getLogger(__name__)
 
 def format_order_for_message(order: Order, for_staff: bool = False) -> str:
     """
-    (ИСПРАВЛЕНО) Форматирует детали заказа в красивое текстовое сообщение.
-    Корректно обрабатывает добавки и названия товаров.
+    (ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ)
+    Форматирует детали заказа в красивое текстовое сообщение.
+    Использует правильные snake_case ключи для доступа к данным.
     """
     order_id_short = str(order.id).split('-')[0]
     
     item_lines = []
     for item in order.cart_items:
-        item_name = item.get('cafeItem', {}).get('name', 'Неизвестный товар')
+        # --- ИСПРАВЛЕНИЕ 1: Ищем ключ 'cafe_item' вместо 'cafeItem' ---
+        item_name = item.get('cafe_item', {}).get('name', 'Неизвестный товар')
         variant_name = item.get('variant', {}).get('name', '')
         quantity = item.get('quantity', 0)
         
         # Основная строка товара
         line = f"  - {item_name} ({variant_name}) x {quantity}"
         
-        # Обработка добавок
-        addons = item.get('selectedAddons', [])
+        # --- ИСПРАВЛЕНИЕ 2: Ищем ключ 'selected_addons' вместо 'selectedAddons' ---
+        addons = item.get('selected_addons', [])
         if addons:
             for addon in addons:
                 addon_name = addon.get('name', 'добавка')
@@ -129,8 +131,7 @@ async def handle_pre_checkout_query(update: Update, context: ContextTypes.DEFAUL
 
 async def successful_payment_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    (ИСПРАВЛЕНО) Обрабатывает успешную онлайн-оплату.
-    Вызывается ПОСЛЕ списания денег. Обновляет статус заказа и отправляет уведомления.
+    Обрабатывает успешную онлайн-оплату.
     """
     if not update.message or not update.message.successful_payment: return
     
@@ -147,7 +148,6 @@ async def successful_payment_handler(update: Update, context: ContextTypes.DEFAU
             order.telegram_payment_charge_id = payment_info.telegram_payment_charge_id
             db.commit()
             
-            # Отправляем уведомления только после успешной оплаты и обновления БД
             await send_new_order_notifications(
                 order=order,
                 bot_instance=context.bot,

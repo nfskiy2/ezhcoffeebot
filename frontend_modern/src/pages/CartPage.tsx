@@ -217,14 +217,14 @@ const CartPage: React.FC = () => {
                             <div className="cart-item-quantity-container">
                                 <button 
                                     className="material-symbols-rounded icon-button small" 
-                                    onClick={() => decreaseQuantity(item.cafeItem.id, item.variant.id)}
+                                    onClick={() => decreaseQuantity(item.cartItemId)}
                                 >
                                     remove
                                 </button>
                                 <div className="cart-item-quantity">{item.quantity}</div>
                                 <button 
                                     className="material-symbols-rounded icon-button small" 
-                                    onClick={() => increaseQuantity(item.cafeItem.id, item.variant.id)}
+                                    onClick={() => increaseQuantity(item.cartItemId)}
                                 >
                                     add
                                 </button>
