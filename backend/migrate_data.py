@@ -3,12 +3,14 @@ import json
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from app.models import Base, Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem
+# Убедитесь, что импортируются все нужные модели
+from app.models import Base, Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise Exception("FATAL: DATABASE_URL not set!")
 
+# ... (код подключения к БД, как и раньше) ...
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -24,6 +26,7 @@ def migrate():
         db.query(GlobalProduct).delete()
         db.query(Category).delete()
         db.query(Cafe).delete()
+        db.query(Order).delete()
         db.commit()
 
         # 2. Загрузка глобального каталога
@@ -32,6 +35,11 @@ def migrate():
             catalog = json.load(f)
 
         for cat_data in catalog['categories']:
+            # --- ИСПРАВЛЕНИЕ ЗДЕСЬ ---
+            # Переименовываем ключ из camelCase в snake_case, если он существует
+            if 'backgroundColor' in cat_data:
+                cat_data['background_color'] = cat_data.pop('backgroundColor')
+            # ---------------------------
             db.add(Category(**cat_data))
         
         for prod_data in catalog['products']:
@@ -39,7 +47,7 @@ def migrate():
             product = GlobalProduct(**prod_data)
             db.add(product)
             for var_data in variants:
-                variant = GlobalProductVariant(id=var_data['id'], global_product_id=product.id, **var_data)
+                variant = GlobalProductVariant(global_product_id=product.id, **var_data)
                 db.add(variant)
         db.commit()
         print("-> Global Catalog migrated successfully.")
@@ -48,8 +56,36 @@ def migrate():
         print("-> Migrating Venues (Cafes)...")
         with open('data/info.json', 'r', encoding='utf-8') as f:
             all_venues_info = json.load(f)
+        
+        # Добавляем информацию о доставке
+        all_venues_info.append({
+            "id": "delivery-tomsk",
+            "name": "Доставка по Томску",
+            "coverImage": "https://images.unsplash.com/photo-1588001405580-86d354a8a8a4?auto=format&fit=crop&q=80&w=1974",
+            "logoImage": "icons/icon-delivery.svg",
+            "kitchenCategories": "Все меню на доставку",
+            "rating": "",
+            "cookingTime": "30-60 мин",
+            "status": "Доступна",
+            "openingHours": "пн-вс: 10:00-21:00",
+            "minOrderAmount": 15000
+        })
+
         for venue_data in all_venues_info:
-            db.add(Cafe(**venue_data))
+            # Приводим ключи из info.json к snake_case для модели Cafe
+            venue_data_for_db = {
+                'id': venue_data.get('id'),
+                'name': venue_data.get('name'),
+                'cover_image': venue_data.get('coverImage'),
+                'logo_image': venue_data.get('logoImage'),
+                'kitchen_categories': venue_data.get('kitchenCategories'),
+                'rating': venue_data.get('rating'),
+                'cooking_time': venue_data.get('cookingTime'),
+                'status': venue_data.get('status'),
+                'opening_hours': venue_data.get('openingHours'),
+                'min_order_amount': venue_data.get('minOrderAmount')
+            }
+            db.add(Cafe(**venue_data_for_db))
         db.commit()
         print(f"-> Venues committed. Total in DB: {db.query(Cafe).count()}")
 
