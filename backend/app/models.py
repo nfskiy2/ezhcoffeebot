@@ -1,15 +1,10 @@
 # backend/app/models.py
 from sqlalchemy import (
-    Column, Integer, String, JSON, ForeignKey, DateTime, func,
-    PrimaryKeyConstraint, ForeignKeyConstraint
+    Column, Integer, String, JSON, ForeignKey, DateTime, func, Boolean
 )
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship, declarative_base
-
-from pydantic import BaseModel, Field
-from typing import List, Any, Optional
-from pydantic.alias_generators import to_camel
 
 Base = declarative_base()
 
@@ -27,58 +22,61 @@ class Cafe(Base):
     opening_hours = Column(String)
     min_order_amount = Column(Integer, default=0)
 
-    categories = relationship("Category", back_populates="cafe")
+    # Связь с "ценниками" в этом заведении
+    menu_items = relationship("VenueMenuItem", back_populates="venue")
     orders = relationship("Order", back_populates="cafe")
-    menu_items = relationship("MenuItem", back_populates="cafe", overlaps="category")
 
 class Category(Base):
     __tablename__ = 'categories'
-
-    id = Column(String, primary_key=True)
-    cafe_id = Column(String, ForeignKey('cafes.id'), primary_key=True)
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
     icon = Column(String)
-    name = Column(String)
     background_color = Column(String)
-
-    cafe = relationship("Cafe", back_populates="categories")
-    menu_items = relationship("MenuItem", back_populates="category", overlaps="cafe,menu_items")
-
-    __table_args__ = (PrimaryKeyConstraint('id', 'cafe_id'),)
-
-class MenuItem(Base):
-    __tablename__ = 'menu_items'
-
-    id = Column(String, primary_key=True)
-    cafe_id = Column(String, primary_key=True)
-    category_id = Column(String, nullable=False)
     
-    image = Column(String)
-    name = Column(String)
+    products = relationship("GlobalProduct", back_populates="category")
+
+class GlobalProduct(Base):
+    __tablename__ = 'global_products'
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
     description = Column(String)
-    variants = Column(JSON)
-    addons = Column(JSON, nullable=True)
-    sub_category = Column(String, nullable=True)
-
-    category = relationship(
-        "Category",
-        foreign_keys=[category_id, cafe_id],
-        back_populates="menu_items",
-        overlaps="menu_items"
-    )
-    cafe = relationship("Cafe", foreign_keys=[cafe_id], back_populates="menu_items", overlaps="category,menu_items")
-
-    __table_args__ = (
-        PrimaryKeyConstraint('id', 'cafe_id'),
-        ForeignKeyConstraint(
-            ['category_id', 'cafe_id'],
-            ['categories.id', 'categories.cafe_id']
-        ),
-        ForeignKeyConstraint(['cafe_id'], ['cafes.id']),
-    )
+    image = Column(String)
+    category_id = Column(String, ForeignKey('categories.id'))
     
+    category = relationship("Category", back_populates="products")
+    variants = relationship("GlobalProductVariant", back_populates="product", cascade="all, delete-orphan")
+    venue_specific_items = relationship("VenueMenuItem", back_populates="global_product")
+
+class GlobalProductVariant(Base):
+    __tablename__ = 'global_product_variants'
+    id = Column(String, primary_key=True, index=True)
+    global_product_id = Column(String, ForeignKey('global_products.id'))
+    name = Column(String, nullable=False)
+    weight = Column(String, nullable=True)
+    
+    product = relationship("GlobalProduct", back_populates="variants")
+    venue_specific_items = relationship("VenueMenuItem", back_populates="variant")
+
+class VenueMenuItem(Base):
+    __tablename__ = 'venue_menu_items'
+    id = Column(Integer, primary_key=True)
+    venue_id = Column(String, ForeignKey('cafes.id'))
+    variant_id = Column(String, ForeignKey('global_product_variants.id'))
+    
+    price = Column(Integer, nullable=False)
+    is_available = Column(Boolean, default=True)
+
+    venue = relationship("Cafe", back_populates="menu_items")
+    variant = relationship("GlobalProductVariant", back_populates="venue_specific_items")
+    
+    # Добавим свойство для удобного доступа к "родительскому" продукту
+    @property
+    def global_product(self):
+        return self.variant.product
+
 class Order(Base):
     __tablename__ = 'orders'
-
+    # ... (содержимое класса Order остается без изменений)
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     cafe_id = Column(String, ForeignKey('cafes.id'), nullable=False)
     created_at = Column(DateTime, server_default=func.now())
@@ -88,53 +86,4 @@ class Order(Base):
     currency = Column(String(3))
     telegram_payment_charge_id = Column(String, unique=True, nullable=True)
     status = Column(String, default='pending')
-
     cafe = relationship("Cafe", back_populates="orders")
-
-class CafeSettingsSchema(BaseModel):
-    min_order_amount: int
-
-    class Config:
-        from_attributes = True
-        alias_generator = to_camel
-        populate_by_name = True
-
-# --- Схемы для заказа (OrderRequest) ---
-class OrderItemCafeItem(BaseModel):
-    id: str
-    name: Optional[str]
-
-class OrderItemVariant(BaseModel):
-    id: str
-    name: Optional[str]
-    cost: Optional[str]
-
-class CartItemRequest(BaseModel):
-    cafeItem: OrderItemCafeItem
-    variant: OrderItemVariant
-    quantity: int
-    categoryId: str
-
-class OrderRequest(BaseModel):
-    auth: str
-    cartItems: List[CartItemRequest]
-
-
-# --- Схемы для подсказок адреса (Dadata) ---
-
-# Схема для запроса подсказок
-class AddressSuggestionRequest(BaseModel):
-    query: str
-    city: str
-
-# Схемы для ответа от Dadata
-class DadataSuggestionData(BaseModel):
-    street_with_type: Optional[str] = None
-    house: Optional[str] = None
-
-class DadataSuggestion(BaseModel):
-    value: str
-    data: DadataSuggestionData
-
-class DadataSuggestionResponse(BaseModel):
-    suggestions: List[DadataSuggestion] = []

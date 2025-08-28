@@ -33,26 +33,19 @@ class CategorySchema(BaseModel):
         populate_by_name = True
 
 class MenuItemVariantSchema(BaseModel):
-    id: str
+    id: str # ID варианта, например 'cappuccino-s'
     name: str
-    cost: str
+    cost: int # Теперь это число
     weight: Optional[str] = None
 
+# Эта схема теперь для самой карточки товара
 class MenuItemSchema(BaseModel):
-    id: str
-    cafe_id: str
-    category_id: str
-    image: Optional[str]
-    name: Optional[str]
+    id: str # ID глобального продукта, например 'cappuccino'
+    name: str
     description: Optional[str]
+    image: Optional[str]
     variants: List[MenuItemVariantSchema]
-    addons: Optional[List[Any]]
-    sub_category: Optional[str] = Field(None, alias='subCategory')
 
-    class Config:
-        from_attributes = True
-        alias_generator = to_camel
-        populate_by_name = True
 
 class CafeSettingsSchema(BaseModel):
     min_order_amount: int
