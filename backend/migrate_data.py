@@ -6,6 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.models import Base, Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order
 
+# --- Настройка подключения к БД ---
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise Exception("FATAL: DATABASE_URL not set!")
@@ -14,58 +15,64 @@ engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def main_migration():
+    """Основная функция, запускающая все шаги миграции."""
     db = SessionLocal()
     try:
         print("\n--- INITIALIZING DATABASE ---")
-        # Удаляем все старые таблицы
         Base.metadata.drop_all(bind=engine)
-        # Создаем все таблицы заново по последней схеме
         Base.metadata.create_all(bind=engine)
-        print("-> Database tables created.")
+        print("-> Database tables recreated.")
         
         print("\n--- STARTING MIGRATION ---")
         
-        # ШАГ 1: Загрузка каталога в сессию
-        print("-> Staging Global Catalog...")
+        # --- ШАГ 1: ГЛОБАЛЬНЫЙ КАТАЛОГ ---
+        print("-> Migrating Global Catalog...")
         with open('data/global_catalog.json', 'r', encoding='utf-8') as f:
             catalog = json.load(f)
+
         for cat_data in catalog['categories']:
             if 'backgroundColor' in cat_data:
                 cat_data['background_color'] = cat_data.pop('backgroundColor')
             db.add(Category(**cat_data))
+        db.commit()
+
         for prod_data in catalog['products']:
             variants_data = prod_data.pop('variants', [])
             product = GlobalProduct(**prod_data)
             db.add(product)
             for var_data in variants_data:
                 db.add(GlobalProductVariant(global_product_id=product.id, **var_data))
-        
-        # ШАГ 2: Загрузка заведений в сессию
-        print("-> Staging Venues...")
+        db.commit()
+        print("-> Global Catalog migrated.")
+
+        # --- ШАГ 2: ЗАВЕДЕНИЯ ---
+        print("-> Migrating Venues (Cafes and Deliveries)...")
         with open('data/info.json', 'r', encoding='utf-8') as f:
-            venues_from_info = json.load(f)
-        all_venues_to_create = venues_from_info
+            venues_to_create = json.load(f)
         
         DELIVERY_CITIES = ["Томск", "Северск", "Новосибирск"]
         for city in DELIVERY_CITIES:
             city_id = city.lower()
-            all_venues_to_create.append({
+            venues_to_create.append({
                 "id": f"delivery-{city_id}", "name": f"Доставка по г. {city}",
                 "coverImage": "https://...url...", "logoImage": "icons/icon-delivery.svg", 
                 "kitchenCategories": "Все меню", "rating": "", "cookingTime": "45-75 мин", 
                 "status": "Доступна", "openingHours": "пн-вс: 10:00-21:00", "minOrderAmount": 15000
             })
             
-        for venue_data in all_venues_to_create:
-            db.add(Cafe(**{'id': venue_data.get('id'), 'name': venue_data.get('name'),
+        for venue_data in venues_to_create:
+            db.add(Cafe(**{
+                'id': venue_data.get('id'), 'name': venue_data.get('name'),
                 'cover_image': venue_data.get('coverImage'), 'logo_image': venue_data.get('logoImage'),
                 'kitchen_categories': venue_data.get('kitchenCategories'), 'rating': venue_data.get('rating'),
                 'cooking_time': venue_data.get('cookingTime'), 'status': venue_data.get('status'),
                 'opening_hours': venue_data.get('openingHours'), 'min_order_amount': venue_data.get('minOrderAmount')
             }))
-        
-        # ШАГ 3: Загрузка цен в сессию
-        print("-> Staging Venue Menus...")
+        db.commit()
+        print(f"-> All Venues committed. Total in DB: {db.query(Cafe).count()}")
+
+        # --- ШАГ 3: ЦЕНЫ И НАЛИЧИЕ ---
+        print("-> Migrating Venue Menus...")
         configs_path = "data/venue_configs"
         for filename in os.listdir(configs_path):
             if filename.endswith(".json"):
@@ -79,17 +86,14 @@ def main_migration():
                             price=item_config['price'],
                             is_available=item_config.get('is_available', True)
                         ))
-        
-        # ФИНАЛЬНЫЙ COMMIT
-        print("-> Committing all staged data to database...")
         db.commit()
-        print("-> All data committed successfully.")
+        print("-> Venue Menus committed.")
 
     except Exception as e:
         print(f"\n !!! AN ERROR OCCURRED DURING MIGRATION: {e} !!! \n")
         traceback.print_exc()
         db.rollback()
-        raise e # <--- ВАЖНО: Пробрасываем ошибку дальше, чтобы entrypoint.sh остановился
+        raise e
     finally:
         print(f"\n--- MIGRATION FINISHED ---")
         db.close()
