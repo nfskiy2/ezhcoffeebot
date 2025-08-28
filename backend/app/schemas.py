@@ -4,7 +4,7 @@ from pydantic.alias_generators import to_camel
 from typing import List, Optional
 
 # ---
-# ГЛАВНОЕ ИЗМЕНЕНИЕ: Базовая модель для автоматической конвертации
+# Базовая модель для автоматической конвертации
 # snake_case (Python) <--> camelCase (JSON)
 # ---
 class CustomBaseModel(BaseModel):
@@ -55,10 +55,10 @@ class MenuItemSchema(CustomBaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     image: Optional[str] = None
-    category_id: str  # Будет сконвертировано в "categoryId" в JSON
+    category_id: str
     variants: List[MenuItemVariantSchema]
     addons: Optional[List[AddonGroupSchema]] = []
-    sub_category: Optional[str] = None # Будет сконвертировано в "subCategory"
+    sub_category: Optional[str] = None
 
 class CafeSettingsSchema(CustomBaseModel):
     min_order_amount: Optional[int] = None
@@ -75,11 +75,19 @@ class OrderItemVariant(CustomBaseModel):
     name: Optional[str] = None
     cost: Optional[str] = None
 
+# --- ИСПРАВЛЕНИЕ: Определяем SelectedAddon ПЕРЕД тем, как его использовать ---
+class SelectedAddon(CustomBaseModel):
+    id: str
+    name: str
+    cost: str
+
 class CartItemRequest(CustomBaseModel):
     cafe_item: OrderItemCafeItem
     variant: OrderItemVariant
     quantity: int
     category_id: str
+    # Теперь Python знает, что такое SelectedAddon
+    selected_addons: Optional[List[SelectedAddon]] = None
 
 class DeliveryAddress(CustomBaseModel):
     city: str
