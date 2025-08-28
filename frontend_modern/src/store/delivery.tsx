@@ -32,7 +32,7 @@ export const useDelivery = () => {
     return context;
 };
 
-const AVAILABLE_CITIES = ["Томск", "Северск", "Новосибирск"];
+const AVAILABLE_CITIES = ["Томск", "Северск"];
 
 export const DeliveryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [orderType, setOrderTypeState] = useState<OrderType>('in_store');

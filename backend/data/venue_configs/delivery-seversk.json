@@ -1,0 +1,10 @@
+{
+  "variants": [
+    { "variant_id": "cappuccino-s", "price": 18000 },
+    { "variant_id": "cappuccino-m", "price": 21000 },
+    { "variant_id": "classic-burger-s", "price": 35000, "is_available": false }
+  ],
+  "addons": [
+    { "addon_id": "syrup-caramel", "price": 6000 }
+  ]
+}

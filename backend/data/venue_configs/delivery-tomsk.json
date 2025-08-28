@@ -1,16 +1,14 @@
 {
   "variants": [
-    { "variant_id": "cappuccino-s", "price": 15000 },
-    { "variant_id": "cappuccino-m", "price": 18000 },
-    { "variant_id": "latte-m", "price": 16000 },
-    { "variant_id": "latte-l", "price": 19000 },
-    { "variant_id": "classic-burger-s", "price": 32000 },
-    { "variant_id": "cheesecake-slice", "price": 25000, "is_available": false }
+    { "variant_id": "cappuccino-s", "price": 17000 },
+    { "variant_id": "cappuccino-m", "price": 20000 },
+    { "variant_id": "latte-m", "price": 18000 },
+    { "variant_id": "latte-l", "price": 21000 },
+    { "variant_id": "classic-burger-s", "price": 34000 }
   ],
   "addons": [
     { "addon_id": "syrup-vanilla", "price": 5000 },
     { "addon_id": "syrup-caramel", "price": 5000 },
-    { "addon_id": "milk-oat", "price": 7000 },
-    { "addon_id": "milk-coconut", "price": 7000, "is_available": false }
+    { "addon_id": "burger-extra-cheese", "price": 6000 }
   ]
 }

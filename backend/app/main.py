@@ -280,7 +280,7 @@ def get_category_menu_by_cafe(cafe_id: str, category_id: str, db: Session = Depe
 @app.get("/cafes/{cafe_id}/menu/details/{menu_item_id}", response_model=MenuItemSchema)
 def get_menu_item_details_by_cafe(cafe_id: str, menu_item_id: str, db: Session = Depends(get_db_session)):
     venue_menu_items = (db.query(VenueMenuItem)
-        .join(VenueMenuItem.variant).join(GlobalProductVariant)
+        .join(VenueMenuItem.variant)
         .filter(
             VenueMenuItem.venue_id == cafe_id,
             VenueMenuItem.is_available == True,
