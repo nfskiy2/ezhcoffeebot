@@ -67,8 +67,8 @@ class OrderItemCafeItem(BaseModel):
 
 class OrderItemVariant(BaseModel):
     id: str
-    name: str | None = None
-    cost: int | None = None
+    name: Optional[str] = None
+    cost: Optional[str] = None
 
 class CartItemRequest(BaseModel):
     cafeItem: OrderItemCafeItem
@@ -117,8 +117,13 @@ class MenuItemVariantSchema(BaseModel):
 
 class MenuItemSchema(BaseModel):
     id: str
-    name: str
+    name: Optional[str]
     description: Optional[str]
     image: Optional[str]
+    category_id: str  # <-- ДОБАВЬТЕ ЭТУ СТРОКУ
     variants: List[MenuItemVariantSchema]
-    addons: Optional[List[AddonGroupSchema]] = None
+    addons: Optional[List[AddonGroupSchema]] = []
+
+    class Config:
+        orm_mode = True
+
