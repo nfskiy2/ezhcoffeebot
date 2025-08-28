@@ -22,7 +22,6 @@ class CafeSchema(BaseModel):
 
 class CategorySchema(BaseModel):
     id: str
-    cafe_id: str
     icon: Optional[str]
     name: Optional[str]
     background_color: Optional[str]

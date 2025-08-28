@@ -58,18 +58,21 @@ def migrate():
             all_venues_info = json.load(f)
         
         # Добавляем информацию о доставке
-        all_venues_info.append({
-            "id": "delivery-tomsk",
-            "name": "Доставка по Томску",
-            "coverImage": "https://images.unsplash.com/photo-1588001405580-86d354a8a8a4?auto=format&fit=crop&q=80&w=1974",
-            "logoImage": "icons/icon-delivery.svg",
-            "kitchenCategories": "Все меню на доставку",
-            "rating": "",
-            "cookingTime": "30-60 мин",
-            "status": "Доступна",
-            "openingHours": "пн-вс: 10:00-21:00",
-            "minOrderAmount": 15000
-        })
+        DELIVERY_CITIES = ["Томск", "Северск", "Новосибирск"]
+        for city in DELIVERY_CITIES:
+            city_id = city.lower() # "Томск" -> "tomsk"
+            all_venues_info.append({
+                "id": f"delivery-{city_id}",
+                "name": f"Доставка по г. {city}",
+                "coverImage": "https://images.unsplash.com/photo-1588001405580-86d354a8a8a4?auto=format&fit=crop&q=80&w=1974",
+                "logoImage": "icons/icon-delivery.svg",
+                "kitchenCategories": "Все меню на доставку",
+                "rating": "",
+                "cookingTime": "45-75 мин",
+                "status": "Доступна",
+                "openingHours": "пн-вс: 10:00-21:00",
+                "minOrderAmount": 15000
+            })
 
         for venue_data in all_venues_info:
             # Приводим ключи из info.json к snake_case для модели Cafe
