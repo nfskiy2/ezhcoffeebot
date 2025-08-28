@@ -23,50 +23,51 @@ def main_migration():
         
         print("\n--- STARTING MIGRATION ---")
         
-        # ШАГ 1: Глобальный каталог (без изменений)
-        print("-> Migrating Global Catalog...")
+        # ШАГ 1: Категории
+        print("-> Migrating Categories...")
         with open('data/global_catalog.json', 'r', encoding='utf-8') as f:
             catalog = json.load(f)
         for cat_data in catalog['categories']:
             if 'backgroundColor' in cat_data:
                 cat_data['background_color'] = cat_data.pop('backgroundColor')
             db.add(Category(**cat_data))
+        db.commit() # Сохраняем категории
+        print(" -> Categories committed.")
+
+        # ШАГ 2: Глобальные продукты и их варианты
+        print("-> Migrating Global Products and Variants...")
         for prod_data in catalog['products']:
             variants_data = prod_data.pop('variants', [])
             product_obj = GlobalProduct(**prod_data)
             db.add(product_obj)
-            db.flush()
+            db.flush() # Получаем product_obj.id
             for var_data in variants_data:
                 db.add(GlobalProductVariant(global_product_id=product_obj.id, **var_data))
-        db.commit()
-        print("-> Global Catalog migrated.")
+        db.commit() # Сохраняем продукты и варианты
+        print(" -> Products and Variants committed.")
 
-        # ШАГ 2: Заведения
-        print("-> Migrating Venues...")
-        # Сначала только реальные кофейни из info.json
+        # ШАГ 3: Заведения
+        print("-> Migrating Venues (Cafes and Deliveries)...")
         with open('data/info.json', 'r', encoding='utf-8') as f:
             real_venues = json.load(f)
-        for venue_data in real_venues:
+        
+        venues_to_create = real_venues
+        
+        DELIVERY_CITIES = ["Томск", "Северск", "Новосибирск"]
+        for city in DELIVERY_CITIES:
+            venues_to_create.append({"id": f"delivery-{city.lower()}", "name": f"Доставка по г. {city}", "coverImage": "...", "logoImage": "..."})
+            
+        for venue_data in venues_to_create:
             db.add(Cafe(**{'id': venue_data.get('id'), 'name': venue_data.get('name'),
                 'cover_image': venue_data.get('coverImage'), 'logo_image': venue_data.get('logoImage'),
                 'kitchen_categories': venue_data.get('kitchenCategories'), 'rating': venue_data.get('rating'),
                 'cooking_time': venue_data.get('cookingTime'), 'status': venue_data.get('status'),
                 'opening_hours': venue_data.get('openingHours'), 'min_order_amount': venue_data.get('minOrderAmount')
             }))
-        
-        # Явно создаем и добавляем "виртуальные" заведения для доставки
-        DELIVERY_CITIES = ["Томск", "Северск", "Новосибирск"]
-        for city in DELIVERY_CITIES:
-            city_id = city.lower()
-            db.add(Cafe(id=f"delivery-{city_id}", name=f"Доставка по г. {city}", 
-                        cover_image="...", logo_image="...", kitchen_categories="Все меню", 
-                        status="Доступна", cooking_time="45-75 мин", opening_hours="пн-вс: 10:00-21:00", 
-                        min_order_amount=15000))
-        
-        db.commit()
-        print(f"-> All Venues committed. Total in DB: {db.query(Cafe).count()}")
+        db.commit() # Сохраняем заведения
+        print(f" -> All Venues committed. Total in DB: {db.query(Cafe).count()}")
 
-        # ШАГ 3: Цены и наличие
+        # ШАГ 4: Цены и наличие
         print("-> Migrating Venue Menus...")
         variants_map = {v.id: v.global_product_id for v in db.query(GlobalProductVariant).all()}
         
@@ -89,7 +90,7 @@ def main_migration():
                             price=item_config['price'],
                             is_available=item_config.get('is_available', True)
                         ))
-        db.commit()
+        db.commit() # Сохраняем "ценники"
         print("-> Venue Menus committed.")
 
     except Exception as e:
