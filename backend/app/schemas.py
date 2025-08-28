@@ -1,10 +1,22 @@
 # backend/app/schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
+from pydantic.alias_generators import to_camel
 from typing import List, Optional
 
-# --- Схемы для ответа API (то, что мы отдаем фронтенду) ---
+# ---
+# ГЛАВНОЕ ИЗМЕНЕНИЕ: Базовая модель для автоматической конвертации
+# snake_case (Python) <--> camelCase (JSON)
+# ---
+class CustomBaseModel(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True
+    )
 
-class CafeSchema(BaseModel):
+# --- Схемы для ответа API (теперь все наследуются от CustomBaseModel) ---
+
+class CafeSchema(CustomBaseModel):
     id: str
     name: str
     cover_image: Optional[str] = None
@@ -16,85 +28,75 @@ class CafeSchema(BaseModel):
     opening_hours: Optional[str] = None
     min_order_amount: Optional[int] = None
 
-    class Config:
-        from_attributes = True
-
-class CategorySchema(BaseModel):
+class CategorySchema(CustomBaseModel):
     id: str
     name: str
     icon: Optional[str] = None
     background_color: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
-class MenuItemVariantSchema(BaseModel):
+class MenuItemVariantSchema(CustomBaseModel):
     id: str
     name: str
     cost: str
     weight: Optional[str] = None
 
-class AddonItemSchema(BaseModel):
+class AddonItemSchema(CustomBaseModel):
     id: str
     name: str
     cost: str
 
-class AddonGroupSchema(BaseModel):
+class AddonGroupSchema(CustomBaseModel):
     id: str
     name: str
     items: List[AddonItemSchema]
 
-class MenuItemSchema(BaseModel):
+class MenuItemSchema(CustomBaseModel):
     id: str
     name: Optional[str] = None
     description: Optional[str] = None
     image: Optional[str] = None
-    category_id: str
+    category_id: str  # Будет сконвертировано в "categoryId" в JSON
     variants: List[MenuItemVariantSchema]
     addons: Optional[List[AddonGroupSchema]] = []
-    subCategory: Optional[str] = None
+    sub_category: Optional[str] = None # Будет сконвертировано в "subCategory"
 
-    class Config:
-        from_attributes = True
-
-
-class CafeSettingsSchema(BaseModel):
+class CafeSettingsSchema(CustomBaseModel):
     min_order_amount: Optional[int] = None
 
 
-# --- Схемы для тела запроса (то, что мы получаем от фронтенда) ---
+# --- Схемы для тела запроса (поля тоже приводим к snake_case) ---
 
-class OrderItemCafeItem(BaseModel):
+class OrderItemCafeItem(CustomBaseModel):
     id: str
     name: Optional[str] = None
 
-class OrderItemVariant(BaseModel):
+class OrderItemVariant(CustomBaseModel):
     id: str
     name: Optional[str] = None
     cost: Optional[str] = None
 
-class CartItemRequest(BaseModel):
-    cafeItem: OrderItemCafeItem
+class CartItemRequest(CustomBaseModel):
+    cafe_item: OrderItemCafeItem
     variant: OrderItemVariant
     quantity: int
-    categoryId: str
+    category_id: str
 
-class DeliveryAddress(BaseModel):
+class DeliveryAddress(CustomBaseModel):
     city: str
     street: str
     house: str
     apartment: str
     comment: str
 
-class OrderRequest(BaseModel):
+class OrderRequest(CustomBaseModel):
     auth: str
-    cartItems: List[CartItemRequest]
+    cart_items: List[CartItemRequest]
     address: Optional[DeliveryAddress] = None
-    paymentMethod: str
+    payment_method: str
 
-class AddressSuggestionRequest(BaseModel):
+class AddressSuggestionRequest(CustomBaseModel):
     query: str
     city: str
 
-class DadataSuggestionResponse(BaseModel):
+class DadataSuggestionResponse(CustomBaseModel):
     suggestions: List[dict]
