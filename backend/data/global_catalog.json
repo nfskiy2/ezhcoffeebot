@@ -25,7 +25,7 @@
       "category_id": "coffee",
       "name": "Капучино",
       "description": "Двойной шот эспрессо с равными частями вспененного молока и пены.",
-      "image": "https://images.unsplash.com/photo-1517701550927-2e0a72a435a8?auto=format&fit=crop&w=1000&q=80",
+      "image": "https://images.unsplash.com/photo-1489217085007-bfc28b5c6f36?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
       "variants": [
         { "id": "cappuccino-s", "name": "Маленький", "weight": "150мл" },
         { "id": "cappuccino-m", "name": "Средний", "weight": "250мл" }
@@ -37,7 +37,7 @@
       "category_id": "coffee",
       "name": "Латте",
       "description": "Нежный молочный напиток на основе эспрессо.",
-      "image": "https://images.unsplash.com/photo-1576092762791-d2199b59e5ce?auto=format&fit=crop&w=1000&q=80",
+      "image": "https://images.unsplash.com/photo-1481455473976-c280ae7c10f9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
       "variants": [
         { "id": "latte-m", "name": "Средний", "weight": "250мл" },
         { "id": "latte-l", "name": "Большой", "weight": "350мл" }
@@ -49,7 +49,7 @@
       "category_id": "burgers",
       "name": "Классический Бургер",
       "description": "Котлета из говядины, свежие овощи, фирменный соус.",
-      "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1000&q=80",
+      "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
       "variants": [
         { "id": "classic-burger-s", "name": "Стандарт", "weight": "280г" }
       ],
@@ -60,10 +60,11 @@
       "category_id": "desserts",
       "name": "Чизкейк Нью-Йорк",
       "description": "Классический чизкейк на песочной основе.",
-      "image": "https://images.unsplash.com/photo-1543598579-4a34e8b8e0e2?auto=format&fit=crop&w=1000&q=80",
+      "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
       "variants": [
         { "id": "cheesecake-slice", "name": "Кусочек", "weight": "120г" }
       ]
     }
+    
   ]
 }

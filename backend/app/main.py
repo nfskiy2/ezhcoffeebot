@@ -147,7 +147,9 @@ def assemble_menu_items(venue_menu_items: List[VenueMenuItem], db: Session, cafe
         if product.id not in products_dict:
             products_dict[product.id] = {
                 "id": product.id, "name": product.name, "description": product.description,
-                "image": product.image, "variants": [], "addons": []
+                "image": product.image,
+                "category_id": product.category_id,
+                "variants": [], "addons": []
             }
         products_dict[product.id]["variants"].append({
             "id": item.variant.id, "name": item.variant.name,

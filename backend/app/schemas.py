@@ -67,8 +67,8 @@ class OrderItemCafeItem(BaseModel):
 
 class OrderItemVariant(BaseModel):
     id: str
-    name: Optional[str]
-    cost: Optional[str]
+    name: str | None = None
+    cost: int | None = None
 
 class CartItemRequest(BaseModel):
     cafeItem: OrderItemCafeItem
