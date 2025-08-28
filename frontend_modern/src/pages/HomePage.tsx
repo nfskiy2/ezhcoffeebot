@@ -15,41 +15,30 @@ const HomePage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { items, getItemCount } = useCart();
-    const { selectedCafe, isLoading: isCafeLoading, error: cafeError, retryLoad: retryLoadCafes, getCafeById } = useCafe();
+    const { selectedCafe, isLoading: isCafeLoading, error: cafeError, retryLoad: retryLoadCafes } = useCafe();
     const { orderType, getFormattedAddress } = useDelivery();
-    
-    // Локальное состояние для отображаемого кафе, чтобы избежать "моргания"
-    const [displayCafe, setDisplayCafe] = useState(selectedCafe);
     
     const [categories, setCategories] = useState<CategorySchema[]>([]);
     const [popularItems, setPopularItems] = useState<MenuItemSchema[]>([]);
     const [isLoadingCafeData, setIsLoadingCafeData] = useState(true);
+    
+    // Используем selectedCafe напрямую. Логика с displayCafe была избыточной.
+    const cafeToDisplay = selectedCafe; 
 
-    useEffect(() => {
-        // Логика определения, какое кафе показывать
-        const cafeIdFromNavState = location.state?.selectedCafeId;
-        if (cafeIdFromNavState) {
-            // Если ID пришел из навигации (со страницы выбора), используем его
-            setDisplayCafe(getCafeById(cafeIdFromNavState));
-        } else {
-            // Иначе используем кафе из глобального контекста (сохраненное в localStorage)
-            setDisplayCafe(selectedCafe);
-        }
-    }, [location.state, selectedCafe, getCafeById]);
-
-    const cafeStatus = useMemo(() => getCafeStatus(displayCafe?.openingHours), [displayCafe]);
+    const cafeStatus = useMemo(() => getCafeStatus(cafeToDisplay?.openingHours), [cafeToDisplay]);
 
     useEffect(() => {
         const loadCafeSpecificData = async () => {
-            if (!displayCafe) {
+            if (!cafeToDisplay) {
                 setIsLoadingCafeData(false);
                 return;
             }
             setIsLoadingCafeData(true);
             try {
+                logger.log(`Loading data for cafe: ${cafeToDisplay.id}`);
                 const [categoriesData, popularData] = await Promise.all([
-                    getCafeCategories(displayCafe.id),
-                    getCafePopularMenu(displayCafe.id)
+                    getCafeCategories(cafeToDisplay.id),
+                    getCafePopularMenu(cafeToDisplay.id)
                 ]);
                 setCategories(categoriesData || []);
                 setPopularItems(popularData || []);
@@ -60,7 +49,7 @@ const HomePage: React.FC = () => {
             }
         };
         loadCafeSpecificData();
-    }, [displayCafe]);
+    }, [cafeToDisplay]);
 
     const handleMainButtonClick = useCallback(() => {
         if (getItemCount(items) > 0) {
@@ -90,8 +79,9 @@ const HomePage: React.FC = () => {
     }, [items, handleMainButtonClick, getItemCount]);
     
     const formattedAddress = getFormattedAddress();
-    const headerTitle = (orderType === 'delivery' && formattedAddress) ? formattedAddress : displayCafe?.name;
+    const headerTitle = (orderType === 'delivery' && formattedAddress) ? formattedAddress : cafeToDisplay?.name;
     
+    // --- УСЛОВИЯ ОТОБРАЖЕНИЯ ---
     if (isCafeLoading) {
         return <section>{/* Шиммер-заглушка */}</section>;
     }
@@ -100,7 +90,8 @@ const HomePage: React.FC = () => {
         return <ErrorState message={cafeError} onRetry={retryLoadCafes} />;
     }
 
-    if (!displayCafe) {
+    if (!cafeToDisplay) {
+        // Если кафе еще не выбрано (первый запуск), показываем заглушку
         return (
             <section className="selection-redirect">
                 <h2>Добро пожаловать!</h2>
@@ -110,12 +101,13 @@ const HomePage: React.FC = () => {
         );
     }
 
+    // --- ОСНОВНАЯ РАЗМЕТКА ---
     return (
         <section>
             <div className="cafe-logo-container" onClick={() => navigate('/select-location')} style={{ cursor: 'pointer' }}>
-                <img id="cafe-logo" className="cafe-logo" src={displayCafe.logoImage || "/icons/icon-transparent.svg"} alt="Логотип кафе"/>
+                <img id="cafe-logo" className="cafe-logo" src={cafeToDisplay.logoImage || "/icons/icon-transparent.svg"} alt="Логотип кафе"/>
             </div>
-            <img id="cafe-cover" className="cover" src={displayCafe.coverImage || "/icons/icon-transparent.svg"} alt="Обложка кафе"/>
+            <img id="cafe-cover" className="cover" src={cafeToDisplay.coverImage || "/icons/icon-transparent.svg"} alt="Обложка кафе"/>
 
             <div id="cafe-info" className="cafe-info-container">
                 <button
@@ -125,12 +117,12 @@ const HomePage: React.FC = () => {
                     <h1>{headerTitle}</h1>
                     <span className="material-symbols-rounded">arrow_drop_down</span>
                 </button>
-                <p id="cafe-kitchen-categories" className="cafe-kitchen-categories">{displayCafe.kitchenCategories}</p>
+                <p id="cafe-kitchen-categories" className="cafe-kitchen-categories">{cafeToDisplay.kitchenCategories}</p>
                 <div className="cafe-parameters-container">
                     <div className="cafe-parameter-container">
                         <img src="/icons/icon-time.svg" className="cafe-parameter-icon" alt="Время работы"/>
                         <div>
-                            {formatOpeningHours(displayCafe.openingHours).split(',').map((line, index) => (
+                            {formatOpeningHours(cafeToDisplay.openingHours).split(',').map((line, index) => (
                                 <div key={index} className="cafe-parameter-value" style={{ opacity: 0.72 }}>
                                     {line.trim()}
                                 </div>
@@ -148,16 +140,14 @@ const HomePage: React.FC = () => {
                 <div className="cafe-section-horizontal">
                     {isLoadingCafeData ? (
                         <>
-                            <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
-                            <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
-                            <div className="cafe-category-container shimmer" style={{width: '80px', height: '80px'}}></div>
+                           {/* Шиммеры */}
                         </>
                     ) : (
                         Array.isArray(categories) && categories.length > 0 ? categories.map(category => (
                             <button
                                 key={category.id}
                                 className="cafe-category-container"
-                                onClick={() => navigate(`/cafe/${displayCafe.id}/category/${category.id}`)}
+                                onClick={() => navigate(`/cafe/${cafeToDisplay.id}/category/${category.id}`)}
                                 style={{ backgroundColor: category.backgroundColor || '#ccc' }}
                             >
                                 <img className="cafe-category-icon" src={category.icon || "/icons/icon-transparent.svg"} alt={category.name + " иконка"}/>
@@ -178,12 +168,11 @@ const HomePage: React.FC = () => {
                 <div className="cafe-section-horizontal">
                     {isLoadingCafeData ? (
                         <>
-                            <div className="cafe-item-container"><div className="cafe-item-image shimmer"></div></div>
-                            <div className="cafe-item-container"><div className="cafe-item-image shimmer"></div></div>
+                           {/* Шиммеры */}
                         </>
                     ) : (
                         Array.isArray(popularItems) && popularItems.length > 0 ? popularItems.map(item => (
-                            <MenuItemCard key={item.id} item={item} cafeId={displayCafe.id} />
+                            <MenuItemCard key={item.id} item={item} cafeId={cafeToDisplay.id} />
                         )) : <p style={{ paddingLeft: '16px' }}>Нет популярных товаров.</p>
                     )}
                 </div>
