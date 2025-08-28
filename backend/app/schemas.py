@@ -17,7 +17,7 @@ class CafeSchema(BaseModel):
     min_order_amount: Optional[int] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CategorySchema(BaseModel):
     id: str
@@ -26,7 +26,7 @@ class CategorySchema(BaseModel):
     background_color: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class MenuItemVariantSchema(BaseModel):
     id: str
@@ -49,13 +49,13 @@ class MenuItemSchema(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     image: Optional[str] = None
-    category_id: str  # <-- ИСПРАВЛЕНИЕ 1: Добавляем это поле
+    category_id: str
     variants: List[MenuItemVariantSchema]
     addons: Optional[List[AddonGroupSchema]] = []
     subCategory: Optional[str] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 
 class CafeSettingsSchema(BaseModel):
@@ -71,7 +71,7 @@ class OrderItemCafeItem(BaseModel):
 class OrderItemVariant(BaseModel):
     id: str
     name: Optional[str] = None
-    cost: Optional[str] = None # <-- ИСПРАВЛЕНИЕ 2: Убеждаемся, что здесь строка
+    cost: Optional[str] = None
 
 class CartItemRequest(BaseModel):
     cafeItem: OrderItemCafeItem
