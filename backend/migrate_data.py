@@ -23,7 +23,6 @@ db_params = {
 }
 
 engine = create_engine(f"postgresql://", connect_args=db_params)
-Base.metadata.create_all(engine)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def migrate():
@@ -31,10 +30,19 @@ def migrate():
     try:
         print("\n--- STARTING MIGRATION ---")
 
-                # 1. МИГРАЦИЯ КОФЕЕН И ДОСТАВКИ
+        # Удаляем все старые данные перед миграцией для чистоты
+        db.query(MenuItem).delete()
+        db.query(Category).delete()
+        db.query(Cafe).delete()
+        db.query(Order).delete()
+        db.commit()
+        print("-> Old data cleared.")
+
+        # 1. МИГРАЦИЯ КОФЕЕН И ДОСТАВКИ
         print("Migrating cafes...")
         cafes_data = [
-            {
+            # ... (ваши кафе ezh-1, ezh-2, ezh-3) ...
+             {
                 "id": "ezh-1",
                 "name": "EZH-1",
                 "cover_image": "https://images.unsplash.com/photo-1554118811-1e0d58224f24?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
@@ -70,7 +78,6 @@ def migrate():
                 "opening_hours": "пн-вс: 11:00-22:00",
                 "min_order_amount": 12000
             },
-            # НОВОЕ ВИРТУАЛЬНОЕ КАФЕ ДЛЯ ДОСТАВКИ
             {
                 "id": "delivery-tomsk",
                 "name": "Доставка по Томску",
@@ -81,68 +88,68 @@ def migrate():
                 "cooking_time": "30-60 мин",
                 "status": "Доступна",
                 "opening_hours": "пн-вс: 10:00-21:00",
-                "min_order_amount": 15000 # Минимальная сумма для доставки
+                "min_order_amount": 15000
             }
         ]
         
         for cafe_data in cafes_data:
-            # Используем merge для идемпотентности
             db.merge(Cafe(**cafe_data))
-        
         db.commit()
         print(f"-> Cafes committed. Total in DB: {db.query(Cafe).count()}")
 
         # 2. МИГРАЦИЯ КАТЕГОРИЙ И МЕНЮ
-        categories_data_path = 'data/categories.json'
-        with open(categories_data_path, 'r', encoding='utf-8') as f:
+        with open('data/categories.json', 'r', encoding='utf-8') as f:
             all_categories = json.load(f)
-        all_category_ids = [cat['id'] for cat in all_categories]
         
-        cafe_category_mapping = {
-            "ezh-1": all_category_ids,
-            "ezh-2": [cid for cid in all_category_ids if 'kofe' in cid or 'coffee' in cid],
-            "ezh-3": [cid for cid in all_category_ids if 'picca' in cid or 'pasta' in cid],
-            "delivery-tomsk": all_category_ids 
-        }
+        all_cafes = db.query(Cafe).all()
 
-        for cafe_id, category_ids in cafe_category_mapping.items():
-            print(f"\n--- Processing Cafe ID: {cafe_id} ---")
-            for category_id in category_ids:
-                cat_data = next((c for c in all_categories if c['id'] == category_id), None)
-                if not cat_data:
-                    print(f"  WARNING: Data for category '{category_id}' not found in categories.json. Skipping.")
-                    continue
-                
-                print(f"  -> Adding Category: {cat_data['name']}")
-                category = Category(
+        for cafe in all_cafes:
+            print(f"\n--- Processing Cafe: {cafe.name} ({cafe.id}) ---")
+            
+            # --- НОВАЯ УМНАЯ ЛОГИКА ---
+            is_delivery = cafe.id.startswith('delivery-')
+            if is_delivery:
+                # Извлекаем город из ID, например, "delivery-tomsk" -> "tomsk"
+                city = cafe.id.split('-', 1)[1]
+                base_menu_path = f"data/delivery_menu/{city}"
+            else:
+                base_menu_path = "data/menu"
+            
+            print(f"  -> Using menu path: {base_menu_path}")
+
+            # Для простоты примера, все кафе (включая доставку) имеют все категории.
+            # Эту логику можно усложнить, если нужно.
+            for cat_data in all_categories:
+                db.merge(Category(
                     id=cat_data.get('id'),
-                    cafe_id=cafe_id,
+                    cafe_id=cafe.id,
                     icon=cat_data.get('icon'),
                     name=cat_data.get('name'),
                     background_color=cat_data.get('backgroundColor')
-                )
-                db.add(category)
+                ))
 
-                menu_path = f"data/menu/{category_id}.json"
-                if os.path.exists(menu_path):
-                    with open(menu_path, 'r', encoding='utf-8') as f:
+                menu_file_path = f"{base_menu_path}/{cat_data.get('id')}.json"
+                if os.path.exists(menu_file_path):
+                    with open(menu_file_path, 'r', encoding='utf-8') as f:
                         menu_items = json.load(f)
+                        print(f"    -> Loading {len(menu_items)} items from {menu_file_path}")
                         for item_data in menu_items:
-                            print(f"    -> Adding MenuItem: {item_data.get('name')}")
-                            menu_item = MenuItem(
+                            db.merge(MenuItem(
                                 id=item_data.get('id'),
-                                cafe_id=cafe_id,
-                                category_id=category_id,
+                                cafe_id=cafe.id,
+                                category_id=cat_data.get('id'),
                                 image=item_data.get('image'),
                                 name=item_data.get('name'),
                                 description=item_data.get('description'),
                                 variants=item_data.get('variants'),
                                 addons=item_data.get('addons'),
-                                sub_category=item_data.get('subCategory') # <-- ДОБАВЛЕНО
-                            )
-                            db.add(menu_item)
-            db.commit()
-            print(f"-> Committed data for cafe: {cafe_id}")
+                                sub_category=item_data.get('subCategory')
+                            ))
+                else:
+                    print(f"    -> WARNING: Menu file not found at {menu_file_path}. Skipping.")
+        
+        db.commit()
+        print("\n-> All categories and menu items committed.")
     
     except Exception as e:
         print(f"\n !!! AN ERROR OCCURRED DURING MIGRATION: {e} !!! \n")
@@ -157,4 +164,5 @@ def migrate():
         db.close()
 
 if __name__ == "__main__":
+    Base.metadata.create_all(engine)
     migrate()

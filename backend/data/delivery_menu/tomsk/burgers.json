@@ -1,0 +1,22 @@
+[
+    {
+        "id": "burger-1",
+        "image": "...",
+        "name": "Hamburger",
+        "description": "...",
+        "variants": [
+            {
+                "id": "s",
+                "name": "Small",
+                "cost": "1250",  
+                "weight": "200g"
+            },
+            {
+                "id": "l",
+                "name": "Large",
+                "cost": "1450",
+                "weight": "280g"
+            }
+        ]
+    }
+]
