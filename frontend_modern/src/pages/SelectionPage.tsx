@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCafe } from '../store/cafe';
-import { useDelivery } from '../store/delivery';
-import type { OrderType } from '../store/delivery';
+import { useDelivery, type OrderType } from '../store/delivery';
 import DeliveryAddressForm from '../components/DeliveryAddressForm';
 
 const SelectionPage: React.FC = () => {
@@ -10,21 +9,26 @@ const SelectionPage: React.FC = () => {
     const { cafes, setSelectedCafeId } = useCafe();
     const { orderType, setOrderType } = useDelivery();
     const [activeTab, setActiveTab] = useState<OrderType>(orderType);
+    const inStoreCafes = cafes.filter(c => !c.id.startsWith('delivery-'));
+    const deliveryCafes = cafes.filter(c => c.id.startsWith('delivery-'));
 
     const handleCafeSelect = (cafeId: string) => {
         setSelectedCafeId(cafeId);
         setOrderType('in_store');
-        navigate('/');
+        navigate('/', { state: { selectedCafeId: cafeId } });
     };
 
-    const handleAddressSave = () => {
-        // Для доставки нам все равно нужно выбрать "базовую" кофейню для API
-        // Выбираем первую из списка как кухню по умолчанию для доставок
-        if (cafes.length > 0) {
-            setSelectedCafeId(cafes[0].id);
+    const handleAddressSave = (city: string) => {
+        // Ищем "кафе" доставки для выбранного города
+        const deliveryCafe = deliveryCafes.find(c => c.id === `delivery-${city.toLowerCase()}`);
+        if (deliveryCafe) {
+            setSelectedCafeId(deliveryCafe.id);
+            setOrderType('delivery');
+            navigate('/', { state: { selectedCafeId: deliveryCafe.id } });
+        } else {
+            // Обработка случая, если доставка в город не найдена
+            alert(`Доставка в ${city} временно недоступна.`);
         }
-        setOrderType('delivery');
-        navigate('/');
     };
 
     return (
@@ -49,7 +53,7 @@ const SelectionPage: React.FC = () => {
                     <>
                         <h3 className="selection-title">Выберите кофейню</h3>
                         <div className="cafe-list">
-                            {cafes.map(cafe => (
+                            {inStoreCafes.map(cafe => (
                                 <button
                                     key={cafe.id}
                                     className="cafe-list-item"

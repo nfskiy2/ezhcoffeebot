@@ -1,0 +1,31 @@
+{
+  "categories": [
+    { "id": "coffee", "name": "Кофе", "icon": "icons/icon-coffee.svg", "backgroundColor": "#D2B48C" },
+    { "id": "burgers", "name": "Бургеры", "icon": "icons/icon-burger.svg", "backgroundColor": "#F79683" }
+  ],
+  "products": [
+    {
+      "id": "cappuccino",
+      "category_id": "coffee",
+      "name": "Капучино Классический",
+      "description": "Двойной шот эспрессо с равными частями вспененного молока и молочной пены. Насыщенный и ароматный.",
+      "image": "https://images.unsplash.com/photo-1517701550927-2e0a72a435a8?auto=format&fit=crop&w=1000&q=80",
+      "variants": [
+        { "id": "cappuccino-s", "name": "Маленький", "weight": "150мл" },
+        { "id": "cappuccino-m", "name": "Средний", "weight": "250мл" },
+        { "id": "cappuccino-l", "name": "Большой", "weight": "300мл" }
+      ]
+    },
+    {
+      "id": "cheeseburger",
+      "category_id": "burgers",
+      "name": "Чизбургер",
+      "description": "Сочная котлета из мраморной говядины, сыр чеддер, маринованные огурчики и специальный соус на мягкой булочке.",
+      "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1000&q=80",
+      "variants": [
+        { "id": "cheeseburger-s", "name": "Стандарт", "weight": "250г" },
+        { "id": "cheeseburger-l", "name": "Двойной", "weight": "400г" }
+      ]
+    }
+  ]
+}

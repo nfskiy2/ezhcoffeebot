@@ -1,5 +1,5 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getCafeCategories, getCafePopularMenu } from '../api';
 import type { CategorySchema, MenuItemSchema } from '../api/types';
 import { useCart } from '../store/cart';
@@ -13,27 +13,43 @@ import { useDelivery } from '../store/delivery';
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { items, getItemCount } = useCart();
-    const { selectedCafe, isLoading: isCafeLoading, error: cafeError, retryLoad: retryLoadCafes } = useCafe();
+    const { selectedCafe, isLoading: isCafeLoading, error: cafeError, retryLoad: retryLoadCafes, getCafeById } = useCafe();
     const { orderType, getFormattedAddress } = useDelivery();
     
-    const [categories, setCategories] = React.useState<CategorySchema[]>([]);
-    const [popularItems, setPopularItems] = React.useState<MenuItemSchema[]>([]);
-    const [isLoadingCafeData, setIsLoadingCafeData] = React.useState(true);
+    // Локальное состояние для отображаемого кафе, чтобы избежать "моргания"
+    const [displayCafe, setDisplayCafe] = useState(selectedCafe);
+    
+    const [categories, setCategories] = useState<CategorySchema[]>([]);
+    const [popularItems, setPopularItems] = useState<MenuItemSchema[]>([]);
+    const [isLoadingCafeData, setIsLoadingCafeData] = useState(true);
 
-    const cafeStatus = useMemo(() => getCafeStatus(selectedCafe?.openingHours), [selectedCafe]);
+    useEffect(() => {
+        // Логика определения, какое кафе показывать
+        const cafeIdFromNavState = location.state?.selectedCafeId;
+        if (cafeIdFromNavState) {
+            // Если ID пришел из навигации (со страницы выбора), используем его
+            setDisplayCafe(getCafeById(cafeIdFromNavState));
+        } else {
+            // Иначе используем кафе из глобального контекста (сохраненное в localStorage)
+            setDisplayCafe(selectedCafe);
+        }
+    }, [location.state, selectedCafe, getCafeById]);
+
+    const cafeStatus = useMemo(() => getCafeStatus(displayCafe?.openingHours), [displayCafe]);
 
     useEffect(() => {
         const loadCafeSpecificData = async () => {
-            if (!selectedCafe) {
+            if (!displayCafe) {
                 setIsLoadingCafeData(false);
                 return;
             }
             setIsLoadingCafeData(true);
             try {
                 const [categoriesData, popularData] = await Promise.all([
-                    getCafeCategories(selectedCafe.id),
-                    getCafePopularMenu(selectedCafe.id)
+                    getCafeCategories(displayCafe.id),
+                    getCafePopularMenu(displayCafe.id)
                 ]);
                 setCategories(categoriesData || []);
                 setPopularItems(popularData || []);
@@ -44,7 +60,7 @@ const HomePage: React.FC = () => {
             }
         };
         loadCafeSpecificData();
-    }, [selectedCafe]);
+    }, [displayCafe]);
 
     const handleMainButtonClick = useCallback(() => {
         if (getItemCount(items) > 0) {
@@ -74,36 +90,32 @@ const HomePage: React.FC = () => {
     }, [items, handleMainButtonClick, getItemCount]);
     
     const formattedAddress = getFormattedAddress();
-    // const isDelivery = orderType === 'delivery' && formattedAddress;
-    const headerTitle = (orderType === 'delivery' && formattedAddress) 
-        ? formattedAddress 
-        : selectedCafe?.name;
-    // const headerSubTitle = isDelivery ? `Готовит: ${selectedCafe?.name}` : null;
-
+    const headerTitle = (orderType === 'delivery' && formattedAddress) ? formattedAddress : displayCafe?.name;
+    
     if (isCafeLoading) {
-        return <section>{/* Можете добавить здесь компонент-заглушку (шиммер) */}</section>;
+        return <section>{/* Шиммер-заглушка */}</section>;
     }
 
     if (cafeError) {
         return <ErrorState message={cafeError} onRetry={retryLoadCafes} />;
     }
 
-    if (!selectedCafe) {
+    if (!displayCafe) {
         return (
             <section className="selection-redirect">
                 <h2>Добро пожаловать!</h2>
                 <p>Пожалуйста, выберите кофейню или укажите адрес доставки, чтобы продолжить.</p>
                 <button onClick={() => navigate('/select-location')}>Начать</button>
             </section>
-        )
+        );
     }
 
-        return (
+    return (
         <section>
             <div className="cafe-logo-container" onClick={() => navigate('/select-location')} style={{ cursor: 'pointer' }}>
-                <img id="cafe-logo" className="cafe-logo" src={selectedCafe.logoImage || "/icons/icon-transparent.svg"} alt="Логотип кафе"/>
+                <img id="cafe-logo" className="cafe-logo" src={displayCafe.logoImage || "/icons/icon-transparent.svg"} alt="Логотип кафе"/>
             </div>
-            <img id="cafe-cover" className="cover" src={selectedCafe.coverImage || "/icons/icon-transparent.svg"} alt="Обложка кафе"/>
+            <img id="cafe-cover" className="cover" src={displayCafe.coverImage || "/icons/icon-transparent.svg"} alt="Обложка кафе"/>
 
             <div id="cafe-info" className="cafe-info-container">
                 <button
@@ -113,12 +125,12 @@ const HomePage: React.FC = () => {
                     <h1>{headerTitle}</h1>
                     <span className="material-symbols-rounded">arrow_drop_down</span>
                 </button>
-                <p id="cafe-kitchen-categories" className="cafe-kitchen-categories">{selectedCafe.kitchenCategories}</p>
+                <p id="cafe-kitchen-categories" className="cafe-kitchen-categories">{displayCafe.kitchenCategories}</p>
                 <div className="cafe-parameters-container">
                     <div className="cafe-parameter-container">
                         <img src="/icons/icon-time.svg" className="cafe-parameter-icon" alt="Время работы"/>
                         <div>
-                            {formatOpeningHours(selectedCafe.openingHours).split(',').map((line, index) => (
+                            {formatOpeningHours(displayCafe.openingHours).split(',').map((line, index) => (
                                 <div key={index} className="cafe-parameter-value" style={{ opacity: 0.72 }}>
                                     {line.trim()}
                                 </div>
@@ -145,7 +157,7 @@ const HomePage: React.FC = () => {
                             <button
                                 key={category.id}
                                 className="cafe-category-container"
-                                onClick={() => navigate(`/cafe/${selectedCafe.id}/category/${category.id}`)}
+                                onClick={() => navigate(`/cafe/${displayCafe.id}/category/${category.id}`)}
                                 style={{ backgroundColor: category.backgroundColor || '#ccc' }}
                             >
                                 <img className="cafe-category-icon" src={category.icon || "/icons/icon-transparent.svg"} alt={category.name + " иконка"}/>
@@ -171,7 +183,7 @@ const HomePage: React.FC = () => {
                         </>
                     ) : (
                         Array.isArray(popularItems) && popularItems.length > 0 ? popularItems.map(item => (
-                            <MenuItemCard key={item.id} item={item} cafeId={selectedCafe.id} />
+                            <MenuItemCard key={item.id} item={item} cafeId={displayCafe.id} />
                         )) : <p style={{ paddingLeft: '16px' }}>Нет популярных товаров.</p>
                     )}
                 </div>

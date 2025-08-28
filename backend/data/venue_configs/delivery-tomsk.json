@@ -1,7 +1,6 @@
 [
-  { "variant_id": "cappuccino-s", "price": 450, "is_available": true },
-  { "variant_id": "cappuccino-m", "price": 520, "is_available": true },
-  { "variant_id": "cappuccino-l", "price": 590, "is_available": true },
-  { "variant_id": "hamburger-s", "price": 1299, "is_available": true },
-  { "variant_id": "hamburger-l", "price": 1499, "is_available": true }
+  { "variant_id": "cappuccino-s", "price": 17000, "is_available": true },
+  { "variant_id": "cappuccino-m", "price": 20000, "is_available": true },
+  { "variant_id": "cappuccino-l", "price": 23000, "is_available": true },
+  { "variant_id": "cheeseburger-s", "price": 30000, "is_available": true }
 ]
