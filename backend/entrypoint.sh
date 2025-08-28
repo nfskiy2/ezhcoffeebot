@@ -1,6 +1,6 @@
 #!/bin/bash
 # entrypoint.sh
-
+set -e
 # Ожидание готовности базы данных
 DB_HOST=$(echo $DATABASE_URL | cut -d '@' -f 2 | cut -d ':' -f 1)
 DB_PORT=$(echo $DATABASE_URL | sed -e 's#^.*:##' -e 's#/.*##')
