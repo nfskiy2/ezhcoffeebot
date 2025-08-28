@@ -54,8 +54,14 @@ def migrate():
         
         # Затем добавляем виртуальные заведения для доставки
         DELIVERY_CITIES = ["Томск", "Северск", "Новосибирск"]
+        city_id_map = {
+            "Томск": "tomsk",
+            "Северск": "seversk",
+            "Новосибирск": "novosibirsk"
+        }
         for city in DELIVERY_CITIES:
-            city_id = city.lower()
+            # --- ИСПРАВЛЕНИЕ: Используем транслитерированный ID из словаря ---
+            city_id = city_id_map.get(city, city.lower()) 
             all_venues_info.append({
                 "id": f"delivery-{city_id}",
                 "name": f"Доставка по г. {city}",
