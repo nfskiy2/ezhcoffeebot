@@ -53,7 +53,7 @@ def migrate():
             all_venues_info = json.load(f)
         
         # Затем добавляем виртуальные заведения для доставки
-        DELIVERY_CITIES = ["Томск", "Северск"]
+        DELIVERY_CITIES = ["Томск", "Северск", "Новосибирск"]
         for city in DELIVERY_CITIES:
             city_id = city.lower()
             all_venues_info.append({
