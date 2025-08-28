@@ -211,7 +211,6 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
     db.refresh(new_order)
     
     if order_data.payment_method == 'online':
-        await send_new_order_notifications(order=new_order, bot_instance=bot_instance, user_id_to_notify=user_id, staff_group_to_notify=None)
         invoice_url = await create_invoice_link(prices=labeled_prices, payload=str(new_order.id), bot_instance=bot_instance)
         if not invoice_url: raise HTTPException(status_code=500, detail="Could not create invoice.")
         return {'invoiceUrl': invoice_url}
