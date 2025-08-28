@@ -146,14 +146,20 @@ def assemble_menu_items(venue_menu_items: List[VenueMenuItem], db: Session, cafe
         product = item.variant.product
         if product.id not in products_dict:
             products_dict[product.id] = {
-                "id": product.id, "name": product.name, "description": product.description,
+                "id": product.id,
+                "name": product.name,
+                "description": product.description,
                 "image": product.image,
-                "category_id": product.category_id,
-                "variants": [], "addons": []
+                "category_id": product.category_id, # <-- ИСПРАВЛЕНИЕ 1: Добавляем ID категории
+                "variants": [],
+                "addons": []
             }
+        
         products_dict[product.id]["variants"].append({
-            "id": item.variant.id, "name": item.variant.name,
-            "cost": item.price, "weight": item.variant.weight
+            "id": item.variant.id,
+            "name": item.variant.name,
+            "cost": str(item.price), # <-- ИСПРАВЛЕНИЕ 2: Конвертируем цену в строку
+            "weight": item.variant.weight
         })
         
     if not products_dict:
@@ -177,7 +183,9 @@ def assemble_menu_items(venue_menu_items: List[VenueMenuItem], db: Session, cafe
                     venue_addon = venue_addons_map.get(item.id)
                     if venue_addon and venue_addon.is_available:
                         addon_group_for_response["items"].append({
-                            "id": item.id, "name": item.name, "cost": venue_addon.price
+                            "id": item.id,
+                            "name": item.name,
+                            "cost": str(venue_addon.price) # <-- ИСПРАВЛЕНИЕ 3: Конвертируем цену добавки в строку
                         })
                 if addon_group_for_response["items"]:
                     product_addons.append(addon_group_for_response)

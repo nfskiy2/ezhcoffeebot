@@ -1,74 +1,77 @@
 # backend/app/schemas.py
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Optional
-from pydantic.alias_generators import to_camel
+
+# --- Схемы для ответа API (то, что мы отдаем фронтенду) ---
 
 class CafeSchema(BaseModel):
     id: str
     name: str
-    cover_image: Optional[str]
-    logo_image: Optional[str]
-    kitchen_categories: Optional[str]
-    rating: Optional[str]
-    cooking_time: Optional[str]
-    status: Optional[str]
-    opening_hours: Optional[str]
-    min_order_amount: Optional[int]
+    cover_image: Optional[str] = None
+    logo_image: Optional[str] = None
+    kitchen_categories: Optional[str] = None
+    rating: Optional[str] = None
+    cooking_time: Optional[str] = None
+    status: Optional[str] = None
+    opening_hours: Optional[str] = None
+    min_order_amount: Optional[int] = None
 
     class Config:
-        from_attributes = True
-        alias_generator = to_camel
-        populate_by_name = True
+        orm_mode = True
 
 class CategorySchema(BaseModel):
     id: str
-    icon: Optional[str]
-    name: Optional[str]
-    background_color: Optional[str]
+    name: str
+    icon: Optional[str] = None
+    background_color: Optional[str] = None
 
     class Config:
-        from_attributes = True
-        alias_generator = to_camel
-        populate_by_name = True
+        orm_mode = True
 
 class MenuItemVariantSchema(BaseModel):
-    id: str # ID варианта, например 'cappuccino-s'
+    id: str
     name: str
-    cost: int # Теперь это число
+    cost: str
     weight: Optional[str] = None
 
-# Эта схема теперь для самой карточки товара
-class MenuItemSchema(BaseModel):
-    id: str # ID глобального продукта, например 'cappuccino'
+class AddonItemSchema(BaseModel):
+    id: str
     name: str
-    description: Optional[str]
-    image: Optional[str]
+    cost: str
+
+class AddonGroupSchema(BaseModel):
+    id: str
+    name: str
+    items: List[AddonItemSchema]
+
+class MenuItemSchema(BaseModel):
+    id: str
+    name: Optional[str] = None
+    description: Optional[str] = None
+    image: Optional[str] = None
+    category_id: str  # <-- ИСПРАВЛЕНИЕ 1: Добавляем это поле
     variants: List[MenuItemVariantSchema]
+    addons: Optional[List[AddonGroupSchema]] = []
+    subCategory: Optional[str] = None
+
+    class Config:
+        orm_mode = True
 
 
 class CafeSettingsSchema(BaseModel):
-    min_order_amount: int
+    min_order_amount: Optional[int] = None
 
-    class Config:
-        from_attributes = True
-        alias_generator = to_camel
-        populate_by_name = True
 
-# --- Схемы для заказа (OrderRequest) ---
-class DeliveryAddressSchema(BaseModel):
-    city: Optional[str] = None
-    street: Optional[str] = None
-    house: Optional[str] = None
-    apartment: Optional[str] = None
-    comment: Optional[str] = None
+# --- Схемы для тела запроса (то, что мы получаем от фронтенда) ---
+
 class OrderItemCafeItem(BaseModel):
     id: str
-    name: Optional[str]
+    name: Optional[str] = None
 
 class OrderItemVariant(BaseModel):
     id: str
     name: Optional[str] = None
-    cost: Optional[str] = None
+    cost: Optional[str] = None # <-- ИСПРАВЛЕНИЕ 2: Убеждаемся, что здесь строка
 
 class CartItemRequest(BaseModel):
     cafeItem: OrderItemCafeItem
@@ -76,54 +79,22 @@ class CartItemRequest(BaseModel):
     quantity: int
     categoryId: str
 
+class DeliveryAddress(BaseModel):
+    city: str
+    street: str
+    house: str
+    apartment: str
+    comment: str
+
 class OrderRequest(BaseModel):
     auth: str
     cartItems: List[CartItemRequest]
-    address: Optional[DeliveryAddressSchema] = None
-    paymentMethod: str 
+    address: Optional[DeliveryAddress] = None
+    paymentMethod: str
 
-
-# --- Схемы для подсказок адреса (Dadata) ---
 class AddressSuggestionRequest(BaseModel):
     query: str
     city: str
 
-class DadataSuggestionData(BaseModel):
-    street_with_type: Optional[str] = None
-    house: Optional[str] = None
-
-class DadataSuggestion(BaseModel):
-    value: str
-    data: DadataSuggestionData
-
 class DadataSuggestionResponse(BaseModel):
-    suggestions: List[DadataSuggestion] = []
-
-class AddonItemSchema(BaseModel):
-    id: str
-    name: str
-    cost: int
-
-class AddonGroupSchema(BaseModel):
-    id: str
-    name: str
-    items: List[AddonItemSchema]
-
-class MenuItemVariantSchema(BaseModel):
-    id: str
-    name: str
-    cost: int
-    weight: Optional[str] = None
-
-class MenuItemSchema(BaseModel):
-    id: str
-    name: Optional[str]
-    description: Optional[str]
-    image: Optional[str]
-    category_id: str  # <-- ДОБАВЬТЕ ЭТУ СТРОКУ
-    variants: List[MenuItemVariantSchema]
-    addons: Optional[List[AddonGroupSchema]] = []
-
-    class Config:
-        orm_mode = True
-
+    suggestions: List[dict]
