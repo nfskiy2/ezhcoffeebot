@@ -17,7 +17,7 @@ def migrate():
     try:
         print("\n--- STARTING MIGRATION ---")
         
-        # 1. Очистка таблиц в правильном порядке
+        # 1. Очистка таблиц
         print("-> Clearing old data...")
         db.query(Order).delete()
         db.query(VenueMenuItem).delete()
@@ -27,16 +27,14 @@ def migrate():
         db.query(Cafe).delete()
         db.commit()
 
-        # 2. Загрузка глобального каталога (товары без цен)
+        # 2. Загрузка глобального каталога
         print("-> Migrating Global Catalog...")
         with open('data/global_catalog.json', 'r', encoding='utf-8') as f:
             catalog = json.load(f)
-
         for cat_data in catalog['categories']:
             if 'backgroundColor' in cat_data:
                 cat_data['background_color'] = cat_data.pop('backgroundColor')
             db.add(Category(**cat_data))
-        
         for prod_data in catalog['products']:
             variants_data = prod_data.pop('variants', [])
             product = GlobalProduct(**prod_data)
@@ -44,17 +42,11 @@ def migrate():
             for var_data in variants_data:
                 variant = GlobalProductVariant(global_product_id=product.id, **var_data)
                 db.add(variant)
-        db.commit()
-        print("-> Global Catalog migrated successfully.")
-
-        # 3. Загрузка ВСЕХ заведений (и реальных, и виртуальных)
-        print("-> Migrating Venues (Cafes and Deliveries)...")
         
-        # Сначала реальные кофейни из info.json
+        # 3. Загрузка ВСЕХ заведений
+        print("-> Migrating Venues (Cafes and Deliveries)...")
         with open('data/info.json', 'r', encoding='utf-8') as f:
             all_venues_info = json.load(f)
-
-        # Затем добавляем виртуальные заведения для доставки
         DELIVERY_CITIES = ["Томск", "Северск", "Новосибирск"]
         for city in DELIVERY_CITIES:
             city_id = city.lower()
@@ -65,7 +57,6 @@ def migrate():
                 "rating": "", "cookingTime": "45-75 мин", "status": "Доступна",
                 "openingHours": "пн-вс: 10:00-21:00", "minOrderAmount": 15000
             })
-
         for venue_data in all_venues_info:
             venue_data_for_db = {
                 'id': venue_data.get('id'), 'name': venue_data.get('name'),
@@ -75,10 +66,6 @@ def migrate():
                 'opening_hours': venue_data.get('openingHours'), 'min_order_amount': venue_data.get('minOrderAmount')
             }
             db.add(Cafe(**venue_data_for_db))
-        
-        # --- ВАЖНОЕ ИЗМЕНЕНИЕ: Коммитим все заведения ЗДЕСЬ ---
-        db.commit()
-        print(f"-> All Venues committed. Total in DB: {db.query(Cafe).count()}")
 
         # 4. Загрузка цен и наличия для каждого заведения
         print("-> Migrating Venue-specific menus (prices & availability)...")
@@ -97,9 +84,10 @@ def migrate():
                             is_available=item_config.get('is_available', True)
                         ))
         
-        # Коммитим все "ценники" в конце
+        # --- ФИНАЛЬНЫЙ COMMIT ---
+        # Сохраняем все изменения (каталог, заведения, цены) одной транзакцией
         db.commit()
-        print("-> Venue menus migrated successfully.")
+        print("-> All data committed successfully.")
 
     except Exception as e:
         print(f"\n !!! AN ERROR OCCURRED DURING MIGRATION: {e} !!! \n")
