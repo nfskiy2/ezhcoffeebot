@@ -18,7 +18,10 @@ from . import auth
 from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH
 from .database import engine, SessionLocal
 # Импортируем новые модели
-from .models import Base, Category, Cafe, Order, GlobalProduct, GlobalProductVariant, VenueMenuItem
+from .models import (
+    Base, Category, Cafe, Order, GlobalProduct, 
+    GlobalProductVariant, VenueMenuItem, VenueAddonItem, GlobalAddonGroup, GlobalAddonItem
+)
 from .schemas import (
     CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema,
     AddressSuggestionRequest, DadataSuggestionResponse
@@ -26,6 +29,8 @@ from .schemas import (
 from telegram import Update, LabeledPrice, Bot
 from telegram.ext import Application
 from urllib.parse import parse_qs
+from sqlalchemy.orm import joinedload, selectinload
+
 
 load_dotenv()
 
@@ -179,37 +184,85 @@ def get_categories_by_cafe(cafe_id: str, db: Session = Depends(get_db_session)):
         raise HTTPException(status_code=500, detail="Error fetching categories.")
 
 
-# --- ИСПРАВЛЕННЫЙ ЭНДПОИНТ ---
-@app.get("/cafes/{cafe_id}/popular", response_model=List[MenuItemSchema])
-def get_popular_menu_by_cafe(cafe_id: str, db: Session = Depends(get_db_session)):
-    """Возвращает до 3 популярных товаров для заведения."""
-    try:
-        # Для примера, "популярными" будем считать первые 3 товара из первой непустой категории
-        # В реальном проекте здесь может быть более сложная логика (например, поле is_popular в БД)
+def assemble_menu_items(venue_menu_items: List[VenueMenuItem], db: Session, cafe_id: str) -> List[MenuItemSchema]:
+    """Вспомогательная функция для сборки ответа по меню."""
+    products_dict = {}
+    
+    # Собираем все продукты и их варианты
+    for item in venue_menu_items:
+        product = item.variant.product
+        if product.id not in products_dict:
+            products_dict[product.id] = {
+                "id": product.id, "name": product.name, "description": product.description,
+                "image": product.image, "variants": [], "addons": []
+            }
+        products_dict[product.id]["variants"].append({
+            "id": item.variant.id, "name": item.variant.name,
+            "cost": item.price, "weight": item.variant.weight
+        })
         
-        # 1. Находим первую категорию, в которой есть товары для этого заведения
-        first_category = (
-            db.query(Category)
-            .join(GlobalProduct).join(GlobalProductVariant).join(VenueMenuItem)
-            .filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.is_available == True)
-            .order_by(Category.id)
-            .first()
-        )
-        if not first_category:
-            return []
+    if not products_dict:
+        return []
 
-        # 2. Получаем до 3 товаров из этой категории
+    # Находим все добавки для найденных продуктов
+    product_ids = list(products_dict.keys())
+    addon_groups = (
+        db.query(GlobalAddonGroup)
+        .join(GlobalAddonGroup.products)
+        .filter(GlobalProduct.id.in_(product_ids))
+        .options(selectinload(GlobalAddonGroup.items).selectinload(GlobalAddonItem.venue_specific_items))
+        .all()
+    )
+
+    # Собираем структуру добавок
+    for product_id in product_ids:
+        product_addons = []
+        for group in addon_groups:
+            # Проверяем, привязана ли группа к этому продукту
+            if any(p.id == product_id for p in group.products):
+                addon_group_for_response = {"id": group.id, "name": group.name, "items": []}
+                # Находим цены на добавки в этом заведении
+                venue_addons = (
+                    db.query(VenueAddonItem)
+                    .filter(VenueAddonItem.venue_id == cafe_id, VenueAddonItem.addon_id.in_([i.id for i in group.items]))
+                    .all()
+                )
+                venue_addons_map = {va.addon_id: va for va in venue_addons}
+                
+                for item in group.items:
+                    if item.id in venue_addons_map and venue_addons_map[item.id].is_available:
+                        addon_group_for_response["items"].append({
+                            "id": item.id,
+                            "name": item.name,
+                            "cost": venue_addons_map[item.id].price
+                        })
+                
+                if addon_group_for_response["items"]:
+                    product_addons.append(addon_group_for_response)
+        
+        products_dict[product_id]["addons"] = product_addons
+
+    return list(products_dict.values())
+
+@app.get("/cafes/{cafe_id}/menu/{category_id}", response_model=List[MenuItemSchema])
+def get_category_menu_by_cafe(cafe_id: str, category_id: str, db: Session = Depends(get_db_session)):
+    try:
         venue_menu_items = (
             db.query(VenueMenuItem)
-            .join(GlobalProductVariant).join(GlobalProduct)
+            .join(VenueMenuItem.variant)
+            .join(GlobalProductVariant.product)
             .filter(
                 VenueMenuItem.venue_id == cafe_id,
                 VenueMenuItem.is_available == True,
-                GlobalProduct.category_id == first_category.id
+                GlobalProduct.category_id == category_id
             )
-            .limit(3)
+            .options(
+                joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product).selectinload(GlobalProduct.addon_groups)
+            )
             .all()
         )
+        return assemble_menu_items(venue_menu_items, db, cafe_id)
+    except Exception as e:
 
         # 3. Группируем варианты по продуктам (как в эндпоинте /menu)
         products_dict = {}

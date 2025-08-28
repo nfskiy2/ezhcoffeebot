@@ -1,6 +1,6 @@
 # backend/app/schemas.py
 from pydantic import BaseModel, Field
-from typing import List, Any, Optional
+from typing import List, Optional
 from pydantic.alias_generators import to_camel
 
 class CafeSchema(BaseModel):
@@ -98,3 +98,27 @@ class DadataSuggestion(BaseModel):
 
 class DadataSuggestionResponse(BaseModel):
     suggestions: List[DadataSuggestion] = []
+
+class AddonItemSchema(BaseModel):
+    id: str
+    name: str
+    cost: int
+
+class AddonGroupSchema(BaseModel):
+    id: str
+    name: str
+    items: List[AddonItemSchema]
+
+class MenuItemVariantSchema(BaseModel):
+    id: str
+    name: str
+    cost: int
+    weight: Optional[str] = None
+
+class MenuItemSchema(BaseModel):
+    id: str
+    name: str
+    description: Optional[str]
+    image: Optional[str]
+    variants: List[MenuItemVariantSchema]
+    addons: Optional[List[AddonGroupSchema]] = None

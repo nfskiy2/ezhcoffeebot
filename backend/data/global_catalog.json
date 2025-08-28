@@ -1,30 +1,64 @@
 {
   "categories": [
     { "id": "coffee", "name": "Кофе", "icon": "icons/icon-coffee.svg", "backgroundColor": "#D2B48C" },
-    { "id": "burgers", "name": "Бургеры", "icon": "icons/icon-burger.svg", "backgroundColor": "#F79683" }
+    { "id": "burgers", "name": "Бургеры", "icon": "icons/icon-burger.svg", "backgroundColor": "#F79683" },
+    { "id": "desserts", "name": "Десерты", "icon": "icons/icon-icecream.svg", "backgroundColor": "#E6E6FA" }
   ],
+  "addons": {
+    "groups": [
+      { "id": "syrups", "name": "Сиропы" },
+      { "id": "milk", "name": "Альтернативное молоко" }
+    ],
+    "items": [
+      { "id": "syrup-vanilla", "group_id": "syrups", "name": "Ванильный" },
+      { "id": "syrup-caramel", "group_id": "syrups", "name": "Карамельный" },
+      { "id": "milk-oat", "group_id": "milk", "name": "Овсяное" },
+      { "id": "milk-coconut", "group_id": "milk", "name": "Кокосовое" }
+    ]
+  },
   "products": [
     {
       "id": "cappuccino",
       "category_id": "coffee",
-      "name": "Капучино Классический",
-      "description": "Двойной шот эспрессо с равными частями вспененного молока и молочной пены. Насыщенный и ароматный.",
+      "name": "Капучино",
+      "description": "Двойной шот эспрессо с равными частями вспененного молока и пены.",
       "image": "https://images.unsplash.com/photo-1517701550927-2e0a72a435a8?auto=format&fit=crop&w=1000&q=80",
       "variants": [
         { "id": "cappuccino-s", "name": "Маленький", "weight": "150мл" },
-        { "id": "cappuccino-m", "name": "Средний", "weight": "250мл" },
-        { "id": "cappuccino-l", "name": "Большой", "weight": "300мл" }
+        { "id": "cappuccino-m", "name": "Средний", "weight": "250мл" }
+      ],
+      "addon_group_ids": ["syrups", "milk"]
+    },
+    {
+      "id": "latte",
+      "category_id": "coffee",
+      "name": "Латте",
+      "description": "Нежный молочный напиток на основе эспрессо.",
+      "image": "https://images.unsplash.com/photo-1576092762791-d2199b59e5ce?auto=format&fit=crop&w=1000&q=80",
+      "variants": [
+        { "id": "latte-m", "name": "Средний", "weight": "250мл" },
+        { "id": "latte-l", "name": "Большой", "weight": "350мл" }
+      ],
+      "addon_group_ids": ["syrups"]
+    },
+    {
+      "id": "classic-burger",
+      "category_id": "burgers",
+      "name": "Классический Бургер",
+      "description": "Котлета из говядины, свежие овощи, фирменный соус.",
+      "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1000&q=80",
+      "variants": [
+        { "id": "classic-burger-s", "name": "Стандарт", "weight": "280г" }
       ]
     },
     {
-      "id": "cheeseburger",
-      "category_id": "burgers",
-      "name": "Чизбургер",
-      "description": "Сочная котлета из мраморной говядины, сыр чеддер, маринованные огурчики и специальный соус на мягкой булочке.",
-      "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=1000&q=80",
+      "id": "cheesecake",
+      "category_id": "desserts",
+      "name": "Чизкейк Нью-Йорк",
+      "description": "Классический чизкейк на песочной основе.",
+      "image": "https://images.unsplash.com/photo-1543598579-4a34e8b8e0e2?auto=format&fit=crop&w=1000&q=80",
       "variants": [
-        { "id": "cheeseburger-s", "name": "Стандарт", "weight": "250г" },
-        { "id": "cheeseburger-l", "name": "Двойной", "weight": "400г" }
+        { "id": "cheesecake-slice", "name": "Кусочек", "weight": "120г" }
       ]
     }
   ]

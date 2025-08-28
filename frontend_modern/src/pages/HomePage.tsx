@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getCafeCategories, getCafePopularMenu } from '../api';
 import type { CategorySchema, MenuItemSchema } from '../api/types';
 import { useCart } from '../store/cart';
@@ -13,7 +13,7 @@ import { useDelivery } from '../store/delivery';
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
-    const location = useLocation();
+    // const location = useLocation();
     const { items, getItemCount } = useCart();
     const { selectedCafe, isLoading: isCafeLoading, error: cafeError, retryLoad: retryLoadCafes } = useCafe();
     const { orderType, getFormattedAddress } = useDelivery();
