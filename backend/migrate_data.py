@@ -1,3 +1,4 @@
+# backend/migrate_data.py
 import json
 import os
 import traceback
@@ -19,46 +20,41 @@ def main_migration():
         Base.metadata.drop_all(bind=engine)
         Base.metadata.create_all(bind=engine)
         print("-> Database tables recreated.")
-
+        
         print("\n--- STARTING MIGRATION ---")
         
-        # ШАГ 1: Глобальный каталог
-        print("-> Migrating Global Catalog...")
+        # ШАГ 1: Категории
+        print("-> Migrating Categories...")
         with open('data/global_catalog.json', 'r', encoding='utf-8') as f:
             catalog = json.load(f)
         for cat_data in catalog['categories']:
             if 'backgroundColor' in cat_data:
                 cat_data['background_color'] = cat_data.pop('backgroundColor')
             db.add(Category(**cat_data))
+        db.commit()
+        print(" -> Categories committed.")
+
+        # ШАГ 2: Глобальные продукты и их варианты
+        print("-> Migrating Global Products and Variants...")
         for prod_data in catalog['products']:
             variants_data = prod_data.pop('variants', [])
             product_obj = GlobalProduct(**prod_data)
             db.add(product_obj)
-            db.flush() # Получаем product_obj.id
+            db.flush() # Используем flush, чтобы получить ID продукта для вариантов
             for var_data in variants_data:
                 db.add(GlobalProductVariant(global_product_id=product_obj.id, **var_data))
         db.commit()
-        print("-> Global Catalog migrated.")
+        print(" -> Products and Variants committed.")
 
-        # ШАГ 2: Заведения
-        print("-> Migrating Venues...")
+        # ШАГ 3: Заведения
+        print("-> Migrating Venues (Cafes and Deliveries)...")
         with open('data/info.json', 'r', encoding='utf-8') as f:
             venues_to_create = json.load(f)
         
-        DELIVERY_CITIES = ["Томск", "Северск", "Новосибирск"]
-        # ИСПРАВЛЕНИЕ: Используем латиницу для ID заведений доставки, чтобы соответствовать именам файлов
-        for city in DELIVERY_CITIES:
-            latin_city_name = ""
-            if city == "Томск":
-                latin_city_name = "tomsk"
-            elif city == "Северск":
-                latin_city_name = "seversk"
-            elif city == "Новосибирск":
-                latin_city_name = "novosibirsk"
+        DELIVERY_CITIES = {"Томск": "tomsk", "Северск": "seversk", "Новосибирск": "novosibirsk"}
+        for city_ru, city_en in DELIVERY_CITIES.items():
+            venues_to_create.append({"id": f"delivery-{city_en}", "name": f"Доставка по г. {city_ru}", "coverImage": "...", "logoImage": "..."})
             
-            if latin_city_name:
-                venues_to_create.append({"id": f"delivery-{latin_city_name}", "name": f"Доставка по г. {city}", "coverImage": "...", "logoImage": "..."})
-
         for venue_data in venues_to_create:
             db.add(Cafe(**{'id': venue_data.get('id'), 'name': venue_data.get('name'),
                 'cover_image': venue_data.get('coverImage'), 'logo_image': venue_data.get('logoImage'),
@@ -67,11 +63,10 @@ def main_migration():
                 'opening_hours': venue_data.get('openingHours'), 'min_order_amount': venue_data.get('minOrderAmount')
             }))
         db.commit()
-        print(f"-> All Venues committed. Total in DB: {db.query(Cafe).count()}")
+        print(f" -> All Venues committed. Total in DB: {db.query(Cafe).count()}")
 
-        # ШАГ 3: Цены и наличие
+        # ШАГ 4: Цены и наличие
         print("-> Migrating Venue Menus...")
-        # Собираем словарь variant_id -> product_id для удобства
         variants_map = {v.id: v.global_product_id for v in db.query(GlobalProductVariant).all()}
         
         configs_path = "data/venue_configs"
@@ -84,12 +79,12 @@ def main_migration():
                         variant_id = item_config['variant_id']
                         product_id = variants_map.get(variant_id)
                         if not product_id:
-                            print(f"  -> WARNING: Variant '{variant_id}' in '{filename}' not found in global catalog. Skipping.")
+                            print(f"  -> WARNING: Variant '{variant_id}' in '{filename}' not found. Skipping.")
                             continue
                         db.add(VenueMenuItem(
                             venue_id=venue_id,
                             variant_id=variant_id,
-                            global_product_id=product_id, # Явно добавляем ID продукта
+                            global_product_id=product_id,
                             price=item_config['price'],
                             is_available=item_config.get('is_available', True)
                         ))
