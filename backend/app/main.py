@@ -176,14 +176,49 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
     
     labeled_prices = []
     total_amount = 0
-    # --- ИСПРАВЛЕНИЕ 1: Используем order_data.cart_items вместо order_data.cartItems ---
+    
     for item in order_data.cart_items:
-        venue_item = db.query(VenueMenuItem).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.variant_id == item.variant.id, VenueMenuItem.is_available == True).options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)).first()
+        # 1. Проверяем основной товар (вариант)
+        venue_item = db.query(VenueMenuItem).filter(
+            VenueMenuItem.venue_id == cafe_id, 
+            VenueMenuItem.variant_id == item.variant.id, 
+            VenueMenuItem.is_available == True
+        ).options(
+            joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)
+        ).first()
         if not venue_item:
             raise HTTPException(status_code=400, detail=f"Item variant '{item.variant.id}' is not available.")
-        total_amount += venue_item.price * item.quantity
-        labeled_prices.append(LabeledPrice(label=f"{venue_item.variant.product.name} ({venue_item.variant.name}) x{item.quantity}", amount=venue_item.price * item.quantity))
+        
+        item_price = venue_item.price
+        item_label = f"{venue_item.variant.product.name} ({venue_item.variant.name})"
+        
+        # 2. Проверяем добавки и суммируем их стоимость
+        addons_price = 0
+        addon_labels = []
+        if item.selected_addons:
+            for addon_data in item.selected_addons:
+                venue_addon = db.query(VenueAddonItem).filter(
+                    VenueAddonItem.venue_id == cafe_id, 
+                    VenueAddonItem.addon_id == addon_data.id, 
+                    VenueAddonItem.is_available == True
+                ).first()
+                if not venue_addon:
+                    raise HTTPException(status_code=400, detail=f"Addon '{addon_data.id}' is not available.")
+                addons_price += venue_addon.price
+                addon_labels.append(f"+ {addon_data.name}")
 
+        # 3. Собираем итоговую цену и описание для одной позиции
+        total_item_price = (item_price + addons_price) * item.quantity
+        full_label = item_label
+        if addon_labels:
+            # Делаем описание более компактным для счета
+            full_label += " (" + ", ".join(addon_labels) + ")"
+        full_label += f" x {item.quantity}"
+
+        labeled_prices.append(LabeledPrice(label=full_label, amount=total_item_price))
+        total_amount += total_item_price
+
+    # 4. Получаем информацию о пользователе
     user_info_dict, user_id = {}, None
     try:
         parsed_auth = parse_qs(order_data.auth)
@@ -193,26 +228,24 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
     except Exception as e:
         logger.error(f"Could not parse user info: {e}")
 
-    if order_data.address:
-        user_info_dict['shipping_address'] = order_data.address.dict()
-
+    # 5. Создаем и сохраняем заказ
     new_order = Order(
         cafe_id=cafe_id,
         user_info=user_info_dict,
-        # --- ИСПРАВЛЕНИЕ 2: Используем order_data.cart_items здесь тоже ---
         cart_items=[item.model_dump() for item in order_data.cart_items],
         total_amount=total_amount,
         currency="RUB",
-        # --- ИСПРАВЛЕНИЕ 3: Используем order_data.payment_method вместо order_data.paymentMethod ---
         status='pending' if order_data.payment_method != 'online' else 'awaiting_payment'
     )
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
     
+    # 6. Обрабатываем метод оплаты
     if order_data.payment_method == 'online':
         invoice_url = await create_invoice_link(prices=labeled_prices, payload=str(new_order.id), bot_instance=bot_instance)
-        if not invoice_url: raise HTTPException(status_code=500, detail="Could not create invoice.")
+        if not invoice_url:
+            raise HTTPException(status_code=500, detail="Could not create invoice.")
         return {'invoiceUrl': invoice_url}
     else:
         await send_new_order_notifications(order=new_order, bot_instance=bot_instance, user_id_to_notify=user_id, staff_group_to_notify=os.getenv('STAFF_GROUP_ID'))
