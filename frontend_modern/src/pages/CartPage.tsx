@@ -1,3 +1,4 @@
+// frontend_modern/src/pages/CartPage.tsx
 import React, { useEffect, useState, useCallback } from 'react';
 import Lottie from 'lottie-react';
 import type { OrderRequest } from '../api/types';
@@ -59,11 +60,13 @@ const CartPage: React.FC = () => {
             try {
                 const orderData: OrderRequest = {
                     auth: initData,
+                    // --- FIX: Add selectedAddons to the mapped object ---
                     cartItems: items.map(item => ({
                         cafeItem: { id: item.cafeItem.id, name: item.cafeItem.name },
                         variant: { id: item.variant.id, name: item.variant.name, cost: item.variant.cost },
                         quantity: item.quantity,
                         categoryId: item.categoryId,
+                        selectedAddons: item.selectedAddons, // This line was missing
                     })),
                     address: address,
                     paymentMethod: paymentMethod
@@ -72,10 +75,8 @@ const CartPage: React.FC = () => {
                 const response = await createOrder(selectedCafe.id, orderData);
 
                 if (response.invoiceUrl) {
-                    // Случай 1: Онлайн-оплата
                     TelegramSDK.openInvoice(response.invoiceUrl, (status) => {
                         if (status === 'paid') {
-                            // Уведомление об успехе здесь не нужно, т.к. его пришлет бот
                             clearCart();
                             TelegramSDK.close();
                         } else if (status === 'failed') {
@@ -87,9 +88,6 @@ const CartPage: React.FC = () => {
                         setIsSubmitting(false);
                     });
                 } else {
-                    // Случай 2: Оплата при получении
-                    // Бот уже отправил уведомление, здесь можно ничего не показывать или 
-                    // показать общее сообщение и закрыть приложение
                     TelegramSDK.showAlert("Ваш заказ успешно оформлен! Мы скоро с вами свяжемся.");
                     clearCart();
                     TelegramSDK.close();
@@ -103,8 +101,9 @@ const CartPage: React.FC = () => {
                 setIsSubmitting(false);
             }
         }
-    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart, packaging, address, paymentMethod]);
+    }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart, address, paymentMethod]);
 
+    // ... rest of the component remains the same
     useEffect(() => {
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
@@ -191,7 +190,7 @@ const CartPage: React.FC = () => {
             ) : (
                 <div id="cart-items">
                     {items.map(item => (
-                        <div key={`${item.cafeItem.id}-${item.variant.id}`} className="cart-item-container">
+                        <div key={item.cartItemId} className="cart-item-container">
                             <img 
                                 className="cart-item-image" 
                                 src={item.cafeItem.image || "/icons/icon-transparent.svg"} 

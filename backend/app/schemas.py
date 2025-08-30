@@ -55,10 +55,10 @@ class MenuItemSchema(CustomBaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     image: Optional[str] = None
-    category_id: str  # Будет сконвертировано в "categoryId" в JSON
+    category_id: str
     variants: List[MenuItemVariantSchema]
     addons: Optional[List[AddonGroupSchema]] = []
-    sub_category: Optional[str] = None # Будет сконвертировано в "subCategory"
+    sub_category: Optional[str] = None
 
 class CafeSettingsSchema(CustomBaseModel):
     min_order_amount: Optional[int] = None
@@ -75,11 +75,19 @@ class OrderItemVariant(CustomBaseModel):
     name: Optional[str] = None
     cost: Optional[str] = None
 
+# --- FIX: Define a schema for selected addons in the request ---
+class SelectedAddonSchema(CustomBaseModel):
+    id: str
+    name: str
+    cost: str
+
 class CartItemRequest(CustomBaseModel):
     cafe_item: OrderItemCafeItem
     variant: OrderItemVariant
     quantity: int
     category_id: str
+    # --- FIX: Add the missing selected_addons field ---
+    selected_addons: Optional[List[SelectedAddonSchema]] = None
 
 class DeliveryAddress(CustomBaseModel):
     city: str
