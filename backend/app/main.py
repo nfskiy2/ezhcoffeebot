@@ -9,8 +9,6 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload, selectinload
 from telegram import Update, LabeledPrice, Bot
 from telegram.ext import Application
@@ -29,13 +27,8 @@ from .schemas import (
 )
 
 load_dotenv()
-
-BOT_TOKEN = os.getenv('BOT_TOKEN')
-APP_URL = os.getenv('APP_URL')
-WEBHOOK_URL = os.getenv('WEBHOOK_URL')
-DADATA_API_KEY = os.getenv('DADATA_API_KEY')
-STAFF_GROUP_ID = os.getenv('STAFF_GROUP_ID')
-
+BOT_TOKEN, APP_URL, STAFF_GROUP_ID = os.getenv('BOT_TOKEN'), os.getenv('APP_URL'), os.getenv('STAFF_GROUP_ID')
+WEBHOOK_URL, DADATA_API_KEY = os.getenv('WEBHOOK_URL'), os.getenv('DADATA_API_KEY')
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -44,48 +37,26 @@ _bot_instance: Optional[Bot] = None
 
 @contextlib.asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("FastAPI lifespan startup event triggered.")
+    logger.info("FastAPI startup.")
     Base.metadata.create_all(bind=engine)
-    logger.info("Database tables checked/created.")
     global _application_instance, _bot_instance
     _application_instance = await initialize_bot_app()
     _bot_instance = _application_instance.bot
-    logger.info("Telegram Bot application initialized.")
     await _application_instance.initialize()
-    logger.info("Telegram Bot Application fully initialized.")
     yield
-    logger.info("FastAPI lifespan shutdown event triggered.")
-    if _application_instance is not None:
-        await _application_instance.shutdown()
-        logger.info("Telegram Bot Application closed.")
+    if _application_instance: await _application_instance.shutdown()
 
 app = FastAPI(lifespan=lifespan)
+origins = [APP_URL] if APP_URL else []
+if os.getenv('DEV_MODE') and os.getenv('DEV_APP_URL'): origins.append(os.getenv('DEV_APP_URL'))
+app.add_middleware(CORSMiddleware, allow_origins=origins or ["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
 
-@app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    readable_errors = [{"location": ".".join(map(str, error["loc"])), "message": error["msg"], "type": error["type"]} for error in exc.errors()]
-    logger.error(f"Validation error for request {request.method} {request.url}:\n{json.dumps(readable_errors, indent=2, ensure_ascii=False)}")
-    return JSONResponse(status_code=422, content={"detail": readable_errors})
-
-allowed_origins = [APP_URL] if APP_URL else []
-if os.getenv('DEV_MODE') and os.getenv('DEV_APP_URL'):
-    allowed_origins.append(os.getenv('DEV_APP_URL'))
-
-app.add_middleware(CORSMiddleware, allow_origins=allowed_origins or ["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
-
-def get_db_session():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
+def get_db_session(): db = SessionLocal(); yield db; db.close()
 def get_bot_instance() -> Bot:
-    if _bot_instance is None: raise HTTPException(status_code=500, detail="Bot service is not ready.")
+    if _bot_instance is None: raise HTTPException(500, "Bot not ready.")
     return _bot_instance
-
 def get_application_instance() -> Application:
-    if _application_instance is None: raise HTTPException(status_code=500, detail="Bot application not initialized.")
+    if _application_instance is None: raise HTTPException(500, "Bot app not initialized.")
     return _application_instance
 
 def assemble_menu_items(venue_menu_items: List[VenueMenuItem], db: Session, cafe_id: str) -> List[dict]:
@@ -93,8 +64,7 @@ def assemble_menu_items(venue_menu_items: List[VenueMenuItem], db: Session, cafe
     for item in venue_menu_items:
         if not item.variant or not item.variant.product: continue
         product = item.variant.product
-        if product.id not in products_dict:
-            products_dict[product.id] = {"id": product.id, "name": product.name, "description": product.description, "image": product.image, "category_id": product.category_id, "variants": [], "addons": []}
+        if product.id not in products_dict: products_dict[product.id] = {"id": product.id, "name": product.name, "description": product.description, "image": product.image, "category_id": product.category_id, "variants": [], "addons": []}
         products_dict[product.id]["variants"].append({"id": item.variant.id, "name": item.variant.name, "cost": str(item.price), "weight": item.variant.weight})
     if not products_dict: return []
     product_ids = list(products_dict.keys())
@@ -108,39 +78,19 @@ def assemble_menu_items(venue_menu_items: List[VenueMenuItem], db: Session, cafe
                 addon_group_for_response = {"id": group.id, "name": group.name, "items": []}
                 for addon_item in group.items:
                     venue_addon = venue_addons_map.get(addon_item.id)
-                    if venue_addon and venue_addon.is_available:
-                        addon_group_for_response["items"].append({"id": addon_item.id, "name": addon_item.name, "cost": str(venue_addon.price)})
+                    if venue_addon and venue_addon.is_available: addon_group_for_response["items"].append({"id": addon_item.id, "name": addon_item.name, "cost": str(venue_addon.price)})
                 if addon_group_for_response["items"]: product_addons.append(addon_group_for_response)
         product_data["addons"] = product_addons
     return list(products_dict.values())
 
 @app.get("/")
-async def read_root(): return {"message": "Welcome to Laurel Cafe API!"}
+async def read_root(): return {"message": "Welcome to EZH Cafe API!"}
 
 @app.post(WEBHOOK_PATH)
 async def bot_webhook(request: Request, application_instance: Application = Depends(get_application_instance)):
-    try:
-        update = Update.de_json(await request.json(), application_instance.bot)
-        await application_instance.process_update(update)
-        return {"message": "OK"}
-    except Exception as e:
-        logger.error(f"Error processing webhook update: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Error processing update.")
-
-@app.post("/suggest-address", response_model=DadataSuggestionResponse)
-async def suggest_address(request_data: AddressSuggestionRequest):
-    if not DADATA_API_KEY: raise HTTPException(status_code=500, detail="Address suggestion service is not configured.")
-    api_url = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
-    headers = {"Content-Type": "application/json", "Accept": "application/json", "Authorization": f"Token {DADATA_API_KEY}"}
-    payload = {"query": request_data.query, "count": 5, "locations": [{"city": request_data.city}], "from_bound": {"value": "street"}, "to_bound": {"value": "house"}}
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(api_url, json=payload, headers=headers)
-            response.raise_for_status()
-            return response.json()
-        except httpx.RequestError as e:
-            logger.error(f"Error requesting Dadata: {e}")
-            raise HTTPException(status_code=503, detail="Address suggestion service is unavailable.")
+    try: await application_instance.process_update(Update.de_json(await request.json(), application_instance.bot))
+    except Exception as e: logger.error(f"Error in webhook: {e}", exc_info=True); raise HTTPException(500, "Error processing update.")
+    return {"message": "OK"}
 
 @app.get("/cafes", response_model=List[CafeSchema])
 def get_all_cafes(db: Session = Depends(get_db_session)): return db.query(Cafe).all()
@@ -161,19 +111,19 @@ def get_category_menu_by_cafe(cafe_id: str, category_id: str, db: Session = Depe
 @app.get("/cafes/{cafe_id}/menu/details/{menu_item_id}", response_model=MenuItemSchema)
 def get_menu_item_details_by_cafe(cafe_id: str, menu_item_id: str, db: Session = Depends(get_db_session)):
     venue_menu_items = db.query(VenueMenuItem).join(VenueMenuItem.variant).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.is_available == True, GlobalProductVariant.global_product_id == menu_item_id).options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)).all()
-    if not venue_menu_items: raise HTTPException(status_code=404, detail=f"Menu item '{menu_item_id}' not found for this venue.")
+    if not venue_menu_items: raise HTTPException(404, f"Menu item '{menu_item_id}' not found.")
     return assemble_menu_items(venue_menu_items, db, cafe_id)[0]
 
 @app.get("/cafes/{cafe_id}/settings", response_model=CafeSettingsSchema)
 def get_cafe_settings_by_id(cafe_id: str, db: Session = Depends(get_db_session)):
     cafe = db.query(Cafe).filter(Cafe.id == cafe_id).first()
-    if not cafe: raise HTTPException(status_code=404, detail=f"Cafe '{cafe_id}' not found.")
+    if not cafe: raise HTTPException(404, f"Cafe '{cafe_id}' not found.")
     return CafeSettingsSchema(min_order_amount=cafe.min_order_amount)
 
 @app.post("/cafes/{cafe_id}/order")
 async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Depends(get_db_session), bot_instance: Bot = Depends(get_bot_instance)):
     if not auth.validate_auth_data(BOT_TOKEN, order_data.auth):
-        raise HTTPException(status_code=401, detail="Invalid auth data.")
+        raise HTTPException(401, "Invalid auth data.")
 
     labeled_prices, total_amount = [], 0
     
@@ -181,9 +131,10 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
         venue_item = db.query(VenueMenuItem).options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.variant_id == item.variant.id, VenueMenuItem.is_available == True).first()
         if not venue_item: raise HTTPException(400, f"Item variant '{item.variant.id}' unavailable.")
         
-        item_price, item_label = venue_item.price, f"{venue_item.variant.product.name} ({venue_item.variant.name})"
+        item_price, item_label = venue_item.price, f"{venue_item.variant.product.name} ({item.variant.name})"
         addons_price, addon_labels = 0, []
 
+        # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Используем item.selected_addons (snake_case) ---
         if item.selected_addons:
             for addon_data in item.selected_addons:
                 venue_addon = db.query(VenueAddonItem).filter(VenueAddonItem.venue_id == cafe_id, VenueAddonItem.addon_id == addon_data.id, VenueAddonItem.is_available == True).first()
