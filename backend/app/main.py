@@ -34,6 +34,7 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')
 APP_URL = os.getenv('APP_URL')
 WEBHOOK_URL = os.getenv('WEBHOOK_URL')
 DADATA_API_KEY = os.getenv('DADATA_API_KEY')
+STAFF_GROUP_ID = os.getenv('STAFF_GROUP_ID')
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -173,47 +174,51 @@ def get_cafe_settings_by_id(cafe_id: str, db: Session = Depends(get_db_session))
 async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Depends(get_db_session), bot_instance: Bot = Depends(get_bot_instance)):
     if not auth.validate_auth_data(BOT_TOKEN, order_data.auth):
         raise HTTPException(status_code=401, detail="Invalid auth data.")
+
+    labeled_prices, total_amount = [], 0
     
-    labeled_prices = []
-    total_amount = 0
-    # --- ИСПРАВЛЕНИЕ 1: Используем order_data.cart_items вместо order_data.cartItems ---
     for item in order_data.cart_items:
-        venue_item = db.query(VenueMenuItem).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.variant_id == item.variant.id, VenueMenuItem.is_available == True).options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)).first()
-        if not venue_item:
-            raise HTTPException(status_code=400, detail=f"Item variant '{item.variant.id}' is not available.")
-        total_amount += venue_item.price * item.quantity
-        labeled_prices.append(LabeledPrice(label=f"{venue_item.variant.product.name} ({venue_item.variant.name}) x{item.quantity}", amount=venue_item.price * item.quantity))
+        venue_item = db.query(VenueMenuItem).options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.variant_id == item.variant.id, VenueMenuItem.is_available == True).first()
+        if not venue_item: raise HTTPException(400, f"Item variant '{item.variant.id}' unavailable.")
+        
+        item_price, item_label = venue_item.price, f"{venue_item.variant.product.name} ({venue_item.variant.name})"
+        addons_price, addon_labels = 0, []
+
+        if item.selected_addons:
+            for addon_data in item.selected_addons:
+                venue_addon = db.query(VenueAddonItem).filter(VenueAddonItem.venue_id == cafe_id, VenueAddonItem.addon_id == addon_data.id, VenueAddonItem.is_available == True).first()
+                if not venue_addon: raise HTTPException(400, f"Addon '{addon_data.id}' unavailable.")
+                addons_price += venue_addon.price
+                addon_labels.append(f"+ {addon_data.name}")
+
+        total_item_price = (item_price + addons_price) * item.quantity
+        full_label = item_label + (f" ({', '.join(addon_labels)})" if addon_labels else "") + f" x {item.quantity}"
+        
+        labeled_prices.append(LabeledPrice(label=full_label, amount=total_item_price))
+        total_amount += total_item_price
 
     user_info_dict, user_id = {}, None
     try:
         parsed_auth = parse_qs(order_data.auth)
-        if 'user' in parsed_auth:
-            user_data = json.loads(parsed_auth['user'][0])
-            user_info_dict, user_id = user_data, user_data.get('id')
-    except Exception as e:
-        logger.error(f"Could not parse user info: {e}")
+        if 'user' in parsed_auth: user_data = json.loads(parsed_auth['user'][0]); user_info_dict, user_id = user_data, user_data.get('id')
+    except Exception as e: logger.error(f"Could not parse user info: {e}")
 
-    if order_data.address:
-        user_info_dict['shipping_address'] = order_data.address.dict()
-
+    order_type = "delivery" if order_data.address else "pickup"
+    if order_data.address: user_info_dict['shipping_address'] = order_data.address.model_dump()
+        
     new_order = Order(
-        cafe_id=cafe_id,
-        user_info=user_info_dict,
-        # --- ИСПРАВЛЕНИЕ 2: Используем order_data.cart_items здесь тоже ---
+        cafe_id=cafe_id, user_info=user_info_dict,
         cart_items=[item.model_dump() for item in order_data.cart_items],
-        total_amount=total_amount,
-        currency="RUB",
-        # --- ИСПРАВЛЕНИЕ 3: Используем order_data.payment_method вместо order_data.paymentMethod ---
+        total_amount=total_amount, currency="RUB",
+        order_type=order_type,
         status='pending' if order_data.payment_method != 'online' else 'awaiting_payment'
     )
-    db.add(new_order)
-    db.commit()
-    db.refresh(new_order)
+    db.add(new_order); db.commit(); db.refresh(new_order)
     
     if order_data.payment_method == 'online':
         invoice_url = await create_invoice_link(prices=labeled_prices, payload=str(new_order.id), bot_instance=bot_instance)
-        if not invoice_url: raise HTTPException(status_code=500, detail="Could not create invoice.")
+        if not invoice_url: raise HTTPException(500, "Could not create invoice.")
         return {'invoiceUrl': invoice_url}
     else:
-        await send_new_order_notifications(order=new_order, bot_instance=bot_instance, user_id_to_notify=user_id, staff_group_to_notify=os.getenv('STAFF_GROUP_ID'))
+        await send_new_order_notifications(order=new_order, bot_instance=bot_instance, user_id_to_notify=user_id, staff_group_to_notify=STAFF_GROUP_ID)
         return {"message": "Order accepted"}

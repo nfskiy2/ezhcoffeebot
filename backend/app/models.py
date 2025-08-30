@@ -116,4 +116,6 @@ class Order(Base):
     currency = Column(String(3))
     telegram_payment_charge_id = Column(String, unique=True, nullable=True)
     status = Column(String, default='pending')
+    order_type = Column(String, default='pickup') # 'pickup' или 'delivery'
+
     cafe = relationship("Cafe", back_populates="orders")
