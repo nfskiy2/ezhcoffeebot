@@ -132,45 +132,28 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
     if not auth.validate_auth_data(BOT_TOKEN, order_data.auth):
         raise HTTPException(401, "Invalid auth data.")
 
+    # ... (логика расчета цен остается такой же, как в прошлый раз) ...
     labeled_prices, total_amount = [], 0
-    
     for item in order_data.cart_items:
         venue_item = db.query(VenueMenuItem).options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.variant_id == item.variant.id, VenueMenuItem.is_available == True).first()
         if not venue_item: raise HTTPException(400, f"Item variant '{item.variant.id}' unavailable.")
-        
-        # --- ИСПРАВЛЕНИЕ: Полностью переработана логика сборки счета ---
-        
-        # 1. Считаем цену за ОДНУ единицу товара со всеми добавками
         single_item_price = venue_item.price
         if item.selected_addons:
             for addon_data in item.selected_addons:
-                venue_addon = db.query(VenueAddonItem).filter(
-                    VenueAddonItem.venue_id == cafe_id, 
-                    VenueAddonItem.addon_id == addon_data.id, 
-                    VenueAddonItem.is_available == True
-                ).first()
+                venue_addon = db.query(VenueAddonItem).filter(VenueAddonItem.venue_id == cafe_id, VenueAddonItem.addon_id == addon_data.id, VenueAddonItem.is_available == True).first()
                 if not venue_addon: raise HTTPException(400, f"Addon '{addon_data.id}' unavailable.")
                 single_item_price += venue_addon.price
-
-        # 2. Общая стоимость для этой позиции в корзине (с учетом количества)
         item_total_price = single_item_price * item.quantity
         total_amount += item_total_price
-
-        # 3. Формируем ОДНУ строку для счета с общей стоимостью этой позиции
-        # Это решает проблему с задвоением цен и длинными списками для Telegram
         base_label = f"{venue_item.variant.product.name} ({item.variant.name})"
-        # Добавляем информацию о добавках в описание, если они есть
         if item.selected_addons:
             addon_names = ", ".join([a.name for a in item.selected_addons])
             base_label += f" + {addon_names}"
-        
         final_label = _truncate_label(base_label, f" x{item.quantity}")
-
-        # Добавляем в счет только если позиция не бесплатная
         if item_total_price > 0:
             labeled_prices.append(LabeledPrice(label=final_label, amount=item_total_price))
-
-    if not labeled_prices:
+    
+    if order_data.payment_method == 'online' and not labeled_prices:
         raise HTTPException(status_code=400, detail="Cannot process online payment for a free order.")
 
     user_info_dict, user_id = {}, None
@@ -187,17 +170,31 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
         cart_items=[item.model_dump() for item in order_data.cart_items],
         total_amount=total_amount, currency="RUB",
         order_type=order_type,
-        payment_method=order_data.payment_method, 
+        payment_method=order_data.payment_method,
         status='pending' if order_data.payment_method != 'online' else 'awaiting_payment'
     )
     
-    if order_data.payment_method == 'online':
-        logger.info(f"Creating invoice for order {new_order.id} with prices: {labeled_prices}")
-        invoice_url = await create_invoice_link(prices=labeled_prices, payload=str(new_order.id), bot_instance=bot_instance)
-        if not invoice_url:
-            logger.error(f"Invoice creation failed for order {new_order.id}. Prices sent: {labeled_prices}")
-            raise HTTPException(500, "Could not create invoice.")
-        return {'invoiceUrl': invoice_url}
-    else:
-        await send_new_order_notifications(order=new_order, bot_instance=bot_instance, user_id_to_notify=user_id, staff_group_to_notify=STAFF_GROUP_ID)
-        return {"message": "Order accepted"}
+    # --- ИСПРАВЛЕНИЕ: Изменяем порядок работы с БД ---
+    db.add(new_order)
+    db.flush() # 1. Фиксируем объект в сессии, чтобы сгенерировался new_order.id
+
+    try:
+        if order_data.payment_method == 'online':
+            logger.info(f"Creating invoice for order {new_order.id} with prices: {labeled_prices}")
+            invoice_url = await create_invoice_link(prices=labeled_prices, payload=str(new_order.id), bot_instance=bot_instance)
+            if not invoice_url:
+                raise HTTPException(500, "Could not create invoice.")
+            
+            db.commit() # 2. Если счет создан, коммитим транзакцию
+            return {'invoiceUrl': invoice_url}
+        else:
+            await send_new_order_notifications(order=new_order, bot_instance=bot_instance, user_id_to_notify=user_id, staff_group_to_notify=STAFF_GROUP_ID)
+            db.commit() # 2. Если оплата не онлайн, просто коммитим
+            return {"message": "Order accepted"}
+    except Exception as e:
+        db.rollback() # 3. Если на любом этапе произошла ошибка, откатываем транзакцию
+        logger.error(f"Failed to process order {new_order.id}: {e}", exc_info=True)
+        # Перевыбрасываем ошибку, чтобы FastAPI вернул корректный ответ клиенту
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail="An internal error occurred while processing the order.")
