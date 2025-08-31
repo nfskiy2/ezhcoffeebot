@@ -1,12 +1,4 @@
 // frontend_modern/src/telegram/telegram.ts
-
-// 1. УБЕРИТЕ ПРЕДЫДУЩИЙ declare global { interface Window { Telegram?: { WebApp: { ... } } } }
-// ВМЕСТО ЭТОГО, используйте @types/telegram-web-app (он уже есть у вас в devDependencies)
-// Если @types/telegram-web-app установлен, он должен предоставить глобальный Telegram.WebApp
-
-// Если вы НЕ ИСПОЛЬЗУЕТЕ @types/telegram-web-app, или он не работает, тогда
-// НАИБОЛЕЕ ПРОСТОЕ И БЕЗОПАСНОЕ ГЛОБАЛЬНОЕ ОБЪЯВЛЕНИЕ ДЛЯ БРАУЗЕРА:
-// ЭТО ГЛОБАЛЬНО ОБЪЯВЛЯЕТ ТИП WebApp (для Window.Telegram.WebApp)
 interface TelegramWebApp {
     initData: string;
     ready: () => void;
@@ -43,14 +35,14 @@ interface TelegramWebApp {
     onEvent: (eventType: string, callback: (...args: any[]) => void) => void;
     offEvent: (eventType: string, callback: (...args: any[]) => void) => void;
     showAlert: (message: string, callback?: () => void) => void;
+    showConfirm: (message: string, callback: (isOk: boolean) => void) => void; 
     isVersionAtLeast: (version: string) => boolean;
-    // Добавьте другие свойства по мере необходимости, например initDataUnsafe
-    // initDataUnsafe: any; // Пример
+
 }
 
 declare global {
     interface Window {
-        Telegram?: { // Теперь Telegram может быть просто объектом с свойством WebApp
+        Telegram?: { 
             WebApp: TelegramWebApp;
         };
     }
@@ -60,10 +52,7 @@ declare global {
 // 2. Класс-обертка TelegramSDK
 export class TelegramSDK {
 
-    // Приватный геттер для безопасного доступа к window.Telegram.WebApp
-    private static get webApp(): TelegramWebApp | undefined { // <-- ИСПРАВЛЕНО ТИПИЗАЦИЯ ЗДЕСЬ
-        // Теперь просто обращаемся к window.Telegram?.WebApp,
-        // так как глобальный тип Window уже был объявлен
+    private static get webApp(): TelegramWebApp | undefined {
         return window.Telegram?.WebApp;
     }
 
@@ -129,4 +118,9 @@ export class TelegramSDK {
     static showAlert(message: string, callback?: () => void): void {
         this.webApp?.showAlert(message, callback);
     }
+
+    static showConfirm(message: string, callback: (isOk: boolean) => void): void {
+        this.webApp?.showConfirm(message, callback);
+    }
+
 }

@@ -1,10 +1,11 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCafe } from '../store/cafe';
 import { useDelivery } from '../store/delivery';
 import type { OrderType } from '../store/delivery';
 import DeliveryAddressForm from '../components/DeliveryAddressForm';
+import { useCart } from '../store/cart'; 
+import { TelegramSDK } from '../telegram/telegram'; 
 
 const transliterateCity = (city: string): string => {
     const map: { [key: string]: string } = {
@@ -17,30 +18,51 @@ const transliterateCity = (city: string): string => {
 
 const SelectionPage: React.FC = () => {
     const navigate = useNavigate();
-    const { cafes, setSelectedCafeId } = useCafe();
+    const { cafes, selectedCafe, setSelectedCafeId } = useCafe();
     const { orderType, setOrderType } = useDelivery();
+    const { getItemCount, clearCart } = useCart(); // Получаем функции из корзины
     const [activeTab, setActiveTab] = useState<OrderType>(orderType);
 
     const inStoreCafes = cafes.filter(c => !c.id.startsWith('delivery-'));
     const deliveryCafes = cafes.filter(c => c.id.startsWith('delivery-'));
 
+    // Создаем универсальный обработчик смены кофейни
+    const handleChangeCafe = useCallback((newCafeId: string, newOrderType: OrderType) => {
+        // Проверяем, есть ли что-то в корзине и выбрана ли другая кофейня
+        if (getItemCount() > 0 && selectedCafe && selectedCafe.id !== newCafeId) {
+            TelegramSDK.showConfirm(
+                "Смена кофейни приведёт к очистке корзины. Продолжить?",
+                (confirmed) => {
+                    if (confirmed) {
+                        // Если пользователь согласен, чистим корзину и меняем кофейню
+                        clearCart();
+                        setOrderType(newOrderType);
+                        setSelectedCafeId(newCafeId);
+                        navigate('/');
+                    }
+                    // Если не согласен, ничего не делаем
+                }
+            );
+        } else {
+            // Если корзина пуста, просто меняем кофейню
+            setOrderType(newOrderType);
+            setSelectedCafeId(newCafeId);
+            navigate('/');
+        }
+    }, [getItemCount, selectedCafe, clearCart, setOrderType, setSelectedCafeId, navigate]);
+
     const handleCafeSelect = (cafeId: string) => {
-        setSelectedCafeId(cafeId);
-        setOrderType('in_store');
-        navigate('/', { state: { selectedCafeId: cafeId } });
+        handleChangeCafe(cafeId, 'in_store');
     };
 
     const handleAddressSave = (city: string) => {
-        const cityId = transliterateCity(city); // <-- ИСПОЛЬЗУЕМ ТРАНСЛИТЕРАЦИЮ
+        const cityId = transliterateCity(city);
         const deliveryCafe = deliveryCafes.find(c => c.id === `delivery-${cityId}`);
         
         if (deliveryCafe) {
-            setSelectedCafeId(deliveryCafe.id);
-            setOrderType('delivery');
-            navigate('/', { state: { selectedCafeId: deliveryCafe.id } });
+            handleChangeCafe(deliveryCafe.id, 'delivery');
         } else {
-            // Обработка случая, если доставка в город не найдена
-            alert(`Доставка в ${city} временно недоступна.`);
+            TelegramSDK.showAlert(`Доставка в г. ${city} временно недоступна.`);
         }
     };
 

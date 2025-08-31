@@ -115,7 +115,7 @@ const DeliveryAddressForm: React.FC<DeliveryAddressFormProps> = ({ onSave }) => 
                     <input type="text" inputMode="numeric" name="house" placeholder="Дом" value={address.house} onChange={handleChange} className={errors.house ? 'input-error' : ''} />
                     {errors.house && <p className="form-error">{errors.house}</p>}
                 </div>
-                <input type="text" inputMode="numeric" name="apartment" placeholder="Кв/Офис" value={address.apartment} onChange={handleChange} />
+                <input type="text" inputMode="numeric" name="apartment" placeholder="Квартира" value={address.apartment} onChange={handleChange} />
             </div>
 
             <input type="text" name="comment" placeholder="Комментарий для курьера" value={address.comment} onChange={handleChange} />
