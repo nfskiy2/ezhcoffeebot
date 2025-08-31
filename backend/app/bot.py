@@ -12,7 +12,7 @@ from telegram.error import TelegramError
 from .database import SessionLocal
 from .models import Order, Cafe
 
-BOT_TOKEN, PAYMENT_PROVIDER_TOKEN, APP_URL, STAFF_GROUP_ID = os.getenv('BOT_TOKEN'), os.getenv('PAYMENT_PROVIDER_TOKEN'), os.getenv('APP_URL'), os.getenv('STAFF_GROUP_ID')
+BOT_TOKEN, PAYMENT_PROVIDER_TOKEN, APP_URL, STAFF_GROUP_ID, SUPPORT_USERNAME = os.getenv('BOT_TOKEN'), os.getenv('PAYMENT_PROVIDER_TOKEN'), os.getenv('APP_URL'), os.getenv('STAFF_GROUP_ID'), os.getenv('SUPPORT_USERNAME')
 WEBHOOK_URL, WEBHOOK_PATH = os.getenv('WEBHOOK_URL'), '/bot'
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -81,8 +81,9 @@ def format_order_for_message(order: Order) -> tuple[str, str]:
             f"🛍️**Состав заказа:**\n{items_text}\n\n"
             f"💰**Итого:** {total_amount_rub:.2f} RUB\n"
             f"💵**Способ оплаты:** {payment_text}\n\n"
-            f"{address_text.replace('**', '')}\n\n" # Убираем жирный шрифт для клиента
-            "Мы скоро начнем готовить. Ожидайте, пожалуйста!"
+            f"{address_text.replace('**', '')}\n\n" 
+            "Мы скоро начнем готовить. Ожидайте, пожалуйста!\n\n"
+            "Для связи с поддержкой введите /help"
         )
         return staff_text, customer_text
     finally:
@@ -102,7 +103,18 @@ async def send_new_order_notifications(order: Order, bot_instance: Bot, user_id_
 async def handle_start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.effective_chat: return
     markup = InlineKeyboardMarkup([[InlineKeyboardButton("Открыть меню", web_app=WebAppInfo(url=APP_URL))]])
-    await update.effective_chat.send_message('*Добро пожаловать в EZH Cafe!* 🌿', parse_mode='Markdown', reply_markup=markup)
+    await update.effective_chat.send_message('*Добро пожаловать в EZH Cafe!* 🦔', parse_mode='Markdown', reply_markup=markup)
+
+async def handle_help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.effective_chat:
+        return
+    
+    if SUPPORT_USERNAME:
+        support_url = f"https://t.me/{SUPPORT_USERNAME}"
+        message_text = f"Если у вас возникли вопросы или проблемы с заказом, пожалуйста, напишите в нашу [службу поддержки]({support_url})."
+        await update.effective_chat.send_message(message_text, parse_mode='Markdown', disable_web_page_preview=True)
+    else:
+        await update.effective_chat.send_message("Контакт поддержки не настроен.")
 
 async def handle_pre_checkout_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.pre_checkout_query: await update.pre_checkout_query.answer(ok=True)
@@ -124,6 +136,7 @@ async def initialize_bot_app() -> Application:
     if not BOT_TOKEN: logger.error("BOT_TOKEN is not set!"); return Application.builder().build()
     application = Application.builder().token(BOT_TOKEN).build()
     application.add_handler(CommandHandler("start", handle_start_command))
+    application.add_handler(CommandHandler("help", handle_help_command)) # Добавляем эту строку
     application.add_handler(PreCheckoutQueryHandler(handle_pre_checkout_query))
     application.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment_handler))
     return application
