@@ -32,6 +32,15 @@ WEBHOOK_URL, DADATA_API_KEY = os.getenv('DADATA_API_KEY'), os.getenv('DADATA_API
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# --- FIX: Helper function for safe label truncation ---
+def _truncate_label(base: str, suffix: str) -> str:
+    """Truncates a base string to fit within Telegram's 32-char limit when combined with a suffix."""
+    max_base_len = 32 - len(suffix)
+    if len(base) > max_base_len:
+        # Truncate and add ellipsis
+        return base[:max_base_len - 3] + "..." + suffix
+    return base + suffix
+
 _application_instance: Optional[Application] = None
 _bot_instance: Optional[Bot] = None
 
@@ -59,6 +68,7 @@ def get_application_instance() -> Application:
     if _application_instance is None: raise HTTPException(500, "Bot app not initialized.")
     return _application_instance
 
+# ... (rest of the file remains the same until create_order)
 def assemble_menu_items(venue_menu_items: List[VenueMenuItem], db: Session, cafe_id: str) -> List[dict]:
     products_dict = {}
     for item in venue_menu_items:
@@ -125,40 +135,40 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
     if not auth.validate_auth_data(BOT_TOKEN, order_data.auth):
         raise HTTPException(401, "Invalid auth data.")
 
-    labeled_prices = []
-    total_amount = 0
-
+    labeled_prices, total_amount = [], 0
+    
     for item in order_data.cart_items:
         venue_item = db.query(VenueMenuItem).options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.variant_id == item.variant.id, VenueMenuItem.is_available == True).first()
         if not venue_item: raise HTTPException(400, f"Item variant '{item.variant.id}' unavailable.")
-
-        # --- FIX: Create an itemized invoice ---
+        
+        # --- FIX: Rebuild the itemized invoice logic ---
         # 1. Add the main product
-        item_price = venue_item.price
-        item_total_price = item_price * item.quantity
-        total_amount += item_total_price
+        main_product_price = venue_item.price * item.quantity
+        total_amount += main_product_price
 
-        # Truncate label to meet Telegram API's 32-character limit
-        base_label = f"{venue_item.variant.product.name} ({item.variant.name}) x{item.quantity}"
-        if len(base_label) > 32:
-             base_label = f"{venue_item.variant.product.name[:20]}... x{item.quantity}"
-        labeled_prices.append(LabeledPrice(label=base_label, amount=item_total_price))
+        base_description = f"{venue_item.variant.product.name} ({item.variant.name})"
+        quantity_suffix = f" x{item.quantity}"
+        final_label = _truncate_label(base_description, quantity_suffix)
+        
+        if main_product_price > 0:
+            labeled_prices.append(LabeledPrice(label=final_label, amount=main_product_price))
 
         # 2. Add each addon as a separate item
         if item.selected_addons:
             for addon_data in item.selected_addons:
                 venue_addon = db.query(VenueAddonItem).filter(VenueAddonItem.venue_id == cafe_id, VenueAddonItem.addon_id == addon_data.id, VenueAddonItem.is_available == True).first()
                 if not venue_addon: raise HTTPException(400, f"Addon '{addon_data.id}' unavailable.")
-
+                
                 addon_total_price = venue_addon.price * item.quantity
-                total_amount += addon_total_price
-
-                if addon_total_price > 0: # Don't add free addons to the invoice
-                    addon_label = f"+ {addon_data.name} x{item.quantity}"
-                    if len(addon_label) > 32:
-                         addon_label = f"+ {addon_data.name[:20]}... x{item.quantity}"
+                
+                if addon_total_price > 0: # Don't add free addons to invoice
+                    total_amount += addon_total_price
+                    addon_description = f"+ {addon_data.name}"
+                    addon_label = _truncate_label(addon_description, quantity_suffix)
                     labeled_prices.append(LabeledPrice(label=addon_label, amount=addon_total_price))
-        # --- End of FIX ---
+
+    if total_amount <= 0:
+        raise HTTPException(status_code=400, detail="Cannot process online payment for a free or zero-cost order.")
 
     user_info_dict, user_id = {}, None
     try:
@@ -179,9 +189,14 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
     db.add(new_order); db.commit(); db.refresh(new_order)
     
     if order_data.payment_method == 'online':
+        # --- FIX: Add logging before sending the request ---
+        logger.info(f"Creating invoice for order {new_order.id} with prices: {labeled_prices}")
         invoice_url = await create_invoice_link(prices=labeled_prices, payload=str(new_order.id), bot_instance=bot_instance)
-        if not invoice_url: raise HTTPException(500, "Could not create invoice.")
+        if not invoice_url:
+            logger.error(f"Invoice creation failed for order {new_order.id}. Prices sent: {labeled_prices}")
+            raise HTTPException(500, "Could not create invoice.")
         return {'invoiceUrl': invoice_url}
     else:
         await send_new_order_notifications(order=new_order, bot_instance=bot_instance, user_id_to_notify=user_id, staff_group_to_notify=STAFF_GROUP_ID)
         return {"message": "Order accepted"}
+    
