@@ -28,7 +28,7 @@ from .schemas import (
 
 load_dotenv()
 BOT_TOKEN, APP_URL, STAFF_GROUP_ID = os.getenv('BOT_TOKEN'), os.getenv('APP_URL'), os.getenv('STAFF_GROUP_ID')
-WEBHOOK_URL, DADATA_API_KEY = os.getenv('WEBHOOK_URL'), os.getenv('DADATA_API_KEY')
+WEBHOOK_URL, DADATA_API_KEY = os.getenv('DADATA_API_KEY'), os.getenv('DADATA_API_KEY')
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -125,28 +125,40 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
     if not auth.validate_auth_data(BOT_TOKEN, order_data.auth):
         raise HTTPException(401, "Invalid auth data.")
 
-    labeled_prices, total_amount = [], 0
-    
+    labeled_prices = []
+    total_amount = 0
+
     for item in order_data.cart_items:
         venue_item = db.query(VenueMenuItem).options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.variant_id == item.variant.id, VenueMenuItem.is_available == True).first()
         if not venue_item: raise HTTPException(400, f"Item variant '{item.variant.id}' unavailable.")
-        
-        item_price, item_label = venue_item.price, f"{venue_item.variant.product.name} ({item.variant.name})"
-        addons_price, addon_labels = 0, []
 
-        # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ: Используем item.selected_addons (snake_case) ---
+        # --- FIX: Create an itemized invoice ---
+        # 1. Add the main product
+        item_price = venue_item.price
+        item_total_price = item_price * item.quantity
+        total_amount += item_total_price
+
+        # Truncate label to meet Telegram API's 32-character limit
+        base_label = f"{venue_item.variant.product.name} ({item.variant.name}) x{item.quantity}"
+        if len(base_label) > 32:
+             base_label = f"{venue_item.variant.product.name[:20]}... x{item.quantity}"
+        labeled_prices.append(LabeledPrice(label=base_label, amount=item_total_price))
+
+        # 2. Add each addon as a separate item
         if item.selected_addons:
             for addon_data in item.selected_addons:
                 venue_addon = db.query(VenueAddonItem).filter(VenueAddonItem.venue_id == cafe_id, VenueAddonItem.addon_id == addon_data.id, VenueAddonItem.is_available == True).first()
                 if not venue_addon: raise HTTPException(400, f"Addon '{addon_data.id}' unavailable.")
-                addons_price += venue_addon.price
-                addon_labels.append(f"+ {addon_data.name}")
 
-        total_item_price = (item_price + addons_price) * item.quantity
-        full_label = item_label + (f" ({', '.join(addon_labels)})" if addon_labels else "") + f" x {item.quantity}"
-        
-        labeled_prices.append(LabeledPrice(label=full_label, amount=total_item_price))
-        total_amount += total_item_price
+                addon_total_price = venue_addon.price * item.quantity
+                total_amount += addon_total_price
+
+                if addon_total_price > 0: # Don't add free addons to the invoice
+                    addon_label = f"+ {addon_data.name} x{item.quantity}"
+                    if len(addon_label) > 32:
+                         addon_label = f"+ {addon_data.name[:20]}... x{item.quantity}"
+                    labeled_prices.append(LabeledPrice(label=addon_label, amount=addon_total_price))
+        # --- End of FIX ---
 
     user_info_dict, user_id = {}, None
     try:
