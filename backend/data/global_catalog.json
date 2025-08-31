@@ -8,7 +8,7 @@
     {
       "id": "cappuccino",
       "category_id": "coffee",
-      "subcategory": "Классика",
+      "sub_category": "Классика",
       "name": "Капучино Классический",
       "description": "Двойной шот эспрессо с равными частями вспененного молока и молочной пены.",
       "image": "...",
@@ -21,7 +21,7 @@
     {
       "id": "latte",
       "category_id": "coffee",
-      "subcategory": "Классика",
+      "sub_category": "Классика",
       "name": "Латте",
       "description": "Нежный молочный кофе на основе эспрессо.",
       "image": "...",
@@ -34,7 +34,7 @@
     {
       "id": "bumble-coffee",
       "category_id": "coffee",
-      "subcategory": "ice&energy",
+      "sub_category": "ice&energy",
       "name": "Бамбл",
       "description": "Освежающий холодный кофейный напиток с апельсиновым соком и карамельным сиропом.",
       "image": "...",
@@ -45,7 +45,7 @@
     {
       "id": "raf-vanilla",
       "category_id": "coffee",
-      "subcategory": "Раф-кофе",
+      "sub_category": "Раф-кофе",
       "name": "Раф Ванильный",
       "description": "Кофейный напиток на основе эспрессо, сливок и ванильного сахара.",
       "image": "...",
@@ -57,7 +57,7 @@
     {
       "id": "classic-burger",
       "category_id": "burgers",
-      "subcategory": null,
+      "sub_category": null,
       "name": "Классический Бургер",
       "description": "Котлета из говядины, свежие овощи и фирменный соус.",
       "image": "...",
@@ -68,7 +68,7 @@
     {
       "id": "cheesecake",
       "category_id": "desserts",
-      "subcategory": null,
+      "sub_category": null,
       "name": "Чизкейк Нью-Йорк",
       "description": "Классический чизкейк на песочной основе.",
       "image": "...",
