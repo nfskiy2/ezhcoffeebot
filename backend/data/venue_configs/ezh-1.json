@@ -5,7 +5,10 @@
     { "variant_id": "latte-m", "price": 16000 },
     { "variant_id": "latte-l", "price": 19000 },
     { "variant_id": "classic-burger-s", "price": 32000 },
-    { "variant_id": "cheesecake-slice", "price": 25000 }
+    { "variant_id": "cheesecake-slice", "price": 25000 },
+    { "variant_id": "iced-coffee-m", "price": 22000 },
+    { "variant_id": "snow-hot-chocolate-m", "price": 20000 },
+    { "variant_id": "chai-latte-m", "price": 19000 }
   ],
   "addons": [
     { "addon_id": "syrup-vanilla", "price": 5000 },
