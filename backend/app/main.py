@@ -198,3 +198,35 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail="An internal error occurred while processing the order.")
+    
+@app.post("/suggest-address", response_model=DadataSuggestionResponse)
+async def get_address_suggestions(request: AddressSuggestionRequest):
+    if not DADATA_API_KEY:
+        raise HTTPException(status_code=500, detail="Dadata API key is not configured.")
+
+    url = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": f"Token {DADATA_API_KEY}"
+    }
+    # Ограничиваем поиск только улицами и домами в указанном городе
+    payload = {
+        "query": request.query,
+        "locations": [{"city": request.city}],
+        "from_bound": {"value": "street"},
+        "to_bound": {"value": "house"}
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status() # Вызовет ошибку для статусов 4xx/5xx
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Error from Dadata API: {e.response.text}")
+            raise HTTPException(status_code=e.response.status_code, detail="Failed to fetch address suggestions.")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while calling Dadata API: {e}")
+            raise HTTPException(status_code=500, detail="An internal error occurred.")
+
