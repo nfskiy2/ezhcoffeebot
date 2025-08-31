@@ -26,7 +26,7 @@
       "name": "Капучино",
       "sub_category": "Раф",
       "description": "Двойной шот эспрессо с равными частями вспененного молока и пены.",
-      "image": "https://images.unsplash.com/photo-1572442388858-55a3533f1f3a?auto=format&fit=crop&q=80&w=1974",
+      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
       "variants": [
         { "id": "cappuccino-s", "name": "Маленький", "weight": "150мл" },
         { "id": "cappuccino-m", "name": "Средний", "weight": "250мл" }
@@ -39,7 +39,7 @@
       "name": "Айс Кофе",
       "sub_category": "Раф",
       "description": "Свежий эспрессо с молоком, ванильным мороженым и взбитыми сливками.",
-      "image": "https://images.unsplash.com/photo-1507293551678-7da52f48373a?auto=format&fit=crop&q=80&w=1974",
+      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
       "variants": [
         { "id": "iced-coffee-m", "name": "Средний", "weight": "300мл" }
       ]
@@ -48,9 +48,9 @@
       "id": "snow-hot-chocolate",
       "category_id": "coffee",
       "name": "Snow Hot Chocolate",
-      "sub_category": "классика",
+      "sub_category": "Классика",
       "description": "Насыщенный шоколад со вспененным молоком и легкой пенкой.",
-      "image": "https://images.unsplash.com/photo-1606212534344-89f50f16f5d1?auto=format&fit=crop&q=80&w=1974",
+      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
       "variants": [
         { "id": "snow-hot-chocolate-m", "name": "Средний", "weight": "250мл" }
       ]
@@ -59,9 +59,9 @@
       "id": "chai-latte",
       "category_id": "coffee",
       "name": "Чай Латте",
-      "sub_category": "классика",
+      "sub_category": "Классика",
       "description": "Чайный сироп с вспененным молоком и легкой пенкой.",
-      "image": "https://images.unsplash.com/photo-1572496423883-e7380d3472f7?auto=format&fit=crop&q=80&w=1974",
+      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
       "variants": [
         { "id": "chai-latte-m", "name": "Средний", "weight": "250мл" }
       ]
@@ -85,7 +85,7 @@
       "name": "Американо",
       "sub_category": "классика",
       "description": "Эспрессо, разбавленный горячей водой для более мягкого вкуса.",
-      "image": "https://images.unsplash.com/photo-1594412155347-1b2a95574a83?auto=format&fit=crop&q=80&w=1974",
+      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
       "variants": [
         { "id": "americano-m", "name": "Стандарт", "weight": "200мл" }
       ]
@@ -119,7 +119,7 @@
       "name": "Мокка",
       "sub_category": "Раф",
       "description": "Латте с добавлением горячего шоколада и взбитых сливок.",
-      "image": "https://images.unsplash.com/photo-1599399056302-140b3c690f3d?auto=format&fit=crop&q=80&w=1974",
+      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
       "variants": [
         { "id": "mocha-m", "name": "Стандарт", "weight": "300мл" }
       ],
