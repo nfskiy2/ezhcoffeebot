@@ -159,7 +159,7 @@ useEffect(() => {
     }
 
     return (
-        <section style={{ paddingTop: subCategories.length > 1 ? '60px' : '0' }}>
+        <section style={{ paddingTop: subCategories.length > 1 ? '10px' : '0' }}>
             {subCategories.length > 1 && (
                 <div className="sticky-selector">
                     <div className="cafe-section-horizontal">
