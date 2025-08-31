@@ -54,21 +54,21 @@ def format_order_for_message(order: Order) -> tuple[str, str]:
             address_info = user_info.get('shipping_address', {})
             address_text = (
                 f"Способ получения: **Доставка**\n"
-                f"Адрес: {address_info.get('city', '')}, {address_info.get('street', '')}, д. {address_info.get('house', '')}, кв./офис {address_info.get('apartment', '')}\n"
-                f"Комментарий: {address_info.get('comment', 'нет')}"
+                f"📍 **Адрес:** {address_info.get('city', '')}, {address_info.get('street', '')}, д. {address_info.get('house', '')}, кв./офис {address_info.get('apartment', '')}\n"
+                f"💬 **Комментарий:** {address_info.get('comment', 'нет')}"
             )
         else:
-            address_text = f"Способ получения: **Самовывоз**\nКофейня: {cafe.name if cafe else 'Не указана'}"
+            address_text = f"Способ получения: **Самовывоз**\n📍 **Кофейня:** {cafe.name if cafe else 'Не указана'}"
 
         # --- Формирование сообщения для персонала ---
-        staff_header = f"Новый заказ `#{order_id_short}`"
+        staff_header = f"🔥Новый заказ `#{order_id_short}`"
         client_link = f"@{username}" if username else "N/A"
-        client_info = f"**Клиент:** {first_name} ({client_link})"
+        client_info = f"👤**Клиент:** {first_name} ({client_link})"
 
         staff_text = (
             f"{staff_header}\n\n"
-            f"**Состав заказа:**\n{items_text}\n\n"
-            f"**Сумма:** {total_amount_rub:.2f} RUB\n"
+            f"🛍️**Состав заказа:**\n{items_text}\n\n"
+            f"💰**Сумма:** {total_amount_rub:.2f} RUB\n"
             f"**Способ оплаты:** {payment_text}\n"
             f"{client_info}\n\n"
             f"{address_text}\n\n"
@@ -77,10 +77,10 @@ def format_order_for_message(order: Order) -> tuple[str, str]:
 
         # --- Формирование сообщения для клиента ---
         customer_text = (
-            f"Ваш заказ `#{order_id_short}` принят!\n\n"
-            f"**Состав заказа:**\n{items_text}\n\n"
-            f"**Итого:** {total_amount_rub:.2f} RUB\n"
-            f"**Способ оплаты:** {payment_text}\n\n"
+            f"🔥 Ваш заказ `#{order_id_short}` принят!\n\n"
+            f"🛍️**Состав заказа:**\n{items_text}\n\n"
+            f"💰**Итого:** {total_amount_rub:.2f} RUB\n"
+            f"💵**Способ оплаты:** {payment_text}\n\n"
             f"{address_text.replace('**', '')}\n\n" # Убираем жирный шрифт для клиента
             "Мы скоро начнем готовить. Ожидайте, пожалуйста!"
         )
