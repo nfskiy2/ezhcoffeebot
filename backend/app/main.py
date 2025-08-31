@@ -187,9 +187,9 @@ async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Dep
         cart_items=[item.model_dump() for item in order_data.cart_items],
         total_amount=total_amount, currency="RUB",
         order_type=order_type,
+        payment_method=order_data.payment_method, 
         status='pending' if order_data.payment_method != 'online' else 'awaiting_payment'
     )
-    db.add(new_order); db.commit(); db.refresh(new_order)
     
     if order_data.payment_method == 'online':
         logger.info(f"Creating invoice for order {new_order.id} with prices: {labeled_prices}")

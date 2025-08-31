@@ -117,5 +117,6 @@ class Order(Base):
     telegram_payment_charge_id = Column(String, unique=True, nullable=True)
     status = Column(String, default='pending')
     order_type = Column(String, default='pickup') # 'pickup' или 'delivery'
+    payment_method = Column(String, default='online') # Добавляем это поле
 
     cafe = relationship("Cafe", back_populates="orders")

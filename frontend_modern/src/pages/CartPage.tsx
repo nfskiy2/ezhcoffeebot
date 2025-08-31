@@ -152,7 +152,7 @@ const CartPage: React.FC = () => {
                 )}
                 {orderType !== 'delivery' && (
                     <div className="info-row packaging-selector">
-                        <span className="material-symbols-rounded">lunch_dining</span>
+                        {/* <span className="material-symbols-rounded">lunch_dining</span> */}
                         <div className="tab-selector small">
                             <button className={packaging === 'dine-in' ? 'active' : ''} onClick={() => setPackaging('dine-in')}>В зале</button>
                             <button className={packaging === 'take-away' ? 'active' : ''} onClick={() => setPackaging('take-away')}>С собой</button>
