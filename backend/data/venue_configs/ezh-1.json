@@ -8,7 +8,11 @@
     { "variant_id": "cheesecake-slice", "price": 25000 },
     { "variant_id": "iced-coffee-m", "price": 22000 },
     { "variant_id": "snow-hot-chocolate-m", "price": 20000 },
-    { "variant_id": "chai-latte-m", "price": 19000 }
+    { "variant_id": "chai-latte-m", "price": 19000 },
+    { "variant_id": "americano-m", "price": 12000 },
+    { "variant_id": "flat-white-m", "price": 17000 },
+    { "variant_id": "raf-m", "price": 21000 },
+    { "variant_id": "mocha-m", "price": 23000 }
   ],
   "addons": [
     { "addon_id": "syrup-vanilla", "price": 5000 },

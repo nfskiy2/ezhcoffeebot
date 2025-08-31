@@ -80,6 +80,52 @@
       "addon_group_ids": ["syrups"]
     },
     {
+      "id": "americano",
+      "category_id": "coffee",
+      "name": "Американо",
+      "sub_category": "классика",
+      "description": "Эспрессо, разбавленный горячей водой для более мягкого вкуса.",
+      "image": "https://images.unsplash.com/photo-1594412155347-1b2a95574a83?auto=format&fit=crop&q=80&w=1974",
+      "variants": [
+        { "id": "americano-m", "name": "Стандарт", "weight": "200мл" }
+      ]
+    },
+    {
+      "id": "flat-white",
+      "category_id": "coffee",
+      "name": "Флэт Уайт",
+      "sub_category": "классика",
+      "description": "Двойной эспрессо с тонким слоем бархатистой молочной пены.",
+      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
+      "variants": [
+        { "id": "flat-white-m", "name": "Стандарт", "weight": "180мл" }
+      ],
+       "addon_group_ids": ["milk"]
+    },
+    {
+      "id": "raf-coffee",
+      "category_id": "coffee",
+      "name": "Раф",
+      "sub_category": "Раф",
+      "description": "Сливочный кофейный напиток с ванильным сахаром.",
+      "image": "https://images.unsplash.com/photo-1557094005-1e1610437487?auto=format&fit=crop&q=80&w=1974",
+      "variants": [
+        { "id": "raf-m", "name": "Стандарт", "weight": "250мл" }
+      ]
+    },
+    {
+      "id": "mocha",
+      "category_id": "coffee",
+      "name": "Мокка",
+      "sub_category": "Раф",
+      "description": "Латте с добавлением горячего шоколада и взбитых сливок.",
+      "image": "https://images.unsplash.com/photo-1599399056302-140b3c690f3d?auto=format&fit=crop&q=80&w=1974",
+      "variants": [
+        { "id": "mocha-m", "name": "Стандарт", "weight": "300мл" }
+      ],
+      "addon_group_ids": ["syrups"]
+    },
+    {
       "id": "classic-burger",
       "category_id": "burgers",
       "name": "Классический Бургер",
