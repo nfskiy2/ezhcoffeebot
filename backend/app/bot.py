@@ -112,10 +112,15 @@ async def initialize_bot_app() -> Application:
     return application
 
 async def create_invoice_link(prices: list[LabeledPrice], payload: str, bot_instance: Bot) -> Optional[str]:
-    if not PAYMENT_PROVIDER_TOKEN: logger.error("PAYMENT_PROVIDER_TOKEN is not set!"); return None
+    logger.info(f"Attempting to create invoice with payment token: '{PAYMENT_PROVIDER_TOKEN[:8]}...'")
+    if not PAYMENT_PROVIDER_TOKEN:
+        logger.error("PAYMENT_PROVIDER_TOKEN is not set!")
+        return None
     try:
         return await bot_instance.create_invoice_link('Заказ в EZH Cafe', 'Ваш заказ почти готов!', payload, PAYMENT_PROVIDER_TOKEN, 'RUB', prices)
-    except TelegramError as e: logger.error(f"Failed to create invoice link for payload {payload}: {e}"); return None
+    except TelegramError as e:
+        logger.error(f"Failed to create invoice link for payload {payload}: {e}")
+        return None
 
 async def setup_webhook(application: Application) -> None:
     if not WEBHOOK_URL: logger.warning("WEBHOOK_URL not set."); return
