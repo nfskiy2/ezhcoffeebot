@@ -11,7 +11,6 @@ export interface CartItem {
         id: string;
         name: string;
         image?: string;
-        selectedAddons?: SelectedAddon[];
     };
     variant: {
         id: string;
@@ -97,17 +96,18 @@ export interface CartItemRequest {
     variant: OrderItemVariant;
     quantity: number;
     categoryId: string;
+    selectedAddons?: SelectedAddon[]; 
 }
 
 // Главная схема запроса заказа
 export interface OrderRequest {
     auth: string;
     cartItems: CartItemRequest[];
-    address: DeliveryAddress | null; // Убедитесь, что этот тип есть
-    paymentMethod: string; // Добавляем новое поле
+    address: DeliveryAddress | null;
+    paymentMethod: string;
 }
-// ...
-export interface DeliveryAddress { // Убедитесь, что этот тип есть
+
+export interface DeliveryAddress {
     city: string;
     street: string;
     house: string;

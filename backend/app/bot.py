@@ -117,7 +117,14 @@ async def create_invoice_link(prices: list[LabeledPrice], payload: str, bot_inst
         logger.error("PAYMENT_PROVIDER_TOKEN is not set!")
         return None
     try:
-        return await bot_instance.create_invoice_link('Заказ в EZH Cafe', 'Ваш заказ почти готов!', payload, PAYMENT_PROVIDER_TOKEN, 'RUB', prices)
+        return await bot_instance.create_invoice_link(
+            title='Заказ в EZH Cafe',
+            description='Ваш заказ почти готов к приготовлению!',
+            payload=payload,
+            provider_token=PAYMENT_PROVIDER_TOKEN,
+            currency='RUB',
+            prices=prices
+        )
     except TelegramError as e:
         logger.error(f"Failed to create invoice link for payload {payload}: {e}")
         return None

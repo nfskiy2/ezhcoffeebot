@@ -16,7 +16,7 @@ interface GroupedMenuItems {
 const CategoryPage: React.FC = () => {
     const { cafeId, categoryId } = useParams<{ cafeId: string; categoryId: string }>();
     const navigate = useNavigate();
-    const { items, getItemCount } = useCart();
+    const { getItemCount } = useCart();
     
     const [menuItems, setMenuItems] = useState<MenuItemSchema[]>([]);
     const [loading, setLoading] = useState(true);
@@ -114,28 +114,28 @@ const CategoryPage: React.FC = () => {
         navigate('/cart');
     }, [navigate]);
 
-    useEffect(() => {
-        if (window.Telegram && window.Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            const positions = getItemCount(items);
-            if (positions > 0) {
-                let plural = 'ПОЗИЦИЙ';
-                if (positions === 1) plural = 'ПОЗИЦИЯ';
-                else if (positions > 1 && positions < 5) plural = 'ПОЗИЦИИ';
-                const buttonText = `МОЯ КОРЗИНА • ${positions} ${plural}`;
-                tg.MainButton.setText(buttonText).show();
-                tg.MainButton.onClick(handleMainButtonClick);
-                tg.MainButton.enable();
-            } else {
-                tg.MainButton.hide();
-            }
-            return () => {
-                if (window.Telegram && window.Telegram.WebApp) {
-                    tg.MainButton.offClick(handleMainButtonClick);
-                }
-            };
+useEffect(() => {
+    if (window.Telegram && window.Telegram.WebApp) {
+        const tg = window.Telegram.WebApp;
+        const positions = getItemCount();
+        if (positions > 0) {
+            let plural = 'ПОЗИЦИЙ';
+            if (positions === 1) plural = 'ПОЗИЦИЯ';
+            else if (positions > 1 && positions < 5) plural = 'ПОЗИЦИИ';
+            const buttonText = `МОЯ КОРЗИНА • ${positions} ${plural}`;
+            tg.MainButton.setText(buttonText).show();
+            tg.MainButton.onClick(handleMainButtonClick);
+            tg.MainButton.enable();
+        } else {
+            tg.MainButton.hide();
         }
-    }, [handleMainButtonClick, getItemCount, items]);
+        return () => {
+            if (window.Telegram && window.Telegram.WebApp) {
+                tg.MainButton.offClick(handleMainButtonClick);
+            }
+        };
+    }
+}, [handleMainButtonClick, getItemCount]);
 
     if (loading) {
         return (

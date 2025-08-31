@@ -3,14 +3,13 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { logger } from '../utils/logger';
 import type { CartItem } from '../api/types';
 
-const LOCAL_STORAGE_KEY = 'laurel_cafe_cart_v2'; // Используем новый ключ для избежания конфликтов
+const LOCAL_STORAGE_KEY = 'laurel_cafe_cart_v2';
 
-// --- ИЗМЕНЕНИЕ: Добавляем уникальный ID в тип элемента корзины ---
-export interface CartItemWithId extends CartItem {
-    cartItemId: string; // e.g., "cappuccino-cappuccino-m-syrup-vanilla,milk-oat"
+// Тип для элемента ВНУТРИ состояния корзины, с уникальным ID
+export interface CartItemInState extends CartItem {
+    cartItemId: string; 
 }
 
-// --- Хелпер для генерации уникального ID ---
 const generateCartItemId = (item: CartItem): string => {
     const addonsKey = (item.selectedAddons || [])
         .map(a => a.id)
@@ -19,16 +18,15 @@ const generateCartItemId = (item: CartItem): string => {
     return `${item.cafeItem.id}-${item.variant.id}-${addonsKey}`;
 };
 
-
 interface CartContextType {
-    items: CartItemWithId[];
+    items: CartItemInState[];
     addItem: (newItem: CartItem) => void;
-    // --- ИЗМЕНЕНИЕ: Функции теперь принимают уникальный cartItemId ---
     increaseQuantity: (cartItemId: string) => void;
     decreaseQuantity: (cartItemId: string) => void;
     clearCart: () => void;
-    getItemCount: (items: CartItem[]) => number;
-    getTotalCost: (items: CartItem[]) => number;
+    // Функции теперь работают с состоянием контекста и не требуют аргументов
+    getItemCount: () => number;
+    getTotalCost: () => number;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -40,17 +38,15 @@ export const useCart = () => {
 };
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [cartItems, setCartItems] = useState<CartItemWithId[]>([]);
+    const [cartItems, setCartItems] = useState<CartItemInState[]>([]);
 
     useEffect(() => {
         try {
             const savedCart = localStorage.getItem(LOCAL_STORAGE_KEY);
             if (savedCart) {
-                const parsedCart = JSON.parse(savedCart);
+                const parsedCart = JSON.parse(savedCart) as CartItemInState[];
                 if (Array.isArray(parsedCart)) {
-                    // Простая проверка, что у элементов есть cartItemId
-                    const validItems = parsedCart.filter(item => typeof item.cartItemId === 'string');
-                    setCartItems(validItems);
+                    setCartItems(parsedCart.filter(item => typeof item.cartItemId === 'string'));
                 }
             }
         } catch (e) {
@@ -70,13 +66,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const existingItemIndex = prevItems.findIndex(item => item.cartItemId === newItemId);
 
             if (existingItemIndex > -1) {
-                // Если такой товар уже есть, просто увеличиваем количество
                 const updatedItems = [...prevItems];
                 updatedItems[existingItemIndex].quantity += newItem.quantity;
                 return updatedItems;
             } else {
-                // Иначе добавляем новый товар с уникальным ID
-                const itemToAdd: CartItemWithId = { ...newItem, cartItemId: newItemId };
+                const itemToAdd: CartItemInState = { ...newItem, cartItemId: newItemId };
                 return [...prevItems, itemToAdd];
             }
         });
@@ -84,26 +78,32 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const increaseQuantity = useCallback((cartItemId: string) => {
         setCartItems(prevItems => prevItems.map(item => 
-            item.cartItemId === cartItemId
-                ? { ...item, quantity: item.quantity + 1 }
-                : item
+            item.cartItemId === cartItemId ? { ...item, quantity: item.quantity + 1 } : item
         ));
     }, []);
 
     const decreaseQuantity = useCallback((cartItemId: string) => {
         setCartItems(prevItems => 
             prevItems
-                .map(item => 
-                    item.cartItemId === cartItemId
-                        ? { ...item, quantity: item.quantity - 1 }
-                        : item
-                )
-                .filter(item => item.quantity > 0) // Удаляем товар, если количество стало 0
+                .map(item => item.cartItemId === cartItemId ? { ...item, quantity: item.quantity - 1 } : item)
+                .filter(item => item.quantity > 0)
         );
     }, []);
 
     const clearCart = useCallback(() => setCartItems([]), []);
     
+    const getTotalCost = useCallback((): number => {
+        return cartItems.reduce((total, item) => {
+            const variantCost = parseInt(item.variant.cost, 10) || 0;
+            const addonsCost = item.selectedAddons?.reduce((sum, addon) => sum + (parseInt(addon.cost, 10) || 0), 0) || 0;
+            return total + (variantCost + addonsCost) * item.quantity;
+        }, 0);
+    }, [cartItems]);
+
+    const getItemCount = useCallback((): number => {
+        return cartItems.reduce((total, item) => total + item.quantity, 0);
+    }, [cartItems]);
+
     const contextValue: CartContextType = {
         items: cartItems,
         addItem,
@@ -120,15 +120,3 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         </CartContext.Provider>
     );
 };
-
-function getTotalCost(items: CartItem[]): number {
-    return items.reduce((total, item) => {
-        const variantCost = parseInt(item.variant.cost, 10) || 0;
-        const addonsCost = item.selectedAddons?.reduce((sum, addon) => sum + (parseInt(addon.cost, 10) || 0), 0) || 0;
-        return total + (variantCost + addonsCost) * item.quantity;
-    }, 0);
-}
-
-function getItemCount(items: CartItem[]): number {
-    return items.reduce((total, item) => total + item.quantity, 0);
-}

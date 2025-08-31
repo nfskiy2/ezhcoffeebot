@@ -14,7 +14,7 @@ import { useDelivery } from '../store/delivery';
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
     // const location = useLocation();
-    const { items, getItemCount } = useCart();
+    const { getItemCount } = useCart();
     const { selectedCafe, isLoading: isCafeLoading, error: cafeError, retryLoad: retryLoadCafes } = useCafe();
     const { orderType, getFormattedAddress } = useDelivery();
     
@@ -52,16 +52,16 @@ const HomePage: React.FC = () => {
     }, [cafeToDisplay]);
 
     const handleMainButtonClick = useCallback(() => {
-        if (getItemCount(items) > 0) {
+        if (getItemCount() > 0) {
             navigate('/cart');
         }
-    }, [navigate, getItemCount, items]);
+    }, [navigate, getItemCount]);
 
     useEffect(() => {
         const tg = window.Telegram?.WebApp;
         if (!tg) return;
 
-        const positions = getItemCount(items);
+        const positions = getItemCount();
         if (positions > 0) {
             let plural = 'ПОЗИЦИЙ';
             if (positions === 1) plural = 'ПОЗИЦИЯ';
@@ -76,7 +76,7 @@ const HomePage: React.FC = () => {
         return () => {
             tg.MainButton.offClick(handleMainButtonClick);
         };
-    }, [items, handleMainButtonClick, getItemCount]);
+    }, [handleMainButtonClick, getItemCount]);
     
     const formattedAddress = getFormattedAddress();
     const headerTitle = (orderType === 'delivery' && formattedAddress) ? formattedAddress : cafeToDisplay?.name;

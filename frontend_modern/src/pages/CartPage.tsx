@@ -41,12 +41,13 @@ const CartPage: React.FC = () => {
     }, [selectedCafe, showSnackbar]);
 
     const handleCheckout = useCallback(async () => {
-        const totalCost = getTotalCost(items);
+        // --- ИСПРАВЛЕНИЕ: Вызываем функции без аргументов
+        const totalCost = getTotalCost();
         if (minOrderAmount > 0 && totalCost < minOrderAmount) {
             showSnackbar(`Минимальная сумма заказа: ${toDisplayCost(minOrderAmount)}.`, { style: 'warning' });
             return;
         }
-        if (isSubmitting || getItemCount(items) === 0 || !selectedCafe) return;
+        if (isSubmitting || getItemCount() === 0 || !selectedCafe) return;
 
         if (window.Telegram && window.Telegram.WebApp) {
             const initData = TelegramSDK.getInitData();
@@ -60,13 +61,12 @@ const CartPage: React.FC = () => {
             try {
                 const orderData: OrderRequest = {
                     auth: initData,
-                    // --- FIX: Add selectedAddons to the mapped object ---
                     cartItems: items.map(item => ({
                         cafeItem: { id: item.cafeItem.id, name: item.cafeItem.name },
                         variant: { id: item.variant.id, name: item.variant.name, cost: item.variant.cost },
                         quantity: item.quantity,
                         categoryId: item.categoryId,
-                        selectedAddons: item.selectedAddons, // This line was missing
+                        selectedAddons: item.selectedAddons,
                     })),
                     address: address,
                     paymentMethod: paymentMethod
@@ -103,12 +103,12 @@ const CartPage: React.FC = () => {
         }
     }, [items, isSubmitting, selectedCafe, minOrderAmount, showSnackbar, getTotalCost, getItemCount, clearCart, address, paymentMethod]);
 
-    // ... rest of the component remains the same
     useEffect(() => {
         if (window.Telegram && window.Telegram.WebApp) {
             const tg = window.Telegram.WebApp;
-            const totalCount = getItemCount(items);
-            const totalCost = getTotalCost(items);
+            // --- ИСПРАВЛЕНИЕ: Вызываем функции без аргументов
+            const totalCount = getItemCount();
+            const totalCost = getTotalCost();
 
             if (totalCount > 0 && selectedCafe) {
                 let buttonText = `ОФОРМИТЬ • ${toDisplayCost(totalCost)}`;
@@ -138,7 +138,6 @@ const CartPage: React.FC = () => {
     return (
         <section className="cart-page-container">
             <h2>Ваша корзина</h2>
-
             <div className="order-info-summary">
                 {orderType === 'delivery' && formattedAddress ? (
                     <div className="info-row">
@@ -151,7 +150,6 @@ const CartPage: React.FC = () => {
                         <span>Самовывоз из: <strong>{selectedCafe?.name}</strong></span>
                     </div>
                 )}
-                
                 {orderType !== 'delivery' && (
                     <div className="info-row packaging-selector">
                         <span className="material-symbols-rounded">lunch_dining</span>
@@ -162,7 +160,6 @@ const CartPage: React.FC = () => {
                     </div>
                 )}
             </div>
-
             <div className="payment-method-container">
                 <h3>Способ оплаты</h3>
                 <div className="payment-options">
@@ -180,7 +177,6 @@ const CartPage: React.FC = () => {
                     </button>
                 </div>
             </div>
-
             {items.length === 0 ? (
                 <div id="cart-empty-placeholder" className="cart-empty-placeholder">
                     <Lottie animationData={emptyCartAnimation} loop={true} style={{ width: 150, height: 150 }}/>
