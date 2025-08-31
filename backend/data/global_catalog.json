@@ -2,69 +2,91 @@
   "categories": [
     { "id": "coffee", "name": "Кофе", "icon": "icons/icon-coffee.svg", "backgroundColor": "#D2B48C" },
     { "id": "burgers", "name": "Бургеры", "icon": "icons/icon-burger.svg", "backgroundColor": "#F79683" },
-    { "id": "desserts", "name": "Десерты", "icon": "icons/icon-icecream.svg", "backgroundColor": "#E6E6FA" }
+    { "id": "desserts", "name": "Десерты", "icon": "icons/icon-dessert.svg", "backgroundColor": "#E6E6FA" }
   ],
-  "addons": {
-    "groups": [
-      { "id": "syrups", "name": "Сиропы" },
-      { "id": "milk", "name": "Альтернативное молоко" },
-      { "id": "burger-addons", "name": "Добавки к бургеру" }
-    ],
-    "items": [
-      { "id": "syrup-vanilla", "group_id": "syrups", "name": "Ванильный" },
-      { "id": "syrup-caramel", "group_id": "syrups", "name": "Карамельный" },
-      { "id": "milk-oat", "group_id": "milk", "name": "Овсяное" },
-      { "id": "milk-coconut", "group_id": "milk", "name": "Кокосовое" },
-      { "id": "burger-extra-cheese", "group_id": "burger-addons", "name": "Доп. сыр" },
-      { "id": "burger-jalapeno", "group_id": "burger-addons", "name": "Халапеньо" }
-    ]
-  },
   "products": [
     {
       "id": "cappuccino",
       "category_id": "coffee",
-      "name": "Капучино",
-      "description": "Двойной шот эспрессо с равными частями вспененного молока и пены.",
-      "image": "https://images.unsplash.com/photo-1489217085007-bfc28b5c6f36?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+      "subcategory": "Классика",
+      "name": "Капучино Классический",
+      "description": "Двойной шот эспрессо с равными частями вспененного молока и молочной пены.",
+      "image": "...",
+      "addon_group_ids": ["syrups", "milk-types"],
       "variants": [
         { "id": "cappuccino-s", "name": "Маленький", "weight": "150мл" },
         { "id": "cappuccino-m", "name": "Средний", "weight": "250мл" }
-      ],
-      "addon_group_ids": ["syrups", "milk"]
+      ]
     },
     {
       "id": "latte",
       "category_id": "coffee",
+      "subcategory": "Классика",
       "name": "Латте",
-      "description": "Нежный молочный напиток на основе эспрессо.",
-      "image": "https://images.unsplash.com/photo-1481455473976-c280ae7c10f9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+      "description": "Нежный молочный кофе на основе эспрессо.",
+      "image": "...",
+      "addon_group_ids": ["syrups", "milk-types"],
       "variants": [
         { "id": "latte-m", "name": "Средний", "weight": "250мл" },
         { "id": "latte-l", "name": "Большой", "weight": "350мл" }
-      ],
-      "addon_group_ids": ["syrups"]
+      ]
+    },
+    {
+      "id": "bumble-coffee",
+      "category_id": "coffee",
+      "subcategory": "ice&energy",
+      "name": "Бамбл",
+      "description": "Освежающий холодный кофейный напиток с апельсиновым соком и карамельным сиропом.",
+      "image": "...",
+      "variants": [
+        { "id": "bumble-coffee-m", "name": "Стандарт", "weight": "300мл" }
+      ]
+    },
+    {
+      "id": "raf-vanilla",
+      "category_id": "coffee",
+      "subcategory": "Раф-кофе",
+      "name": "Раф Ванильный",
+      "description": "Кофейный напиток на основе эспрессо, сливок и ванильного сахара.",
+      "image": "...",
+      "addon_group_ids": ["milk-types"],
+      "variants": [
+        { "id": "raf-vanilla-m", "name": "Стандарт", "weight": "250мл" }
+      ]
     },
     {
       "id": "classic-burger",
       "category_id": "burgers",
+      "subcategory": null,
       "name": "Классический Бургер",
-      "description": "Котлета из говядины, свежие овощи, фирменный соус.",
-      "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+      "description": "Котлета из говядины, свежие овощи и фирменный соус.",
+      "image": "...",
       "variants": [
         { "id": "classic-burger-s", "name": "Стандарт", "weight": "280г" }
-      ],
-      "addon_group_ids": ["burger-addons"]
+      ]
     },
     {
       "id": "cheesecake",
       "category_id": "desserts",
+      "subcategory": null,
       "name": "Чизкейк Нью-Йорк",
       "description": "Классический чизкейк на песочной основе.",
-      "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+      "image": "...",
       "variants": [
         { "id": "cheesecake-slice", "name": "Кусочек", "weight": "120г" }
       ]
     }
-    
-  ]
+  ],
+  "addons": {
+    "groups": [
+      { "id": "syrups", "name": "Сиропы" },
+      { "id": "milk-types", "name": "Альтернативное молоко" }
+    ],
+    "items": [
+      { "id": "syrup-vanilla", "group_id": "syrups", "name": "Ванильный" },
+      { "id": "syrup-caramel", "group_id": "syrups", "name": "Карамельный" },
+      { "id": "milk-oat", "group_id": "milk-types", "name": "Овсяное" },
+      { "id": "milk-coconut", "group_id": "milk-types", "name": "Кокосовое" }
+    ]
+  }
 }

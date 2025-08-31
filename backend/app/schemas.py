@@ -50,15 +50,16 @@ class AddonGroupSchema(CustomBaseModel):
     name: str
     items: List[AddonItemSchema]
 
-class MenuItemSchema(CustomBaseModel):
-    id: str
-    name: Optional[str] = None
-    description: Optional[str] = None
-    image: Optional[str] = None
-    category_id: str
-    variants: List[MenuItemVariantSchema]
-    addons: Optional[List[AddonGroupSchema]] = []
+class MenuItemSchema(CustomBaseModel): 
+    id: str 
+    name: Optional[str] = None 
+    description: Optional[str] = None 
+    image: Optional[str] = None 
+    category_id: str 
+    variants: List[MenuItemVariantSchema] 
+    addons: Optional[List[AddonGroupSchema]] = [] 
     sub_category: Optional[str] = None
+
 
 class CafeSettingsSchema(CustomBaseModel):
     min_order_amount: Optional[int] = None
