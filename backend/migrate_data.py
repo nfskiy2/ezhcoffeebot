@@ -8,6 +8,7 @@ from app.models import (
     Base, Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
     GlobalAddonGroup, GlobalAddonItem, VenueAddonItem
 )
+from .models import product_addon_groups_association
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
@@ -27,6 +28,8 @@ def migrate():
         db.query(Order).delete()
         db.query(VenueMenuItem).delete()
         db.query(VenueAddonItem).delete()
+        db.execute(product_addon_groups_association.delete())
+
         # Затем из тех, на которые ссылаются
         # Ассоциативная таблица очистится каскадом при удалении продуктов/групп
         db.query(GlobalProductVariant).delete()
