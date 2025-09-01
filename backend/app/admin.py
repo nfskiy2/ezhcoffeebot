@@ -11,6 +11,8 @@ from .models import (
     GlobalAddonGroup, GlobalAddonItem, VenueAddonItem
 )
 
+ICON_DIR = "/app/public_media/icons/category"
+
 def get_icon_choices():
     """Сканирует папку с иконками и создает список для выпадающего меню."""
     # Путь к папке с иконками на хост-машине (снаружи Docker)
@@ -25,12 +27,11 @@ def get_icon_choices():
     )
     
     choices = []
-    if os.path.exists(icon_dir_path):
-        for filename in sorted(os.listdir(icon_dir_path)):
+    
+    if os.path.exists(ICON_DIR):
+        for filename in sorted(os.listdir(ICON_DIR)):
             if filename.endswith(".svg"):
-                # Формируем путь, который будет использоваться в <img> src
                 icon_path = f"/icons/category/{filename}"
-                # Создаем HTML для предпросмотра иконки в списке
                 label = Markup(
                     f"<img src='{icon_path}' width='20' height='20' style='margin-right: 8px;'>"
                     f"<span>{filename}</span>"

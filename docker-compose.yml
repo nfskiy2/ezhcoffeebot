@@ -31,6 +31,7 @@ services:
     # Для разработки, если хотите, чтобы изменения кода сразу были видны:
     volumes:
       - ./uploads:/app/uploads
+      - ./public_media:/app/public_media:ro
 
 
 volumes: # Именованный том для данных БД
