@@ -15,6 +15,7 @@ from telegram.ext import Application
 from urllib.parse import parse_qs
 from sqladmin import Admin
 from .admin import authentication_backend, register_all_views
+from starlette.middleware.sessions import SessionMiddleware
 
 from . import auth
 from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH, send_new_order_notifications
@@ -55,6 +56,10 @@ async def lifespan(app: FastAPI):
     if _application_instance: await _application_instance.shutdown()
 
 app = FastAPI(lifespan=lifespan)
+app.add_middleware(
+    SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "a_very_secret_key")
+)
+
 admin = Admin(app, engine, authentication_backend=authentication_backend)
 register_all_views(admin)
 origins = [APP_URL] if APP_URL else []
@@ -162,7 +167,21 @@ def get_categories_by_cafe(cafe_id: str, db: Session = Depends(get_db_session)):
 
 @app.get("/cafes/{cafe_id}/popular", response_model=List[MenuItemSchema])
 def get_popular_menu_by_cafe(cafe_id: str, db: Session = Depends(get_db_session)):
-    venue_menu_items = db.query(VenueMenuItem).join(GlobalProductVariant).join(GlobalProduct).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.is_available == True).options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product)).limit(5).all()
+    # --- ИЗМЕНЕНИЕ ЛОГИКИ ---
+    # Раньше: .limit(5).all()
+    # Теперь: фильтруем по флагу is_popular
+    venue_menu_items = (
+        db.query(VenueMenuItem)
+        .join(GlobalProductVariant)
+        .join(GlobalProduct)
+        .filter(
+            VenueMenuItem.venue_id == cafe_id,
+            VenueMenuItem.is_available == True,
+            GlobalProduct.is_popular == True  # <-- НОВОЕ УСЛОВИЕ
+        )
+        .options(joinedload(VenueMenuItem.variant).joinedload(GlobalProductVariant.product))
+        .all()
+    )
     return assemble_menu_items(venue_menu_items, db, cafe_id)
 
 @app.get("/cafes/{cafe_id}/menu/{category_id}", response_model=List[MenuItemSchema])
