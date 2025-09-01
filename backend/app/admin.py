@@ -119,10 +119,14 @@ class OrderAdmin(ModelView, model=Order):
         confirmation_message="Отметить выбранные заказы как 'completed'?",
         add_in_list=True, add_in_detail=True
     )
-    async def mark_as_completed(self, request: Request, pks: list[str]):
+    async def mark_as_completed(self, request: Request):
+        pks = request.query_params.get("pks", "").split(",")
+        if not pks or pks == ['']:
+            return
+        
         session: Session = request.state.session
         for pk in pks:
-            model = await get_model_instance(pk, self.model, session)
+            model = await self.get_obj(pk, session)
             if model:
                 model.status = "completed"
         session.commit()
