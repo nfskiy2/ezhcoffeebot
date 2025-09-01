@@ -4,7 +4,7 @@ import os
 from sqladmin import Admin, ModelView, action
 from sqladmin.authentication import AuthenticationBackend
 from sqladmin.fields import SelectField
-from sqladmin.helpers import get_model_instance
+from sqladmin.views import get_model_instance
 from sqlalchemy.orm import Session
 from markupsafe import Markup
 from starlette.requests import Request
