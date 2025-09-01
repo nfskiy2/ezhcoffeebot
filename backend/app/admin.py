@@ -17,10 +17,9 @@ def get_icon_choices():
     # Мы "смотрим" из папки backend в папку frontend_modern
     icon_dir_path = os.path.join(
         os.path.dirname(__file__), # /app/
-        '..', # /
-        '..', # корень проекта
-        'frontend_modern',
-        'public',
+        '..', 
+        '..', 
+        'public_media',
         'icons',
         'category'
     )
