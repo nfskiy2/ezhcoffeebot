@@ -23,7 +23,7 @@ from .models import (
 )
 from .schemas import (
     CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema,
-    AddressSuggestionRequest, DadataSuggestionResponse
+    AddressSuggestionRequest, DadataSuggestionResponse, PromotionSchema 
 )
 
 load_dotenv()
@@ -101,6 +101,56 @@ async def bot_webhook(request: Request, application_instance: Application = Depe
 
 @app.get("/cafes", response_model=List[CafeSchema])
 def get_all_cafes(db: Session = Depends(get_db_session)): return db.query(Cafe).all()
+
+@app.get("/cafes/{cafe_id}/promotions", response_model=List[PromotionSchema])
+def get_promotions_by_cafe(cafe_id: str, db: Session = Depends(get_db_session)):
+    """
+    Возвращает список акций, доступных для конкретного кафе.
+    Акция считается доступной, если категория, к которой она привязана,
+    присутствует в меню данного кафе.
+    """
+    # 1. Получаем все ID категорий, которые есть в меню данного кафе
+    available_category_ids_query = (
+        db.query(Category.id)
+        .join(GlobalProduct)
+        .join(GlobalProductVariant)
+        .join(VenueMenuItem)
+        .filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.is_available == True)
+        .distinct()
+    )
+    available_category_ids = {c.id for c in available_category_ids_query.all()}
+
+    if not available_category_ids:
+        return []
+
+    # 2. Загружаем все акции из файла promotions.json
+    try:
+        with open('data/promotions.json', 'r', encoding='utf-8') as f:
+            all_promotions = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        logger.error("Не удалось загрузить или обработать файл promotions.json")
+        return []
+
+    # 3. Фильтруем акции: оставляем только те, у которых linkedCategoryId
+    #    присутствует в списке доступных категорий для данного кафе.
+    valid_promotions = [
+        promo for promo in all_promotions
+        if promo.get("linkedCategoryId") in available_category_ids
+    ]
+    
+    # 4. Формируем ответ, приводя ключи в соответствие со схемой Pydantic
+    response_data = [
+        {
+            "id": promo.get("id"),
+            "title": promo.get("title"),
+            "subtitle": promo.get("subtitle"),
+            "image_url": promo.get("imageUrl"),
+            "linked_category_id": promo.get("linkedCategoryId")
+        } 
+        for promo in valid_promotions
+    ]
+
+    return response_data
 
 @app.get("/cafes/{cafe_id}/categories", response_model=List[CategorySchema])
 def get_categories_by_cafe(cafe_id: str, db: Session = Depends(get_db_session)): return db.query(Category).join(GlobalProduct).join(GlobalProductVariant).join(VenueMenuItem).filter(VenueMenuItem.venue_id == cafe_id, VenueMenuItem.is_available == True).distinct().all()

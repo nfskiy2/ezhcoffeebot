@@ -1092,3 +1092,86 @@ section {
 .payment-option.active .material-symbols-rounded {
     opacity: 1;
 }
+
+.promotional-banner-container {
+    position: relative;
+    margin: 24px 16px 0 16px;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent; /* Убирает подсветку при клике на мобильных */
+    aspect-ratio: 16 / 7; /* Соотношение сторон для баннера */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    background-color: var(--tg-theme-secondary-bg-color); /* Фон на время загрузки картинки */
+}
+
+.promotional-banner-container .banner-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.promotional-banner-container:active .banner-image {
+    transform: scale(1.05); /* Эффект при нажатии */
+}
+
+.promotional-banner-container .banner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    /* Градиент для затемнения и лучшей читаемости текста */
+    background: linear-gradient(90deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 100%);
+}
+
+.promotional-banner-container .banner-text {
+    position: absolute;
+    left: 20px;
+    right: 20px;
+    z-index: 2;
+    pointer-events: none; /* Текст не должен мешать клику по баннеру */
+}
+
+.promotional-banner-container .banner-text h4 {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+    color: #FFFFFF;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5); /* Тень для текста */
+}
+
+.promotional-banner-container .banner-text p {
+    font-size: 13px;
+    opacity: 0.9;
+    margin-top: 4px;
+    color: #FFFFFF;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+
+.promotional-banner-container .banner-dots {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 6px;
+    z-index: 2;
+}
+
+.promotional-banner-container .banner-dots .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.5);
+    transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.promotional-banner-container .banner-dots .dot.active {
+    background-color: white;
+    transform: scale(1.1);
+}

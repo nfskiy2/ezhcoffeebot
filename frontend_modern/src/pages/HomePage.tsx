@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCafeCategories, getCafePopularMenu } from '../api';
-import type { CategorySchema, MenuItemSchema } from '../api/types';
+import { getCafeCategories, getCafePopularMenu, getCafePromotions} from '../api';
+import type { CategorySchema, MenuItemSchema, PromotionSchema } from '../api/types';
 import { useCart } from '../store/cart';
 import MenuItemCard from '../components/MenuItemCard';
 import { getContrastingTextColor } from '../utils/colorUtils';
@@ -10,6 +10,8 @@ import { logger } from '../utils/logger';
 import ErrorState from '../components/ErrorState';
 import { getCafeStatus, formatOpeningHours } from '../utils/timeUtils';
 import { useDelivery } from '../store/delivery';
+import PromotionalBanner from '../components/PromotionalBanner';
+
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
@@ -20,6 +22,8 @@ const HomePage: React.FC = () => {
     
     const [categories, setCategories] = useState<CategorySchema[]>([]);
     const [popularItems, setPopularItems] = useState<MenuItemSchema[]>([]);
+    const [promotions, setPromotions] = useState<PromotionSchema[]>([]);
+
     const [isLoadingCafeData, setIsLoadingCafeData] = useState(true);
     
     // Используем selectedCafe напрямую. Логика с displayCafe была избыточной.
@@ -35,15 +39,17 @@ const HomePage: React.FC = () => {
             }
             setIsLoadingCafeData(true);
             try {
-                logger.log(`Loading data for cafe: ${cafeToDisplay.id}`);
-                const [categoriesData, popularData] = await Promise.all([
+                logger.log(`Загрузка данных для кафе: ${cafeToDisplay.id}`);
+                const [categoriesData, popularData, promotionsData] = await Promise.all([
                     getCafeCategories(cafeToDisplay.id),
-                    getCafePopularMenu(cafeToDisplay.id)
+                    getCafePopularMenu(cafeToDisplay.id),
+                    getCafePromotions(cafeToDisplay.id)
                 ]);
                 setCategories(categoriesData || []);
                 setPopularItems(popularData || []);
+                setPromotions(promotionsData || []); // Сохраняем акции в состояние
             } catch (err: any) {
-                logger.error("Failed to load cafe specific data:", err);
+                logger.error("Не удалось загрузить данные для кафе:", err);
             } finally {
                 setIsLoadingCafeData(false);
             }
@@ -134,6 +140,12 @@ const HomePage: React.FC = () => {
                     </div>
                 </div>
             </div>
+            
+            {/* УСЛОВНЫЙ РЕНДЕРИНГ БАННЕРА */}
+            {/* Баннер отобразится только если для кафе есть доступные акции */}
+            {promotions.length > 0 && cafeToDisplay && (
+                <PromotionalBanner promotions={promotions} cafeId={cafeToDisplay.id} />
+            )}
 
             <div className="cafe-section-container">
                 <h3 className="cafe-section-title">Категории</h3>

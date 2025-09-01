@@ -1,6 +1,6 @@
 // frontend_modern/src/api/index.ts
 import axios from 'axios';
-import type { CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema } from './types'; // Removed CafeInfoSchema
+import type { CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema, PromotionSchema } from './types'; // Removed CafeInfoSchema
 import { logger } from '../utils/logger'; // Import logger
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
@@ -129,4 +129,14 @@ export const getAddressSuggestions = async (query: string, city: string): Promis
         logger.error("Error fetching address suggestions:", error);
         return []; // Возвращаем пустой массив в случае ошибки
     }
+};
+
+export const getCafePromotions = async (cafeId: string): Promise<PromotionSchema[]> => {
+  try {
+    const response = await apiClient.get<PromotionSchema[]>(`/cafes/${cafeId}/promotions`);
+    return Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    logger.error(`Error fetching promotions for cafe ${cafeId}:`, error);
+    throw error;
+  }
 };

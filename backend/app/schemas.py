@@ -108,3 +108,10 @@ class AddressSuggestionRequest(CustomBaseModel):
 
 class DadataSuggestionResponse(CustomBaseModel):
     suggestions: List[dict]
+
+class PromotionSchema(CustomBaseModel):
+    id: str
+    title: str
+    subtitle: str
+    image_url: str
+    linked_category_id: str

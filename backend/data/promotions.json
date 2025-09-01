@@ -1,0 +1,23 @@
+[
+    {
+        "id": "promo-burgers",
+        "title": "СКИДКА 10% НА ВСЁ!",
+        "subtitle": "Действует на все заказы от 1500 ₽.",
+        "imageUrl": "https://images.unsplash.com/photo-1594212699903-ec8a3e28c64b?auto=format&fit=crop&q=80&w=2070",
+        "linkedCategoryId": "burgers"
+    },
+    {
+        "id": "promo-coffee-deal",
+        "title": "КОФЕ + ДЕСЕРТ",
+        "subtitle": "Всего за 350 ₽!",
+        "imageUrl": "https://images.unsplash.com/photo-1511920183276-5742f4b5b5b5?auto=format&fit=crop&q=80&w=1974",
+        "linkedCategoryId": "coffee"
+    },
+    {
+        "id": "promo-desserts",
+        "title": "Новые десерты",
+        "subtitle": "Попробуйте первыми!",
+        "imageUrl": "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?auto=format&fit=crop&q=80&w=1974",
+        "linkedCategoryId": "desserts"
+    }
+]

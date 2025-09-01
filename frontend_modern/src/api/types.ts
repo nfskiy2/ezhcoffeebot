@@ -123,3 +123,11 @@ export interface AddressSuggestion {
         house: string | null;
     };
 }
+
+export interface PromotionSchema {
+    id: string;
+    title: string;
+    subtitle: string;
+    imageUrl: string;
+    linkedCategoryId: string;
+}
