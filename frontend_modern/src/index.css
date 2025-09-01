@@ -1097,55 +1097,74 @@ section {
     position: relative;
     margin: 24px 16px 0 16px;
     border-radius: 16px;
-    overflow: hidden;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent; /* Убирает подсветку при клике на мобильных */
-    aspect-ratio: 16 / 7; /* Соотношение сторон для баннера */
+    overflow: hidden; /* Важно, чтобы скрыть слайды за пределами контейнера */
+    cursor: grab; /* Курсор намекает на возможность перетаскивания */
+    -webkit-tap-highlight-color: transparent;
+    aspect-ratio: 10 / 4; /* Уменьшаем высоту (было 16 / 7) */
+    background-color: var(--tg-theme-secondary-bg-color);
+    user-select: none; /* Запрещаем выделение текста при перетаскивании */
+}
+
+.promotional-banner-container:active {
+    cursor: grabbing; /* Курсор во время перетаскивания */
+}
+
+/* Новая обертка для всех слайдов */
+.banner-slider-wrapper {
+    display: flex;
+    height: 100%;
+    /* Плавный переход при автоматической смене и свайпе */
+    transition: transform 0.4s ease-in-out; 
+}
+
+/* Стили для каждого отдельного слайда */
+.banner-slide {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    flex-shrink: 0; /* Запрещаем слайду сжиматься */
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    background-color: var(--tg-theme-secondary-bg-color); /* Фон на время загрузки картинки */
 }
 
-.promotional-banner-container .banner-image {
+.banner-slide .banner-image {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: transform 0.3s ease;
+    /* Убираем анимацию с самой картинки, так как анимируется вся обертка */
 }
 
-.promotional-banner-container:active .banner-image {
-    transform: scale(1.05); /* Эффект при нажатии */
-}
-
-.promotional-banner-container .banner-overlay {
+.banner-slide .banner-overlay {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    /* Градиент для затемнения и лучшей читаемости текста */
     background: linear-gradient(90deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.1) 100%);
+    z-index: 1; /* Оверлей над картинкой */
 }
 
-.promotional-banner-container .banner-text {
-    position: absolute;
-    left: 20px;
-    right: 20px;
-    z-index: 2;
-    pointer-events: none; /* Текст не должен мешать клику по баннеру */
+.banner-slide .banner-text {
+    position: relative; /* Теперь позиционируется относительно слайда */
+    width: calc(100% - 40px); /* Отступы по бокам */
+    z-index: 2; /* Текст над оверлеем */
+    pointer-events: none;
 }
 
-.promotional-banner-container .banner-text h4 {
+.banner-slide .banner-text h4 {
     font-size: 18px;
     font-weight: 500;
     margin: 0;
     color: #FFFFFF;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.5); /* Тень для текста */
+    text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
 
-.promotional-banner-container .banner-text p {
+.banner-slide .banner-text p {
     font-size: 13px;
     opacity: 0.9;
     margin-top: 4px;
@@ -1153,6 +1172,7 @@ section {
     text-shadow: 0 1px 3px rgba(0,0,0,0.5);
 }
 
+/* Точки-индикаторы остаются без изменений */
 .promotional-banner-container .banner-dots {
     position: absolute;
     bottom: 12px;
@@ -1160,7 +1180,7 @@ section {
     transform: translateX(-50%);
     display: flex;
     gap: 6px;
-    z-index: 2;
+    z-index: 3; /* Точки должны быть поверх всего */
 }
 
 .promotional-banner-container .banner-dots .dot {
@@ -1175,3 +1195,4 @@ section {
     background-color: white;
     transform: scale(1.1);
 }
+
