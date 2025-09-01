@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.models import (
     Base, Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
-    GlobalAddonGroup, GlobalAddonItem, VenueAddonItem
+    GlobalAddonGroup, GlobalAddonItem, VenueAddonItem, product_addon_groups_association
 )
 from .models import product_addon_groups_association
 
