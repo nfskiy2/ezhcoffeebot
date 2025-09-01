@@ -1,6 +1,7 @@
 import os
 from sqladmin import Admin, ModelView
 from markupsafe import Markup 
+from sqladmin.fields import Select2Field 
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 
@@ -26,15 +27,20 @@ def get_icon_choices():
     
     choices = []
 
-    if os.path.exists(ICON_DIR):
-        for filename in sorted(os.listdir(ICON_DIR)):
-            if filename.endswith(".svg"):
-                icon_path = f"/icons/category/{filename}"
-                label = Markup(
-                    f"<img src='{icon_path}' width='20' height='20' style='margin-right: 8px;'>"
-                    f"<span>{filename}</span>"
-                )
-                choices.append((icon_path, label))
+    if not os.path.exists(ICON_DIR):
+        print(f"WARNING: Icon directory not found at {ICON_DIR}")
+        return choices
+
+    for filename in sorted(os.listdir(ICON_DIR)):
+        if filename.endswith(".svg"):
+            # Путь, который будет сохранен в БД и использоваться на фронтенде
+            icon_path = f"/icons/category/{filename}"
+            # HTML-разметка для красивого отображения в админке (иконка + имя)
+            label = Markup(
+                f"<img src='{icon_path}' width='20' height='20' style='margin-right: 8px; vertical-align: middle;'>"
+                f"<span>{filename}</span>"
+            )
+            choices.append((icon_path, label))
     return choices
 
 UPLOAD_DIR = "/app/uploads"
@@ -73,6 +79,19 @@ class CategoryAdmin(ModelView, model=Category):
     icon = "fa-solid fa-tags"
     form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
 
+
+    form_overrides = {
+        "icon": Select2Field,
+    }
+    form_args = {
+        "icon": {
+            'label': 'Иконка',
+            'choices': get_icon_choices(), # Динамически получаем список
+            'allow_blank': True,
+        }
+    }
+
+
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     name = "Продукт"
@@ -87,22 +106,13 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         "image": {
             "base_path": UPLOAD_DIR,
             "url_prefix": "/media/"
-            # 'label': 'Иконка',
-            # 'choices': get_icon_choices(), # Заполняем список файлами из папки
-            # 'allow_blank': True, # Разрешить не выбирать иконку
         }
     }
 
     form_columns = [
-        GlobalProduct.id,
-        GlobalProduct.name,
-        Category.icon,
-        GlobalProduct.description,
-        GlobalProduct.image,
-        GlobalProduct.category,
-        GlobalProduct.sub_category,
-        GlobalProduct.is_popular,
-        GlobalProduct.variants,
+        GlobalProduct.id, GlobalProduct.name,
+        GlobalProduct.description, GlobalProduct.image, GlobalProduct.category,
+        GlobalProduct.sub_category, GlobalProduct.is_popular, GlobalProduct.variants,
         GlobalProduct.addon_groups,
     ]
 
@@ -138,11 +148,11 @@ class CafeAdmin(ModelView, model=Cafe):
     ]
 
 class OrderAdmin(ModelView, model=Order):
+    can_create = False
+    can_delete = False
     column_list = [Order.id, Order.cafe, Order.status, Order.created_at]
     column_details_exclude_list = [Order.cafe_id]
-    column_default_sort = ("created_at", True) # Сортировка по дате, новые сверху
-    can_create = False # Заказы создаются только через приложение
-    can_delete = False # Не стоит удалять историю заказов
+    column_default_sort = ("created_at", True)
     name = "Заказ"
     name_plural = "Заказы"
     icon = "fa-solid fa-receipt"
@@ -152,6 +162,8 @@ def register_all_views(admin: Admin):
     admin.add_view(CategoryAdmin)
     admin.add_view(GlobalProductAdmin)
     admin.add_view(GlobalAddonGroupAdmin)
+    admin.add_view(ModelView(model=GlobalAddonGroup, icon="fa-solid fa-layer-group", name="Группы добавок", name_plural="Группы добавок"))
+
     # Модели-связки лучше скрыть из основного меню для чистоты
     # admin.add_view(ModelView(model=GlobalProductVariant, icon="fa-solid fa-list"))
     # admin.add_view(ModelView(model=GlobalAddonItem, icon="fa-solid fa-plus"))

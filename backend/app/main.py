@@ -9,6 +9,7 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload, selectinload
 from telegram import Update, LabeledPrice, Bot
 from telegram.ext import Application
@@ -35,6 +36,8 @@ WEBHOOK_URL, DADATA_API_KEY = os.getenv('DADATA_API_KEY'), os.getenv('DADATA_API
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+UPLOAD_DIR = "/app/uploads"
+
 def _truncate_label(base: str, suffix: str) -> str:
     max_base_len = 32 - len(suffix)
     if len(base) > max_base_len:
@@ -56,6 +59,9 @@ async def lifespan(app: FastAPI):
     if _application_instance: await _application_instance.shutdown()
 
 app = FastAPI(lifespan=lifespan)
+
+app.mount("/media", StaticFiles(directory=UPLOAD_DIR), name="media")
+
 app.add_middleware(
     SessionMiddleware, secret_key=os.getenv("SECRET_KEY", "a_very_secret_key")
 )
