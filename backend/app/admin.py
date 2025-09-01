@@ -1,5 +1,6 @@
 import os
 from sqladmin import Admin, ModelView
+from sqladmin.fields import ImageField
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 
@@ -8,6 +9,7 @@ from .models import (
     GlobalAddonGroup, GlobalAddonItem, VenueAddonItem
 )
 
+UPLOAD_DIR = "/app/uploads"
 # --- ПРОСТАЯ АУТЕНТИФИКАЦИЯ ---
 # (В будущем можно заменить на OAuth2 или JWT)
 class BasicAuth(AuthenticationBackend):
@@ -51,6 +53,18 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     # Добавляем возможность редактировать варианты и группы добавок прямо со страницы продукта
     column_details_exclude_list = [GlobalProduct.category_id]
     form_include_pk = True
+
+    form_overrides = {
+        "image": ImageField
+    }
+    # Указываем, куда сохранять файлы и как на них ссылаться
+    form_args = {
+        "image": {
+            "base_path": UPLOAD_DIR, # Куда сохранять на сервере
+            "url_prefix": "/media/"    # Префикс для URL, который будет обрабатывать Nginx
+        }
+    }
+
     form_columns = [
         GlobalProduct.id,
         GlobalProduct.name,
@@ -81,6 +95,16 @@ class CafeAdmin(ModelView, model=Cafe):
     name_plural = "Кофейни и Доставка"
     icon = "fa-solid fa-store"
     # Включаем управление ценами и стоп-листом прямо из карточки кофейни
+
+    form_overrides = {
+        "cover_image": ImageField,
+        "logo_image": ImageField
+    }
+    form_args = {
+        "cover_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" },
+        "logo_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" }
+    }
+    
     column_details_list = [
         Cafe.id, Cafe.name, Cafe.cover_image, Cafe.logo_image,
         Cafe.kitchen_categories, Cafe.opening_hours, Cafe.min_order_amount,
