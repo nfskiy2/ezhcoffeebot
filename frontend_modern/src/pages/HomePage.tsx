@@ -140,7 +140,7 @@ const HomePage: React.FC = () => {
                     </div>
                 </div>
             </div>
-            
+
             {/* УСЛОВНЫЙ РЕНДЕРИНГ БАННЕРА */}
             {/* Баннер отобразится только если для кафе есть доступные акции */}
             {promotions.length > 0 && cafeToDisplay && (
@@ -162,7 +162,11 @@ const HomePage: React.FC = () => {
                                 onClick={() => navigate(`/cafe/${cafeToDisplay.id}/category/${category.id}`)}
                                 style={{ backgroundColor: category.backgroundColor || '#ccc' }}
                             >
-                                <img className="cafe-category-icon" src={category.icon || "/icons/icon-transparent.svg"} alt={category.name + " иконка"}/>
+                                <img 
+                                    className="cafe-category-icon" 
+                                    src={category.icon || "/icons/icon-transparent.svg"}
+                                    alt={category.name + " иконка"}
+                                />
                                 <div
                                     className="cafe-category-name"
                                     style={{ color: getContrastingTextColor(category.backgroundColor || '#ccc') }}

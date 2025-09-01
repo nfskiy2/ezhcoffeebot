@@ -1,6 +1,8 @@
 import os
 from sqladmin import Admin, ModelView
 from sqladmin.fields import ImageField
+from sqladmin.fields import Select2Field
+from markupsafe import Markup 
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 
@@ -8,6 +10,34 @@ from .models import (
     Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
     GlobalAddonGroup, GlobalAddonItem, VenueAddonItem
 )
+
+def get_icon_choices():
+    """Сканирует папку с иконками и создает список для выпадающего меню."""
+    # Путь к папке с иконками на хост-машине (снаружи Docker)
+    # Мы "смотрим" из папки backend в папку frontend_modern
+    icon_dir_path = os.path.join(
+        os.path.dirname(__file__), # /app/
+        '..', # /
+        '..', # корень проекта
+        'frontend_modern',
+        'public',
+        'icons',
+        'category'
+    )
+    
+    choices = []
+    if os.path.exists(icon_dir_path):
+        for filename in sorted(os.listdir(icon_dir_path)):
+            if filename.endswith(".svg"):
+                # Формируем путь, который будет использоваться в <img> src
+                icon_path = f"/icons/category/{filename}"
+                # Создаем HTML для предпросмотра иконки в списке
+                label = Markup(
+                    f"<img src='{icon_path}' width='20' height='20' style='margin-right: 8px;'>"
+                    f"<span>{filename}</span>"
+                )
+                choices.append((icon_path, label))
+    return choices
 
 UPLOAD_DIR = "/app/uploads"
 # --- ПРОСТАЯ АУТЕНТИФИКАЦИЯ ---
@@ -55,19 +85,21 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     form_include_pk = True
 
     form_overrides = {
-        "image": ImageField
+        'icon': Select2Field
     }
     # Указываем, куда сохранять файлы и как на них ссылаться
     form_args = {
-        "image": {
-            "base_path": UPLOAD_DIR, # Куда сохранять на сервере
-            "url_prefix": "/media/"    # Префикс для URL, который будет обрабатывать Nginx
+        'icon': {
+            'label': 'Иконка',
+            'choices': get_icon_choices(), # Заполняем список файлами из папки
+            'allow_blank': True, # Разрешить не выбирать иконку
         }
     }
 
     form_columns = [
         GlobalProduct.id,
         GlobalProduct.name,
+        Category.icon,
         GlobalProduct.description,
         GlobalProduct.image,
         GlobalProduct.category,
@@ -104,7 +136,7 @@ class CafeAdmin(ModelView, model=Cafe):
         "cover_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" },
         "logo_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" }
     }
-    
+
     column_details_list = [
         Cafe.id, Cafe.name, Cafe.cover_image, Cafe.logo_image,
         Cafe.kitchen_categories, Cafe.opening_hours, Cafe.min_order_amount,
@@ -134,3 +166,4 @@ def register_all_views(admin: Admin):
     # admin.add_view(ModelView(model=VenueMenuItem, icon="fa-solid fa-tag"))
     # admin.add_view(ModelView(model=VenueAddonItem, icon="fa-solid fa-tag"))
     admin.add_view(OrderAdmin)
+
