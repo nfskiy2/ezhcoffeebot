@@ -127,6 +127,38 @@ def get_cafe_settings_by_id(cafe_id: str, db: Session = Depends(get_db_session))
     if not cafe: raise HTTPException(404, f"Cafe '{cafe_id}' not found.")
     return CafeSettingsSchema(min_order_amount=cafe.min_order_amount)
 
+@app.post("/suggest-address", response_model=DadataSuggestionResponse)
+async def get_address_suggestions(request_data: AddressSuggestionRequest):
+    if not DADATA_API_KEY:
+        raise HTTPException(status_code=500, detail="Dadata API key is not configured.")
+    
+    url = "https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address"
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        "Authorization": f"Token {DADATA_API_KEY}"
+    }
+    # Ограничиваем поиск по городу и запрашиваем только улицы и дома
+    payload = {
+        "query": request_data.query,
+        "locations": [{"city": request_data.city}],
+        "from_bound": {"value": "street"},
+        "to_bound": {"value": "house"}
+    }
+
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(url, json=payload, headers=headers)
+            response.raise_for_status() # Вызовет ошибку, если статус ответа не 2xx
+            return response.json()
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Dadata API request failed: {e.response.status_code} - {e.response.text}")
+            raise HTTPException(status_code=502, detail="Address suggestion service is unavailable.")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred while calling Dadata API: {e}")
+            raise HTTPException(status_code=500, detail="Internal server error.")
+
+
 @app.post("/cafes/{cafe_id}/order")
 async def create_order(cafe_id: str, order_data: OrderRequest, db: Session = Depends(get_db_session), bot_instance: Bot = Depends(get_bot_instance)):
     if not auth.validate_auth_data(BOT_TOKEN, order_data.auth):
