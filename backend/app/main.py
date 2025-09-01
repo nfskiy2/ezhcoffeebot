@@ -13,6 +13,8 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from telegram import Update, LabeledPrice, Bot
 from telegram.ext import Application
 from urllib.parse import parse_qs
+from sqladmin import Admin
+from .admin import authentication_backend, register_all_views
 
 from . import auth
 from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH, send_new_order_notifications
@@ -53,9 +55,12 @@ async def lifespan(app: FastAPI):
     if _application_instance: await _application_instance.shutdown()
 
 app = FastAPI(lifespan=lifespan)
+admin = Admin(app, engine, authentication_backend=authentication_backend)
+register_all_views(admin)
 origins = [APP_URL] if APP_URL else []
 if os.getenv('DEV_MODE') and os.getenv('DEV_APP_URL'): origins.append(os.getenv('DEV_APP_URL'))
 app.add_middleware(CORSMiddleware, allow_origins=origins or ["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+
 
 def get_db_session(): db = SessionLocal(); yield db; db.close()
 def get_bot_instance() -> Bot:

@@ -48,6 +48,8 @@ class GlobalProduct(Base):
     image = Column(String)
     category_id = Column(String, ForeignKey('categories.id'))
     sub_category = Column(String, nullable=True)
+    is_popular = Column(Boolean, default=False, nullable=False)
+
     
     category = relationship("Category", back_populates="products")
     variants = relationship("GlobalProductVariant", back_populates="product", cascade="all, delete-orphan")
