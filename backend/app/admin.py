@@ -1,6 +1,5 @@
 import os
 from sqladmin import Admin, ModelView
-from sqladmin.fields import Select2Field
 from sqladmin.widgets import ImageWidget
 from markupsafe import Markup 
 from sqladmin.authentication import AuthenticationBackend
