@@ -152,14 +152,8 @@ class OrderAdmin(ModelView, model=Order):
 def register_all_views(admin: Admin):
     admin.add_view(CategoryAdmin)
     admin.add_view(GlobalProductAdmin)
-    admin.add_view(GlobalAddonGroupAdmin)
-    admin.add_view(ModelView(model=GlobalAddonGroup, icon="fa-solid fa-layer-group", name="Группы добавок", name_plural="Группы добавок"))
-
-    # Модели-связки лучше скрыть из основного меню для чистоты
-    # admin.add_view(ModelView(model=GlobalProductVariant, icon="fa-solid fa-list"))
-    # admin.add_view(ModelView(model=GlobalAddonItem, icon="fa-solid fa-plus"))
+    # ИСПРАВЛЕННЫЙ СИНТАКСИС ДЛЯ ВСЕХ ModelView
+    admin.add_view(ModelView(GlobalAddonGroup, name="Группы добавок", name_plural="Группы добавок", icon="fa-solid fa-layer-group"))
+    admin.add_view(ModelView(GlobalAddonItem, name="Добавка", name_plural="Все добавки", icon="fa-solid fa-plus"))
     admin.add_view(CafeAdmin)
-    # admin.add_view(ModelView(model=VenueMenuItem, icon="fa-solid fa-tag"))
-    # admin.add_view(ModelView(model=VenueAddonItem, icon="fa-solid fa-tag"))
     admin.add_view(OrderAdmin)
-
