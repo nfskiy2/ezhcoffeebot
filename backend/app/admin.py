@@ -1,7 +1,7 @@
 import os
 from sqladmin import Admin, ModelView
 from markupsafe import Markup 
-from sqladmin.fields import Select2Field 
+from sqladmin.fields import SelectField
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
 
@@ -13,34 +13,18 @@ UPLOAD_DIR = "/app/uploads"
 ICON_DIR = "/app/public_media/icons/category"
 
 def get_icon_choices():
-    """Сканирует папку с иконками и создает список для выпадающего меню."""
-    # Путь к папке с иконками на хост-машине (снаружи Docker)
-    # Мы "смотрим" из папки backend в папку frontend_modern
-    icon_dir_path = os.path.join(
-        os.path.dirname(__file__), # /app/
-        '..', 
-        '..', 
-        'public_media',
-        'icons',
-        'category'
-    )
-    
-    choices = []
-
+    """Динамически сканирует папку с иконками и создает список для выпадающего меню."""
+    choices = [("", "Нет")] # Позволяет не выбирать иконку
     if not os.path.exists(ICON_DIR):
-        print(f"WARNING: Icon directory not found at {ICON_DIR}")
+        print(f"ПРЕДУПРЕЖДЕНИЕ: Директория с иконками не найдена по пути {ICON_DIR}")
         return choices
 
     for filename in sorted(os.listdir(ICON_DIR)):
         if filename.endswith(".svg"):
-            # Путь, который будет сохранен в БД и использоваться на фронтенде
             icon_path = f"/icons/category/{filename}"
-            # HTML-разметка для красивого отображения в админке (иконка + имя)
-            label = Markup(
-                f"<img src='{icon_path}' width='20' height='20' style='margin-right: 8px; vertical-align: middle;'>"
-                f"<span>{filename}</span>"
-            )
-            choices.append((icon_path, label))
+            # Для красивого отображения в админке можно использовать Markup,
+            # но для стабильности начнем с простого текста.
+            choices.append((icon_path, filename))
     return choices
 
 UPLOAD_DIR = "/app/uploads"
@@ -73,15 +57,15 @@ authentication_backend = BasicAuth(secret_key=os.getenv("SECRET_KEY", "a_very_se
 # --- ОПРЕДЕЛЕНИЕ ПРЕДСТАВЛЕНИЙ (VIEWS) ДЛЯ КАЖДОЙ МОДЕЛИ ---
 
 class CategoryAdmin(ModelView, model=Category):
-    column_list = [Category.id, Category.name, Category.background_color]
     name = "Категория"
     name_plural = "Категории"
     icon = "fa-solid fa-tags"
+    column_list = [Category.id, Category.name, Category.icon, Category.background_color]
     form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
 
 
     form_overrides = {
-        "icon": Select2Field,
+        "icon": SelectField,
     }
     form_args = {
         "icon": {
@@ -93,10 +77,11 @@ class CategoryAdmin(ModelView, model=Category):
 
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
-    column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     name = "Продукт"
     name_plural = "Продукты (Глобально)"
     icon = "fa-solid fa-pizza-slice"
+    column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
+
     # Добавляем возможность редактировать варианты и группы добавок прямо со страницы продукта
     column_details_exclude_list = [GlobalProduct.category_id]
     form_include_pk = True
@@ -110,9 +95,14 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     }
 
     form_columns = [
-        GlobalProduct.id, GlobalProduct.name,
-        GlobalProduct.description, GlobalProduct.image, GlobalProduct.category,
-        GlobalProduct.sub_category, GlobalProduct.is_popular, GlobalProduct.variants,
+        GlobalProduct.id,
+        GlobalProduct.name,
+        GlobalProduct.description,
+        GlobalProduct.image, # Это поле станет загрузчиком автоматически
+        GlobalProduct.category,
+        GlobalProduct.sub_category,
+        GlobalProduct.is_popular,
+        GlobalProduct.variants,
         GlobalProduct.addon_groups,
     ]
 
@@ -129,10 +119,11 @@ class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
     ]
 
 class CafeAdmin(ModelView, model=Cafe):
-    column_list = [Cafe.id, Cafe.name, Cafe.status]
     name = "Кофейня"
     name_plural = "Кофейни и Доставка"
-    icon = "fa-solid fa-store"
+    icon = "fa-solid fa-store"    
+    column_list = [Cafe.id, Cafe.name, Cafe.status]
+
     # Включаем управление ценами и стоп-листом прямо из карточки кофейни
 
     form_args = {
