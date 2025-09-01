@@ -1,6 +1,6 @@
 import os
 from sqladmin import Admin, ModelView
-from sqladmin.fields import ImageField
+from sqladmin.fields import FileField
 from sqladmin.fields import Select2Field
 from markupsafe import Markup 
 from sqladmin.authentication import AuthenticationBackend
@@ -10,7 +10,7 @@ from .models import (
     Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
     GlobalAddonGroup, GlobalAddonItem, VenueAddonItem
 )
-
+UPLOAD_DIR = "/app/uploads"
 ICON_DIR = "/app/public_media/icons/category"
 
 def get_icon_choices():
@@ -27,7 +27,7 @@ def get_icon_choices():
     )
     
     choices = []
-    
+
     if os.path.exists(ICON_DIR):
         for filename in sorted(os.listdir(ICON_DIR)):
             if filename.endswith(".svg"):
@@ -85,14 +85,15 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     form_include_pk = True
 
     form_overrides = {
-        'icon': Select2Field
+        "image": FileField
     }
     # Указываем, куда сохранять файлы и как на них ссылаться
     form_args = {
         'icon': {
-            'label': 'Иконка',
-            'choices': get_icon_choices(), # Заполняем список файлами из папки
-            'allow_blank': True, # Разрешить не выбирать иконку
+            "base_path": UPLOAD_DIR,
+            # 'label': 'Иконка',
+            # 'choices': get_icon_choices(), # Заполняем список файлами из папки
+            # 'allow_blank': True, # Разрешить не выбирать иконку
         }
     }
 
@@ -129,12 +130,12 @@ class CafeAdmin(ModelView, model=Cafe):
     # Включаем управление ценами и стоп-листом прямо из карточки кофейни
 
     form_overrides = {
-        "cover_image": ImageField,
-        "logo_image": ImageField
+        "cover_image": FileField,
+        "logo_image": FileField
     }
     form_args = {
-        "cover_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" },
-        "logo_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" }
+        "cover_image": { "base_path": UPLOAD_DIR },
+        "logo_image": { "base_path": UPLOAD_DIR }
     }
 
     column_details_list = [

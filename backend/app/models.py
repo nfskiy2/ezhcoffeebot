@@ -1,6 +1,6 @@
 # backend/app/models.py
 from sqlalchemy import (
-    Column, Integer, String, JSON, ForeignKey, DateTime, func, Boolean, Table
+    Column, Integer, String, JSON, ForeignKey, DateTime, func, Boolean, Table, event
 )
 import uuid
 from sqlalchemy.dialects.postgresql import UUID
@@ -32,6 +32,14 @@ class Cafe(Base):
     addon_items = relationship("VenueAddonItem", back_populates="venue", cascade="all, delete-orphan")
     orders = relationship("Order", back_populates="cafe")
 
+@event.listens_for(Cafe, 'before_insert')
+@event.listens_for(Cafe, 'before_update')
+def prepend_media_prefix_to_cafe_images(mapper, connection, target):
+    if target.cover_image and not target.cover_image.startswith('/media/'):
+        target.cover_image = f'/media/{target.cover_image}'
+    if target.logo_image and not target.logo_image.startswith('/media/'):
+        target.logo_image = f'/media/{target.logo_image}'
+        
 class Category(Base):
     __tablename__ = 'categories'
     id = Column(String, primary_key=True, index=True)
@@ -56,6 +64,13 @@ class GlobalProduct(Base):
     
     # Связь с группами добавок через ассоциативную таблицу
     addon_groups = relationship("GlobalAddonGroup", secondary=product_addon_groups_association, back_populates="products")
+
+@event.listens_for(GlobalProduct, 'before_insert')
+@event.listens_for(GlobalProduct, 'before_update')
+def prepend_media_prefix_to_product_image(mapper, connection, target):
+    if target.image and not target.image.startswith('/media/'):
+        target.image = f'/media/{target.image}'
+
 
 class GlobalProductVariant(Base):
     __tablename__ = 'global_product_variants'
