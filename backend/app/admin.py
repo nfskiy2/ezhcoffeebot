@@ -1,6 +1,6 @@
 import os
 from sqladmin import Admin, ModelView
-from sqladmin.fields import ImageField, Select2Field
+from sqladmin.form.fields import ImageField, Select2Field
 from markupsafe import Markup 
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
