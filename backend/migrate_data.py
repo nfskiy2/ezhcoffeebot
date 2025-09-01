@@ -100,21 +100,6 @@ def migrate():
         with open('data/info.json', 'r', encoding='utf-8') as f:
             all_venues_info = json.load(f)
 
-        DELIVERY_CITIES = ["Томск", "Северск"]
-        city_id_map = { "Томск": "tomsk", "Северск": "seversk" }
-
-        for city in DELIVERY_CITIES:
-            city_id = city_id_map.get(city, city.lower())
-            all_venues_info.append({
-                "id": f"delivery-{city_id}",
-                "name": f"Доставка по г. {city}",
-                "coverImage": "https://images.unsplash.com/photo-1588001405580-86d354a8a8a4?auto=format&fit=crop&q=80&w=1974",
-                "logoImage": "icons/icon-delivery.svg",
-                "kitchenCategories": "Все меню на доставку", "rating": "",
-                "cookingTime": "45-75 мин", "status": "Доступна",
-                "openingHours": "пн-вс: 10:00-21:00", "minOrderAmount": 15000
-            })
-
         for venue_data in all_venues_info:
             venue_data_for_db = {k: v for k, v in venue_data.items() if k in Cafe.__table__.columns.keys()}
             # Ручное переименование ключей, если они не совпадают
