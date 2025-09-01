@@ -1,6 +1,5 @@
 import os
 from sqladmin import Admin, ModelView
-from sqladmin.widgets import ImageWidget
 from markupsafe import Markup 
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
@@ -83,9 +82,6 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     column_details_exclude_list = [GlobalProduct.category_id]
     form_include_pk = True
 
-    form_overrides = {
-        "image": ImageWidget  
-    }
     # Указываем, куда сохранять файлы и как на них ссылаться
     form_args = {
         "image": {
@@ -129,10 +125,6 @@ class CafeAdmin(ModelView, model=Cafe):
     icon = "fa-solid fa-store"
     # Включаем управление ценами и стоп-листом прямо из карточки кофейни
 
-    form_overrides = {
-        "cover_image": ImageWidget,  
-        "logo_image": ImageWidget    
-    }
     form_args = {
         "cover_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" },
         "logo_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" }
