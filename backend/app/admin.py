@@ -1,7 +1,6 @@
 import os
 from sqladmin import Admin, ModelView
-from sqladmin.fields import FileField
-from sqladmin.fields import Select2Field
+from sqladmin.fields import ImageField, Select2Field
 from markupsafe import Markup 
 from sqladmin.authentication import AuthenticationBackend
 from starlette.requests import Request
@@ -85,12 +84,13 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     form_include_pk = True
 
     form_overrides = {
-        "image": FileField
+        "image": ImageField
     }
     # Указываем, куда сохранять файлы и как на них ссылаться
     form_args = {
-        'icon': {
+        "image": {
             "base_path": UPLOAD_DIR,
+            "url_prefix": "/media/"
             # 'label': 'Иконка',
             # 'choices': get_icon_choices(), # Заполняем список файлами из папки
             # 'allow_blank': True, # Разрешить не выбирать иконку
@@ -130,12 +130,12 @@ class CafeAdmin(ModelView, model=Cafe):
     # Включаем управление ценами и стоп-листом прямо из карточки кофейни
 
     form_overrides = {
-        "cover_image": FileField,
-        "logo_image": FileField
+        "cover_image": ImageField,
+        "logo_image": ImageField
     }
     form_args = {
-        "cover_image": { "base_path": UPLOAD_DIR },
-        "logo_image": { "base_path": UPLOAD_DIR }
+        "cover_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" },
+        "logo_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" }
     }
 
     column_details_list = [
