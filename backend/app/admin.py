@@ -6,7 +6,7 @@ from typing import Any
 
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
-from sqladmin_fs.fields import ImageField
+from sqladmin_fs.fields import ImageField  # <--- ЭТО ЕДИНСТВЕННО ПРАВИЛЬНЫЙ ИМПОРТ
 from starlette.requests import Request
 from markupsafe import Markup
 
@@ -109,52 +109,6 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     form_args = {"image": {"upload_dir": UPLOAD_DIR}}
     column_details_list = form_columns + [GlobalProduct.variants]
 
-class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
-    name = "Вариант Продукта"
-    name_plural = "Варианты Продуктов"
-    icon = "fa-solid fa-cubes"
-    category = "Глобальный Каталог"
-    column_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.product]
-    column_searchable_list = [GlobalProductVariant.name]
-    form_include_pk = True
-
-class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
-    name = "Группа Добавок"
-    name_plural = "Группы Добавок"
-    icon = "fa-solid fa-layer-group"
-    category = "Глобальный Каталог"
-    column_list = [GlobalAddonGroup.id, GlobalAddonGroup.name]
-    column_searchable_list = [GlobalAddonGroup.name]
-    form_include_pk = True
-    column_details_list = [GlobalAddonGroup.id, GlobalAddonGroup.name, GlobalAddonGroup.items]
-
-class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
-    name = "Добавка"
-    name_plural = "Добавки"
-    icon = "fa-solid fa-plus-square"
-    category = "Глобальный Каталог"
-    column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
-    column_searchable_list = [GlobalAddonItem.name]
-    form_include_pk = True
-
-class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
-    name = "Пункт Меню (Цена)"
-    name_plural = "Пункты Меню (Цены)"
-    icon = "fa-solid fa-dollar-sign"
-    category = "Заведения и Меню"
-    can_create = False
-    column_list = [VenueMenuItem.venue, VenueMenuItem.variant, VenueMenuItem.price, VenueMenuItem.is_available]
-    column_searchable_list = [VenueMenuItem.venue.name, VenueMenuItem.variant.name]
-
-class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
-    name = "Добавка (Цена)"
-    name_plural = "Добавки (Цены)"
-    icon = "fa-solid fa-money-bill-wave"
-    category = "Заведения и Меню"
-    can_create = False
-    column_list = [VenueAddonItem.venue, VenueAddonItem.addon, VenueAddonItem.price, VenueAddonItem.is_available]
-    column_searchable_list = [VenueAddonItem.venue.name, VenueAddonItem.addon.name]
-
 class OrderAdmin(ModelView, model=Order):
     name = "Заказ"
     name_plural = "Заказы"
@@ -177,13 +131,7 @@ class OrderAdmin(ModelView, model=Order):
 
 # --- Регистрация ---
 def register_all_views(admin: Admin):
-    """Добавляет все представления ModelView в экземпляр Admin."""
     admin.add_view(CafeAdmin)
-    admin.add_view(VenueMenuItemAdmin)
-    admin.add_view(VenueAddonItemAdmin)
     admin.add_view(CategoryAdmin)
     admin.add_view(GlobalProductAdmin)
-    admin.add_view(GlobalProductVariantAdmin)
-    admin.add_view(GlobalAddonGroupAdmin)
-    admin.add_view(GlobalAddonItemAdmin)
     admin.add_view(OrderAdmin)
