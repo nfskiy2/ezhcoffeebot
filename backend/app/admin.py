@@ -85,9 +85,14 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
             data["image"] = saved_filename
         else: data.pop("image", None)
     
+    # --- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ ЗДЕСЬ ---
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
-        return select(self.model).where(self.model.id == pk).options(selectinload(self.model.category), selectinload(self.model.addon_groups))
+        return select(self.model).where(self.model.id == pk).options(
+            selectinload(self.model.category), 
+            selectinload(self.model.addon_groups),
+            selectinload(self.model.variants) # <-- Добавляем загрузку вариантов
+        )
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name = "Позиция Меню"; name_plural = "Цены и Наличие"; icon = "fa-solid fa-dollar-sign"; category = "Управление"
