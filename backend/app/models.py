@@ -93,7 +93,8 @@ class GlobalProductVariant(Base):
     venue_specific_items = relationship("VenueMenuItem", back_populates="variant", cascade="all, delete-orphan")
 
     def __str__(self):
-        return f"{self.product.name if self.product else 'N/A'} - {self.name}"
+        return self.name
+
 
 class VenueMenuItem(Base):
     __tablename__ = 'venue_menu_items'

@@ -117,7 +117,11 @@ class OrderAdmin(ModelView, model=Order):
 
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     name = "Вариант Продукта"; name_plural = "Варианты Продуктов"; icon = "fa-solid fa-tags"; category = "Каталог"
-    column_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.product]
+    column_formatters = {
+       'product': lambda m, a: m.product.name if m.product else "N/A"
+    }
+    # Включаем нашу новую "виртуальную" колонку в список
+    column_list = [GlobalProductVariant.id, GlobalProductVariant.name, 'product']
     form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
     def list_query(self, request: Request):
         return select(self.model).options(selectinload(self.model.product))
