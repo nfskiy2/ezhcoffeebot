@@ -147,18 +147,38 @@ class OrderAdmin(ModelView, model=Order):
 
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     name = "Вариант Продукта"; name_plural = "Варианты Продуктов"; icon = "fa-solid fa-tags"; category = "Каталог"
+    
+    column_details_list = [
+        GlobalProductVariant.id,
+        GlobalProductVariant.name,
+        GlobalProductVariant.weight,
+        'product',
+        'venue_specific_items',
+    ]
+    
     column_formatters = {'product': lambda m, a: m.product.name if m.product else "N/A"}
-    column_list = [GlobalProductVariant.id, GlobalProductVariant.name, 'product']
-    form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
-    def list_query(self, request: Request): return select(self.model).options(selectinload(self.model.product))
-    column_details_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.weight, 'product', 'venue_specific_items']
+    
+    # --- ИСПРАВЛЕННЫЙ ФОРМАТТЕР ---
     column_formatters_detail = {
         'product': lambda m, a: m.product.name if m.product else "N/A",
-        'venue_specific_items': lambda m, a: Markup("<br>".join(
-            [f"<b>{item.venue.name}</b>: {format_currency(item.price / 100, 'RUB', locale='ru_RU')}"
-             for item in sorted(m.venue_specific_items, key=lambda x: x.venue.name if x.venue else "") if item.venue]
-        ))
+        'venue_specific_items': lambda m, a: Markup(
+            "<ul>" + "".join(
+                [
+                    f"<li><b>{item.venue.name}</b>: {format_currency(item.price / 100, 'RUB', locale='ru_RU')}</li>"
+                    for item in sorted(m.venue_specific_items, key=lambda x: x.venue.name if x.venue else "")
+                    if item.venue
+                ]
+            ) + "</ul>"
+        )
     }
+    # -----------------------------
+
+    column_list = [GlobalProductVariant.id, GlobalProductVariant.name, 'product']
+    form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
+    
+    def list_query(self, request: Request):
+        return select(self.model).options(selectinload(self.model.product))
+        
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
         return select(self.model).where(self.model.id == pk).options(
