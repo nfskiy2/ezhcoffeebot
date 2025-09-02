@@ -5,6 +5,7 @@ from babel.numbers import format_currency
 from datetime import datetime
 
 from sqladmin import Admin, ModelView
+from sqlalchemy.orm import joinedload
 from sqladmin.authentication import AuthenticationBackend
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
@@ -105,6 +106,9 @@ class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name_plural = "Цены и Наличие"
     icon = "fa-solid fa-dollar-sign"
     category = "Управление"
+
+    column_select_related_list = [VenueMenuItem.variant, (VenueMenuItem.variant, GlobalProductVariant.product)]
+
     column_formatters = {
         "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')
     }
