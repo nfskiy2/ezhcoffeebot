@@ -93,7 +93,11 @@ class GlobalProductVariant(Base):
     venue_specific_items = relationship("VenueMenuItem", back_populates="variant", cascade="all, delete-orphan")
 
     def __str__(self):
-        return self.name
+    # Проверяем, загружен ли продукт, с помощью 'product' in self.__dict__
+    # Это безопасная проверка, которая не вызывает ленивую загрузку.
+        product_name = self.product.name if 'product' in self.__dict__ and self.product else "Продукт"
+        return f"{product_name} - {self.name}"
+
 
 
 class VenueMenuItem(Base):

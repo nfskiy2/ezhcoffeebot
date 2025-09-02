@@ -62,33 +62,26 @@ class CafeAdmin(ModelView, model=Cafe):
         Cafe.kitchen_categories, Cafe.rating, Cafe.cooking_time,
         Cafe.opening_hours, Cafe.min_order_amount,
     ]
-
     column_formatters = { "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU') }
     column_formatters_detail = {
         'min_order_amount': lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
         'menu_items': lambda m, a: Markup("<br>".join(
-            [
-                f"<b>{item.variant.product.name} - {item.variant.name}</b> ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
-                for item in sorted(m.menu_items, key=lambda x: x.variant.product.name if x.variant and x.variant.product else "")
-                if item.variant and item.variant.product
-            ]
+            [f"<b>{item.variant.product.name} - {item.variant.name}</b> ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
+             for item in sorted(m.menu_items, key=lambda x: x.variant.product.name if x.variant and x.variant.product else "")
+             if item.variant and item.variant.product]
         )),
         'addon_items': lambda m, a: ", ".join(
-            [
-                f"{item.addon.name} ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
-                for item in sorted(m.addon_items, key=lambda x: x.addon.name if x.addon else "")
-                if item.addon
-            ]
+            [f"{item.addon.name} ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
+             for item in sorted(m.addon_items, key=lambda x: x.addon.name if x.addon else "")
+             if item.addon]
         )
     }
-
     async def on_model_change(self, data, model, is_created, request):
         for field in ["cover_image", "logo_image"]:
-            file = data.get(field)
-            if file and isinstance(file, UploadFile) and file.filename:
-                data[field] = await storage.write(name=file.filename, file=file.file)
-            else: data.pop(field, None)
-
+            if file := data.get(field):
+                if isinstance(file, UploadFile) and file.filename:
+                    data[field] = await storage.write(name=file.filename, file=file.file)
+                else: data.pop(field, None)
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
         return select(self.model).where(self.model.id == pk).options(
@@ -110,24 +103,16 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
     form_overrides = {'image': FileField}
-    form_columns = [
-        GlobalProduct.id, GlobalProduct.name, GlobalProduct.description, "image",
-        GlobalProduct.category, GlobalProduct.sub_category, GlobalProduct.is_popular,
-        GlobalProduct.addon_groups
-    ]
+    form_columns = ["id", "name", "description", "image", "category", "sub_category", "is_popular", "addon_groups"]
     async def on_model_change(self, data, model, is_created, request):
-        file = data.get("image")
-        if file and isinstance(file, UploadFile) and file.filename:
-            data["image"] = await storage.write(name=file.filename, file=file.file)
-        else: data.pop("image", None)
+        if file := data.get("image"):
+            if isinstance(file, UploadFile) and file.filename:
+                data["image"] = await storage.write(name=file.filename, file=file.file)
+            else: data.pop("image", None)
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name = "Позиция Меню"; name_plural = "Цены и Наличие"; icon = "fa-solid fa-dollar-sign"; category = "Управление"
-    column_formatters = {
-        "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU'),
-        "variant": lambda m, a: str(m.variant.product) + " - " + str(m.variant) if m.variant and m.variant.product else "",
-        "is_available": lambda m, a: bool_icon(m.is_available)
-    }
+    column_formatters = {"price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU'), "variant": lambda m, a: str(m.variant.product) + " - " + str(m.variant) if m.variant and m.variant.product else "", "is_available": lambda m, a: bool_icon(m.is_available)}
     column_list = [VenueMenuItem.venue, "variant", "price", "is_available"]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"}, "variant": {"fields": ("name", "id"), "order_by": "id"}}
     def list_query(self, request: Request):
@@ -140,7 +125,7 @@ class OrderAdmin(ModelView, model=Order):
     column_labels = {"id": "ID", "cafe": "Заведение", "created_at": "Дата", "total_amount": "Сумма", "status": "Статус", "order_type": "Тип", "payment_method": "Оплата", "cart_items": "Состав Заказа", "user_info": "Клиент"}
     column_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status]
     column_details_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status, Order.order_type, Order.payment_method, "user_info", "cart_items"]
-    column_formatters = {"total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'), "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M") if m.created_at else "", "status": lambda m, a: self._status_map.get(m.status, m.status.capitalize())}
+    column_formatters = {"total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'), "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M") if m.created_at else "", "status": lambda m, a: OrderAdmin._status_map.get(m.status, m.status.capitalize())}
     def _format_cart_items(model, attribute):
         items_html = "<ul>";
         for item in model.cart_items:
@@ -157,7 +142,7 @@ class OrderAdmin(ModelView, model=Order):
             info.append(f"<b>Адрес:</b> {address.get('city', '')}, {address.get('street', '')}, д.{address.get('house', '')}, кв.{address.get('apartment', '')}")
             if comment := address.get('comment'): info.append(f"<b>Комментарий:</b> {comment}")
         return Markup("<br>".join(info))
-    column_formatters_detail = {"status": lambda m, a: self._status_map.get(m.status, m.status.capitalize()), "cart_items": _format_cart_items, "user_info": _format_user_info}
+    column_formatters_detail = {"status": lambda m, a: OrderAdmin._status_map.get(m.status, m.status.capitalize()), "cart_items": _format_cart_items, "user_info": _format_user_info}
     column_default_sort = ("created_at", True); form_columns = [Order.status]
 
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
@@ -165,9 +150,23 @@ class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     column_formatters = {'product': lambda m, a: m.product.name if m.product else "N/A"}
     column_list = [GlobalProductVariant.id, GlobalProductVariant.name, 'product']
     form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
-    def list_query(self, request: Request):
-        return select(self.model).options(selectinload(self.model.product))
+    def list_query(self, request: Request): return select(self.model).options(selectinload(self.model.product))
+    column_details_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.weight, 'product', 'venue_specific_items']
+    column_formatters_detail = {
+        'product': lambda m, a: m.product.name if m.product else "N/A",
+        'venue_specific_items': lambda m, a: Markup("<br>".join(
+            [f"<b>{item.venue.name}</b>: {format_currency(item.price / 100, 'RUB', locale='ru_RU')}"
+             for item in sorted(m.venue_specific_items, key=lambda x: x.venue.name if x.venue else "") if item.venue]
+        ))
+    }
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == pk).options(
+            selectinload(self.model.product),
+            selectinload(self.model.venue_specific_items).selectinload(VenueMenuItem.venue)
+        )
 
+# --- ВОЗВРАЩАЕМ УДАЛЕННЫЕ КЛАССЫ ---
 class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
     name = "Группа Добавок"; name_plural = "Группы Добавок"; icon = "fa-solid fa-layer-group"; category = "Каталог"
     column_list = [GlobalAddonGroup.id, GlobalAddonGroup.name]
@@ -176,16 +175,18 @@ class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
     name = "Добавка"; name_plural = "Добавки"; icon = "fa-solid fa-plus"; category = "Каталог"
     column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
     form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
-    def list_query(self, request: Request):
-        return select(self.model).options(selectinload(self.model.group))
+    def list_query(self, request: Request): return select(self.model).options(selectinload(self.model.group))
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == pk).options(
+            selectinload(self.model.group),
+            selectinload(self.model.venue_specific_items).selectinload(VenueAddonItem.venue)
+        )
+# ------------------------------------
 
 class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     name = "Цена Добавки"; name_plural = "Цены на Добавки"; icon = "fa-solid fa-money-bill-wave"; category = "Управление"
-    column_formatters = {
-        "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU'),
-        "addon": lambda m, a: str(m.addon) if m.addon else "",
-        "is_available": lambda m, a: bool_icon(m.is_available)
-    }
+    column_formatters = {"price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU'), "addon": lambda m, a: str(m.addon) if m.addon else "", "is_available": lambda m, a: bool_icon(m.is_available)}
     column_list = [VenueAddonItem.venue, "addon", "price", "is_available"]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"},"addon": {"fields": ("name", "id"), "order_by": "id"}}
     def list_query(self, request: Request):
