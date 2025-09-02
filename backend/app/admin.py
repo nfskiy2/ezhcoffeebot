@@ -16,8 +16,6 @@ from .models import (
 )
 from fastapi_storages import FileSystemStorage
 
-# ... (код для storage, pwd_context и AdminAuth остается без изменений) ...
-
 UPLOAD_DIR = "/app/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 storage = FileSystemStorage(path=UPLOAD_DIR)
@@ -44,17 +42,13 @@ class AdminAuth(AuthenticationBackend):
 
 authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-super-secret-key-for-sessions"))
 
-# --- УЛУЧШЕННЫЕ ПРЕДСТАВЛЕНИЯ МОДЕЛЕЙ ---
-
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"
     name_plural = "Заведения"
     icon = "fa-solid fa-store"
     category = "Управление"
-
     column_list = [Cafe.id, Cafe.name, Cafe.status, Cafe.opening_hours]
     column_searchable_list = [Cafe.name, Cafe.id]
-    
     form_overrides = {'cover_image': FileField, 'logo_image': FileField}
     form_columns = [
         Cafe.id, Cafe.name, Cafe.status, "cover_image", "logo_image",
@@ -111,12 +105,9 @@ class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name_plural = "Цены и Наличие"
     icon = "fa-solid fa-dollar-sign"
     category = "Управление"
-    
-    # Форматтеры для красивого отображения цены
     column_formatters = {
         "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')
     }
-    
     column_list = [VenueMenuItem.venue, VenueMenuItem.variant, "price", VenueMenuItem.is_available]
     form_ajax_refs = {
         "venue": {"fields": ("name",), "order_by": "id"},
@@ -128,39 +119,50 @@ class OrderAdmin(ModelView, model=Order):
     name_plural = "Заказы"
     icon = "fa-solid fa-receipt"
     category = "Управление"
-    can_create, can_delete = False, True
-    
-    # Русские названия для колонок
+    can_create = False
+    can_delete = True
     column_labels = {
         Order.id: "ID", Order.cafe: "Заведение", Order.created_at: "Дата",
         Order.total_amount: "Сумма", Order.status: "Статус",
         Order.order_type: "Тип", Order.payment_method: "Оплата"
     }
-    
-    # Форматтеры для красивого отображения даты и суммы
     column_formatters = {
         "total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'),
-        "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M")
+        "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M") if m.created_at else ""
     }
-    
     column_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status, Order.order_type, Order.payment_method]
     column_default_sort = ("created_at", True)
     form_columns = [Order.status]
 
-# ... (Остальные классы Admin остаются без изменений) ...
+# --- ИСПРАВЛЕННЫЙ СИНТАКСИС ЗДЕСЬ ---
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
-    name = "Вариант Продукта", "Варианты Продуктов", icon = "fa-solid fa-tags", category = "Каталог"
+    name = "Вариант Продукта"
+    name_plural = "Варианты Продуктов"
+    icon = "fa-solid fa-tags"
+    category = "Каталог"
     column_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.product]
     form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
+
 class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
-    name="Группа Добавок", name_plural="Группы Добавок", icon="fa-solid fa-layer-group", category="Каталог"
+    name = "Группа Добавок"
+    name_plural = "Группы Добавок"
+    icon = "fa-solid fa-layer-group"
+    category = "Каталог"
     column_list = [GlobalAddonGroup.id, GlobalAddonGroup.name]
+
 class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
-    name="Добавка", name_plural="Добавки", icon="fa-solid fa-plus", category="Каталог"
+    name = "Добавка"
+    name_plural = "Добавки"
+    icon = "fa-solid fa-plus"
+    category = "Каталог"
     column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
     form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
+
 class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
-    name="Цена Добавки", name_plural="Цены на Добавки", icon="fa-solid fa-money-bill-wave", category="Управление"
+    name = "Цена Добавки"
+    name_plural = "Цены на Добавки"
+    icon = "fa-solid fa-money-bill-wave"
+    category = "Управление"
     column_formatters = {"price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')}
     column_list = [VenueAddonItem.venue, VenueAddonItem.addon, "price", VenueAddonItem.is_available]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"},"addon": {"fields": ("name", "id"), "order_by": "id"}}
