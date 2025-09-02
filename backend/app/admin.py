@@ -65,7 +65,7 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     icon = "fa-solid fa-pizza-slice"
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     column_searchable_list = [GlobalProduct.name, GlobalProduct.description]
-    column_filters = [GlobalProduct.category, GlobalProduct.is_popular]
+    column_filters = [GlobalProduct.category_id, GlobalProduct.is_popular]
     form_args = {"image": {"base_path": UPLOAD_DIR, "url_prefix": "/media/"}}
     form_columns = [
         GlobalProduct.id, GlobalProduct.name, GlobalProduct.description,
