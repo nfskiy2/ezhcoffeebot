@@ -4,7 +4,7 @@ from passlib.context import CryptContext
 from babel.numbers import format_currency
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.datastructures import UploadFile
@@ -91,7 +91,7 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         return select(self.model).where(self.model.id == pk).options(
             selectinload(self.model.category), 
             selectinload(self.model.addon_groups),
-            selectinload(self.model.variants) # <-- Добавляем загрузку вариантов
+            joinedload(self.model.variants) 
         )
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
