@@ -2,10 +2,10 @@
 import os
 from passlib.context import CryptContext
 from babel.numbers import format_currency
-from datetime import datetime
 
-from sqladmin import Admin, ModelView
+from sqlalchemy import select
 from sqlalchemy.orm import joinedload
+from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
@@ -106,18 +106,20 @@ class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name_plural = "Цены и Наличие"
     icon = "fa-solid fa-dollar-sign"
     category = "Управление"
-
-    column_select_related_list = [VenueMenuItem.variant, (VenueMenuItem.variant, GlobalProductVariant.product)]
-
-    column_formatters = {
-        "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')
-    }
+    
+    column_formatters = {"price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')}
     column_list = [VenueMenuItem.venue, VenueMenuItem.variant, "price", VenueMenuItem.is_available]
     form_ajax_refs = {
         "venue": {"fields": ("name",), "order_by": "id"},
         "variant": {"fields": ("name", "id"), "order_by": "id"},
     }
     
+    def list_query(self, request: Request):
+        return select(self.model).options(
+            joinedload(self.model.variant).joinedload(GlobalProductVariant.product),
+            joinedload(self.model.venue)
+        )
+
 class OrderAdmin(ModelView, model=Order):
     name = "Заказ"
     name_plural = "Заказы"
@@ -138,7 +140,6 @@ class OrderAdmin(ModelView, model=Order):
     column_default_sort = ("created_at", True)
     form_columns = [Order.status]
 
-# --- ИСПРАВЛЕННЫЙ СИНТАКСИС ЗДЕСЬ ---
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     name = "Вариант Продукта"
     name_plural = "Варианты Продуктов"
@@ -146,6 +147,9 @@ class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     category = "Каталог"
     column_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.product]
     form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
+    
+    def list_query(self, request: Request):
+        return select(self.model).options(joinedload(self.model.product))
 
 class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
     name = "Группа Добавок"
@@ -161,6 +165,9 @@ class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
     category = "Каталог"
     column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
     form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
+    
+    def list_query(self, request: Request):
+        return select(self.model).options(joinedload(self.model.group))
 
 class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     name = "Цена Добавки"
@@ -170,6 +177,12 @@ class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     column_formatters = {"price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')}
     column_list = [VenueAddonItem.venue, VenueAddonItem.addon, "price", VenueAddonItem.is_available]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"},"addon": {"fields": ("name", "id"), "order_by": "id"}}
+    
+    def list_query(self, request: Request):
+        return select(self.model).options(
+            joinedload(self.model.addon).joinedload(GlobalAddonItem.group),
+            joinedload(self.model.venue)
+        )
 
 def register_all_views(admin: Admin):
     admin.add_view(CafeAdmin)
