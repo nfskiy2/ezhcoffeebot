@@ -137,11 +137,16 @@ class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
     name = "Добавка"; name_plural = "Добавки"; icon = "fa-solid fa-plus"; category = "Каталог"
     column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
     form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
+    
     def list_query(self, request: Request):
         return select(self.model).options(selectinload(self.model.group))
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
-        return select(self.model).where(self.model.id == pk).options(selectinload(self.model.group))
+        return select(self.model).where(self.model.id == pk).options(
+            selectinload(self.model.group),
+            # "Жадно" загружаем цены в заведениях и сами заведения
+            selectinload(self.model.venue_specific_items).selectinload(VenueAddonItem.venue)
+        )
 
 class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     name = "Цена Добавки"; name_plural = "Цены на Добавки"; icon = "fa-solid fa-money-bill-wave"; category = "Управление"
