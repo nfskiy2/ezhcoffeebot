@@ -25,9 +25,8 @@ storage = FileSystemStorage(path=UPLOAD_DIR)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def bool_icon(value: bool) -> Markup:
-    if value:
-        return Markup('<i class="fa-solid fa-check-circle text-success"></i>')
-    return Markup('<i class="fa-solid fa-times-circle text-danger"></i>')
+    icon_class = "fa-solid fa-check-circle text-success" if value else "fa-solid fa-times-circle text-danger"
+    return Markup(f'<i class="{icon_class}"></i>')
 
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
@@ -50,19 +49,11 @@ authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-supe
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"; name_plural = "Заведения"; icon = "fa-solid fa-store"; category = "Управление"
     column_list = [Cafe.id, Cafe.name, Cafe.status]
-    column_details_list = [
-        Cafe.id, Cafe.name, Cafe.status, Cafe.kitchen_categories, 
-        Cafe.rating, Cafe.cooking_time, Cafe.opening_hours, 
-        'min_order_amount', 'menu_items', 'addon_items'
-    ]
+    column_details_list = ['id', 'name', 'status', 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
     column_searchable_list = [Cafe.name, Cafe.id]
     form_overrides = {'cover_image': FileField, 'logo_image': FileField}
-    form_columns = [
-        Cafe.id, Cafe.name, Cafe.status, "cover_image", "logo_image",
-        Cafe.kitchen_categories, Cafe.rating, Cafe.cooking_time,
-        Cafe.opening_hours, Cafe.min_order_amount,
-    ]
-    column_formatters = { "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU') }
+    form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
+    column_formatters = {"min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU')}
     column_formatters_detail = {
         'min_order_amount': lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
         'menu_items': lambda m, a: Markup("<br>".join(
@@ -78,10 +69,9 @@ class CafeAdmin(ModelView, model=Cafe):
     }
     async def on_model_change(self, data, model, is_created, request):
         for field in ["cover_image", "logo_image"]:
-            if file := data.get(field):
-                if isinstance(file, UploadFile) and file.filename:
-                    data[field] = await storage.write(name=file.filename, file=file.file)
-                else: data.pop(field, None)
+            if (file := data.get(field)) and isinstance(file, UploadFile) and file.filename:
+                data[field] = await storage.write(name=file.filename, file=file.file)
+            else: data.pop(field, None)
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
         return select(self.model).where(self.model.id == pk).options(
@@ -91,24 +81,23 @@ class CafeAdmin(ModelView, model=Cafe):
 
 class CategoryAdmin(ModelView, model=Category):
     name = "Категория"; name_plural = "Категории"; icon = "fa-solid fa-list"; category = "Каталог"
-    column_formatters = { "background_color": lambda m, a: Markup(f'<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: {m.background_color}; margin-right: 5px;"></span> {m.background_color}') }
+    column_formatters = {"background_color": lambda m, a: Markup(f'<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: {m.background_color}; margin-right: 5px;"></span> {m.background_color}')}
     column_list = [Category.id, Category.name, Category.background_color]
     form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
     column_searchable_list = [Category.name]
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name = "Продукт"; name_plural = "Продукты"; icon = "fa-solid fa-burger"; category = "Каталог"
-    column_formatters = { "is_popular": lambda m, a: bool_icon(m.is_popular) }
+    column_formatters = {"is_popular": lambda m, a: bool_icon(m.is_popular)}
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, "is_popular"]
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
     form_overrides = {'image': FileField}
     form_columns = ["id", "name", "description", "image", "category", "sub_category", "is_popular", "addon_groups"]
     async def on_model_change(self, data, model, is_created, request):
-        if file := data.get("image"):
-            if isinstance(file, UploadFile) and file.filename:
-                data["image"] = await storage.write(name=file.filename, file=file.file)
-            else: data.pop("image", None)
+        if (file := data.get("image")) and isinstance(file, UploadFile) and file.filename:
+            data["image"] = await storage.write(name=file.filename, file=file.file)
+        else: data.pop("image", None)
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name = "Позиция Меню"; name_plural = "Цены и Наличие"; icon = "fa-solid fa-dollar-sign"; category = "Управление"
@@ -121,7 +110,7 @@ class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
 class OrderAdmin(ModelView, model=Order):
     name = "Заказ"; name_plural = "Заказы"; icon = "fa-solid fa-receipt"; category = "Управление"
     can_create = False; can_delete = True
-    _status_map = {'pending': Markup('<span class="badge bg-yellow-lt">🟡 Ожидает</span>'),'paid': Markup('<span class="badge bg-green-lt">🟢 Оплачен</span>'),'awaiting_payment': Markup('<span class="badge bg-blue-lt">🔵 Ждет оплаты</span>'),'completed': Markup('<span class="badge bg-muted-lt">⚪️ Выполнен</span>'),'cancelled': Markup('<span class="badge bg-red-lt">🔴 Отменен</span>')}
+    _status_map = {'pending': Markup('<span class="badge bg-yellow-lt">🟡 Ожидает</span>'), 'paid': Markup('<span class="badge bg-green-lt">🟢 Оплачен</span>'), 'awaiting_payment': Markup('<span class="badge bg-blue-lt">🔵 Ждет оплаты</span>'), 'completed': Markup('<span class="badge bg-muted-lt">⚪️ Выполнен</span>'), 'cancelled': Markup('<span class="badge bg-red-lt">🔴 Отменен</span>')}
     column_labels = {"id": "ID", "cafe": "Заведение", "created_at": "Дата", "total_amount": "Сумма", "status": "Статус", "order_type": "Тип", "payment_method": "Оплата", "cart_items": "Состав Заказа", "user_info": "Клиент"}
     column_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status]
     column_details_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status, Order.order_type, Order.payment_method, "user_info", "cart_items"]
@@ -147,38 +136,18 @@ class OrderAdmin(ModelView, model=Order):
 
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     name = "Вариант Продукта"; name_plural = "Варианты Продуктов"; icon = "fa-solid fa-tags"; category = "Каталог"
-    
-    column_details_list = [
-        GlobalProductVariant.id,
-        GlobalProductVariant.name,
-        GlobalProductVariant.weight,
-        'product',
-        'venue_specific_items',
-    ]
-    
+    column_details_list = ['id', 'name', 'weight', 'product', 'venue_specific_items']
     column_formatters = {'product': lambda m, a: m.product.name if m.product else "N/A"}
-    
-    # --- ИСПРАВЛЕННЫЙ ФОРМАТТЕР ---
     column_formatters_detail = {
         'product': lambda m, a: m.product.name if m.product else "N/A",
-        'venue_specific_items': lambda m, a: Markup(
-            "<ul>" + "".join(
-                [
-                    f"<li><b>{item.venue.name}</b>: {format_currency(item.price / 100, 'RUB', locale='ru_RU')}</li>"
-                    for item in sorted(m.venue_specific_items, key=lambda x: x.venue.name if x.venue else "")
-                    if item.venue
-                ]
-            ) + "</ul>"
-        )
+        'venue_specific_items': lambda m, a: Markup("<br>".join(
+            [f"<b>{item.venue.name}</b>: {format_currency(item.price / 100, 'RUB', locale='ru_RU')}"
+             for item in sorted(m.venue_specific_items, key=lambda x: x.venue.name if x.venue else "") if item.venue]
+        ))
     }
-    # -----------------------------
-
     column_list = [GlobalProductVariant.id, GlobalProductVariant.name, 'product']
     form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
-    
-    def list_query(self, request: Request):
-        return select(self.model).options(selectinload(self.model.product))
-        
+    def list_query(self, request: Request): return select(self.model).options(selectinload(self.model.product))
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
         return select(self.model).where(self.model.id == pk).options(
@@ -186,7 +155,6 @@ class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
             selectinload(self.model.venue_specific_items).selectinload(VenueMenuItem.venue)
         )
 
-# --- ВОЗВРАЩАЕМ УДАЛЕННЫЕ КЛАССЫ ---
 class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
     name = "Группа Добавок"; name_plural = "Группы Добавок"; icon = "fa-solid fa-layer-group"; category = "Каталог"
     column_list = [GlobalAddonGroup.id, GlobalAddonGroup.name]
@@ -196,13 +164,6 @@ class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
     column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
     form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
     def list_query(self, request: Request): return select(self.model).options(selectinload(self.model.group))
-    def details_query(self, request: Request):
-        pk = request.path_params["pk"]
-        return select(self.model).where(self.model.id == pk).options(
-            selectinload(self.model.group),
-            selectinload(self.model.venue_specific_items).selectinload(VenueAddonItem.venue)
-        )
-# ------------------------------------
 
 class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     name = "Цена Добавки"; name_plural = "Цены на Добавки"; icon = "fa-solid fa-money-bill-wave"; category = "Управление"
