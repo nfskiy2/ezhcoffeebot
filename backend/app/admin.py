@@ -3,7 +3,7 @@ import os
 import json
 from passlib.context import CryptContext
 from babel.numbers import format_currency
-from jinja2 import Markup
+from markupsafe import Markup
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
