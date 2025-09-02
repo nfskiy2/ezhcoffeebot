@@ -109,10 +109,9 @@ class VenueMenuItem(Base):
     variant = relationship("GlobalProductVariant", back_populates="venue_specific_items")
 
     def __str__(self):
-        # Пытаемся получить имена, если объекты загружены
-        venue_name = self.venue.name if self.venue else "N/A"
-        variant_name = str(self.variant) if self.variant else "N/A"
-        return f"{venue_name} - {variant_name}"
+    # Возвращаем ID для идентификации. Отображение настроим в админке.
+        return f"Позиция #{self.id}"
+
     
 class GlobalAddonGroup(Base):
     __tablename__ = 'global_addon_groups'
@@ -150,10 +149,9 @@ class VenueAddonItem(Base):
     addon = relationship("GlobalAddonItem", back_populates="venue_specific_items")
     
     def __str__(self):
-        # Пытаемся получить имена, если объекты загружены
-        venue_name = self.venue.name if self.venue else "N/A"
-        addon_name = self.addon.name if self.addon else "N/A"
-        return f"{venue_name} - {addon_name}"
+    # Возвращаем ID для идентификации. Отображение настроим в админке.
+        return f"Цена добавки #{self.id}"
+
 
 
 class Order(Base):
