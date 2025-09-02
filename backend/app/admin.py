@@ -6,7 +6,7 @@ from typing import Any
 
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
-from sqladmin_file_upload.fields import ImageUploadField
+from sqladmin.fields import ImageField
 from starlette.requests import Request
 from markupsafe import Markup
 
@@ -89,9 +89,10 @@ class CafeAdmin(ModelView, model=Cafe):
     ]
     # Используем современный ImageUploadField для загрузки изображений.
     form_overrides = {
-        "cover_image": ImageUploadField,
-        "logo_image": ImageUploadField,
+        "cover_image": ImageField,
+        "logo_image": ImageField,
     }
+
     # Указываем директорию для загрузки.
     form_args = {
         "cover_image": {"upload_dir": UPLOAD_DIR},
@@ -114,7 +115,7 @@ class CategoryAdmin(ModelView, model=Category):
         Category.background_color,
     ]
     # Иконка категории также сделана полем для загрузки изображений.
-    form_overrides = {"icon": ImageUploadField}
+    form_overrides = {"icon": ImageField}
     form_args = {"icon": {"upload_dir": UPLOAD_DIR}}
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
@@ -137,7 +138,7 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         GlobalProduct.is_popular,
         GlobalProduct.addon_groups, # Связь "многие-ко-многим"
     ]
-    form_overrides = {"image": ImageUploadField}
+    form_overrides = {"image": ImageField}
     form_args = {"image": {"upload_dir": UPLOAD_DIR}}
     # На странице деталей продукта показываем связанные с ним варианты.
     column_details_list = form_columns + [GlobalProduct.variants]
