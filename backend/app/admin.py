@@ -67,10 +67,10 @@ class CafeAdmin(ModelView, model=Cafe):
              if item.addon]
         )
     }
-    async def on_model_change(self, data, model, is_created, request):
+    def on_model_change(self, data, model, is_created, request):
         for field in ["cover_image", "logo_image"]:
             if (file := data.get(field)) and isinstance(file, UploadFile) and file.filename:
-                data[field] = await storage.write(name=file.filename, file=file.file)
+                data[field] = storage.write(name=file.filename, file=file.file)
             else: data.pop(field, None)
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
@@ -94,9 +94,9 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
     form_overrides = {'image': FileField}
     form_columns = ["id", "name", "description", "image", "category", "sub_category", "is_popular", "addon_groups"]
-    async def on_model_change(self, data, model, is_created, request):
+    def on_model_change(self, data, model, is_created, request):
         if (file := data.get("image")) and isinstance(file, UploadFile) and file.filename:
-            data["image"] = await storage.write(name=file.filename, file=file.file)
+            data["image"] = storage.write(name=file.filename, file=file.file)
         else: data.pop("image", None)
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
