@@ -6,7 +6,7 @@ from typing import Any
 
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
-from sqladmin.fields import ImageField  # <-- ВЕРНЫЙ ИМПОРТ
+from sqladmin_fs.fields import ImageField
 from starlette.requests import Request
 from markupsafe import Markup
 
@@ -26,8 +26,9 @@ from .models import (
 UPLOAD_DIR = "/app/uploads"
 
 
-def _pretty_json_formatter(value: Any) -> Markup:
+def _pretty_json_formatter(model: Any, attr: str) -> Markup:
     """Вспомогательная функция для красивого отображения JSON в админке."""
+    value = getattr(model, attr, None)
     if not value:
         return Markup("<p style='color: #888;'>&lt;пусто&gt;</p>")
     pretty_json = json.dumps(value, indent=2, ensure_ascii=False)
@@ -70,8 +71,8 @@ class CafeAdmin(ModelView, model=Cafe):
         Cafe.opening_hours, Cafe.min_order_amount,
     ]
     form_overrides = {
-        "cover_image": ImageField,  # <-- ВЕРНОЕ ИМЯ КЛАССА
-        "logo_image": ImageField,   # <-- ВЕРНОЕ ИМЯ КЛАССА
+        "cover_image": ImageField,
+        "logo_image": ImageField,
     }
     form_args = {
         "cover_image": {"upload_dir": UPLOAD_DIR},
@@ -87,7 +88,7 @@ class CategoryAdmin(ModelView, model=Category):
     column_searchable_list = [Category.name]
     form_include_pk = True
     form_columns = [Category.id, Category.name, "icon", Category.background_color]
-    form_overrides = {"icon": ImageField} # <-- ВЕРНОЕ ИМЯ КЛАССА
+    form_overrides = {"icon": ImageField}
     form_args = {"icon": {"upload_dir": UPLOAD_DIR}}
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
@@ -104,7 +105,7 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         GlobalProduct.description, "image", GlobalProduct.sub_category,
         GlobalProduct.is_popular, GlobalProduct.addon_groups,
     ]
-    form_overrides = {"image": ImageField} # <-- ВЕРНОЕ ИМЯ КЛАССА
+    form_overrides = {"image": ImageField}
     form_args = {"image": {"upload_dir": UPLOAD_DIR}}
     column_details_list = form_columns + [GlobalProduct.variants]
 
