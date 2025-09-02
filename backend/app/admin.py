@@ -2,12 +2,11 @@
 import os
 from passlib.context import CryptContext
 
-# ИСПРАВЛЕННЫЕ ИМПОРТЫ
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
-from wtforms import FileField # <-- Импортируем стандартное поле из WTForms
+from wtforms import FileField
 
 from .models import (
     Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
@@ -61,14 +60,10 @@ class CafeAdmin(ModelView, model=Cafe):
     column_list = [Cafe.id, Cafe.name, Cafe.status, Cafe.opening_hours]
     column_searchable_list = [Cafe.name, Cafe.id]
     
-    # --- ОКОНЧАТЕЛЬНОЕ ИСПРАВЛЕНИЕ ЗАГРУЗКИ ФАЙЛОВ ---
-    # Мы говорим, что для этих полей в форме нужно использовать
-    # стандартное поле для загрузки файлов из WTForms.
     form_overrides = {
         'cover_image': FileField,
         'logo_image': FileField,
     }
-    # form_args больше не нужен.
 
     form_columns = [
         Cafe.id, Cafe.name, Cafe.status, "cover_image", "logo_image",
@@ -76,29 +71,32 @@ class CafeAdmin(ModelView, model=Cafe):
         Cafe.opening_hours, Cafe.min_order_amount,
     ]
     
-    # Этот метод теперь должен вручную обрабатывать загрузку файла.
     async def on_model_change(self, data, model, is_created, request):
         cover_image_file = data.get("cover_image")
         logo_image_file = data.get("logo_image")
 
-        # Проверяем, был ли загружен новый файл для cover_image
         if cover_image_file and isinstance(cover_image_file, UploadFile) and cover_image_file.filename:
-            # Сохраняем файл и получаем его имя
             saved_filename = await storage.write(name=cover_image_file.filename, file=cover_image_file.file)
-            # Обновляем данные для сохранения в БД только именем файла
             data["cover_image"] = saved_filename
         else:
-            # Если файл не меняли (или удалили), убираем ключ из данных,
-            # чтобы не затереть старое значение в БД пустым значением.
             data.pop("cover_image", None)
 
-        # Аналогично для logo_image
         if logo_image_file and isinstance(logo_image_file, UploadFile) and logo_image_file.filename:
             saved_filename = await storage.write(name=logo_image_file.filename, file=logo_image_file.file)
             data["logo_image"] = saved_filename
         else:
             data.pop("logo_image", None)
 
+# --- ВОТ ПРОПУЩЕННЫЙ КЛАСС ---
+class CategoryAdmin(ModelView, model=Category):
+    name = "Категория"
+    name_plural = "Категории"
+    icon = "fa-solid fa-list"
+    category = "Каталог"
+    column_list = [Category.id, Category.name, Category.background_color]
+    form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
+    column_searchable_list = [Category.name]
+# -----------------------------
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name = "Продукт"
@@ -127,8 +125,6 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
             data["image"] = saved_filename
         else:
             data.pop("image", None)
-
-# ... (Остальная часть файла остается без изменений) ...
 
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     name = "Вариант Продукта"
