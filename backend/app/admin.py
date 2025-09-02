@@ -24,7 +24,6 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 storage = FileSystemStorage(path=UPLOAD_DIR)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# --- Функция-помощник для отображения иконок Да/Нет ---
 def bool_icon(value: bool) -> Markup:
     if value:
         return Markup('<i class="fa-solid fa-check-circle text-success"></i>')
@@ -106,7 +105,7 @@ class CategoryAdmin(ModelView, model=Category):
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name = "Продукт"; name_plural = "Продукты"; icon = "fa-solid fa-burger"; category = "Каталог"
-    column_formatters = { "is_popular": bool_icon }
+    column_formatters = { "is_popular": lambda m, a: bool_icon(m.is_popular) }
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, "is_popular"]
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
@@ -127,7 +126,7 @@ class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     column_formatters = {
         "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU'),
         "variant": lambda m, a: str(m.variant.product) + " - " + str(m.variant) if m.variant and m.variant.product else "",
-        "is_available": bool_icon
+        "is_available": lambda m, a: bool_icon(m.is_available)
     }
     column_list = [VenueMenuItem.venue, "variant", "price", "is_available"]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"}, "variant": {"fields": ("name", "id"), "order_by": "id"}}
@@ -137,68 +136,29 @@ class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
 class OrderAdmin(ModelView, model=Order):
     name = "Заказ"; name_plural = "Заказы"; icon = "fa-solid fa-receipt"; category = "Управление"
     can_create = False; can_delete = True
-    
-    # --- СЛОВАРЬ ДЛЯ СТАТУСОВ ---
-    _status_map = {
-        'pending': Markup('<span class="badge bg-yellow-lt">🟡 Ожидает</span>'),
-        'paid': Markup('<span class="badge bg-green-lt">🟢 Оплачен</span>'),
-        'awaiting_payment': Markup('<span class="badge bg-blue-lt">🔵 Ждет оплаты</span>'),
-        'completed': Markup('<span class="badge bg-muted-lt">⚪️ Выполнен</span>'),
-        'cancelled': Markup('<span class="badge bg-red-lt">🔴 Отменен</span>'),
-    }
-    
+    _status_map = {'pending': Markup('<span class="badge bg-yellow-lt">🟡 Ожидает</span>'),'paid': Markup('<span class="badge bg-green-lt">🟢 Оплачен</span>'),'awaiting_payment': Markup('<span class="badge bg-blue-lt">🔵 Ждет оплаты</span>'),'completed': Markup('<span class="badge bg-muted-lt">⚪️ Выполнен</span>'),'cancelled': Markup('<span class="badge bg-red-lt">🔴 Отменен</span>')}
     column_labels = {"id": "ID", "cafe": "Заведение", "created_at": "Дата", "total_amount": "Сумма", "status": "Статус", "order_type": "Тип", "payment_method": "Оплата", "cart_items": "Состав Заказа", "user_info": "Клиент"}
     column_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status]
     column_details_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status, Order.order_type, Order.payment_method, "user_info", "cart_items"]
-    
-    column_formatters = {
-        "total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'),
-        "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M") if m.created_at else "",
-        "status": lambda m, a: self._status_map.get(m.status, m.status.capitalize()),
-    }
-    
+    column_formatters = {"total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'), "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M") if m.created_at else "", "status": lambda m, a: self._status_map.get(m.status, m.status.capitalize())}
     def _format_cart_items(model, attribute):
-        items_html = "<ul>"
+        items_html = "<ul>";
         for item in model.cart_items:
-            name = item.get('cafe_item', {}).get('name', '?')
-            variant = item.get('variant', {}).get('name', '?')
-            quantity = item.get('quantity', 0)
+            name = item.get('cafe_item', {}).get('name', '?'); variant = item.get('variant', {}).get('name', '?'); quantity = item.get('quantity', 0)
             items_html += f"<li><b>{name} ({variant})</b> x {quantity}</li>"
-            addons = item.get('selected_addons', [])
-            if addons:
-                items_html += "<ul>"
-                for addon in addons:
-                    addon_name = addon.get('name', '?')
-                    items_html += f"<li>+ {addon_name}</li>"
-                items_html += "</ul>"
-        items_html += "</ul>"
-        return Markup(items_html)
-
+            if addons := item.get('selected_addons', []):
+                items_html += "<ul>"; items_html += "".join([f"<li>+ {addon.get('name', '?')}</li>" for addon in addons]); items_html += "</ul>"
+        return Markup(items_html + "</ul>")
     def _format_user_info(model, attribute):
-        user = model.user_info or {}
-        address = user.get('shipping_address', {})
-        
-        name = user.get('first_name', 'N/A')
-        username = f"@{user.get('username', 'N/A')}"
-        
+        user = model.user_info or {}; address = user.get('shipping_address', {})
+        name = user.get('first_name', 'N/A'); username = f"@{user.get('username', 'N/A')}"
         info = [f"<b>Имя:</b> {name}", f"<b>Telegram:</b> {username}"]
-        
         if address:
-            addr_str = f"{address.get('city', '')}, {address.get('street', '')}, д.{address.get('house', '')}, кв.{address.get('apartment', '')}"
-            info.append(f"<b>Адрес:</b> {addr_str}")
-            if comment := address.get('comment'):
-                info.append(f"<b>Комментарий:</b> {comment}")
-        
+            info.append(f"<b>Адрес:</b> {address.get('city', '')}, {address.get('street', '')}, д.{address.get('house', '')}, кв.{address.get('apartment', '')}")
+            if comment := address.get('comment'): info.append(f"<b>Комментарий:</b> {comment}")
         return Markup("<br>".join(info))
-
-    column_formatters_detail = {
-        "status": lambda m, a: self._status_map.get(m.status, m.status.capitalize()),
-        "cart_items": _format_cart_items,
-        "user_info": _format_user_info
-    }
-    
-    column_default_sort = ("created_at", True)
-    form_columns = [Order.status]
+    column_formatters_detail = {"status": lambda m, a: self._status_map.get(m.status, m.status.capitalize()), "cart_items": _format_cart_items, "user_info": _format_user_info}
+    column_default_sort = ("created_at", True); form_columns = [Order.status]
 
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     name = "Вариант Продукта"; name_plural = "Варианты Продуктов"; icon = "fa-solid fa-tags"; category = "Каталог"
@@ -224,7 +184,7 @@ class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     column_formatters = {
         "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU'),
         "addon": lambda m, a: str(m.addon) if m.addon else "",
-        "is_available": bool_icon
+        "is_available": lambda m, a: bool_icon(m.is_available)
     }
     column_list = [VenueAddonItem.venue, "addon", "price", "is_available"]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"},"addon": {"fields": ("name", "id"), "order_by": "id"}}
