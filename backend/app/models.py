@@ -108,6 +108,12 @@ class VenueMenuItem(Base):
     venue = relationship("Cafe", back_populates="menu_items")
     variant = relationship("GlobalProductVariant", back_populates="venue_specific_items")
 
+    def __str__(self):
+        # Пытаемся получить имена, если объекты загружены
+        venue_name = self.venue.name if self.venue else "N/A"
+        variant_name = str(self.variant) if self.variant else "N/A"
+        return f"{venue_name} - {variant_name}"
+    
 class GlobalAddonGroup(Base):
     __tablename__ = 'global_addon_groups'
     id = Column(String, primary_key=True, index=True)
@@ -142,6 +148,13 @@ class VenueAddonItem(Base):
 
     venue = relationship("Cafe", back_populates="addon_items")
     addon = relationship("GlobalAddonItem", back_populates="venue_specific_items")
+    
+    def __str__(self):
+        # Пытаемся получить имена, если объекты загружены
+        venue_name = self.venue.name if self.venue else "N/A"
+        addon_name = self.addon.name if self.addon else "N/A"
+        return f"{venue_name} - {addon_name}"
+
 
 class Order(Base):
     __tablename__ = 'orders'
