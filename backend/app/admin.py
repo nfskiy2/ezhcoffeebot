@@ -4,7 +4,7 @@ import os
 from sqladmin import Admin, ModelView, action
 from sqladmin.authentication import AuthenticationBackend
 from sqladmin.fields import SelectField
-from sqladmin.filters import BaseModelFilter
+from sqladmin.filters import BaseFilter
 from sqlalchemy.orm import Session
 from markupsafe import Markup
 from starlette.requests import Request
@@ -50,7 +50,7 @@ authentication_backend = BasicAuth(secret_key=os.getenv("SECRET_KEY", "a_very_se
 # --- Представления Моделей ---
 
 # Кастомный фильтр для категорий
-class CategoryFilter(BaseModelFilter):
+class CategoryFilter(BaseFilter):
     def apply(self, query, value: str):
         return query.filter(GlobalProduct.category_id == int(value))
 
@@ -60,8 +60,8 @@ class CategoryFilter(BaseModelFilter):
         return [(cat.id, cat.name) for cat in categories]
 
     @property
-    def parameter_name(self) -> str:
-        return "category"
+    def name(self) -> str:
+        return "Категория"
 
 class CategoryAdmin(ModelView, model=Category):
     category = "Меню"
@@ -80,7 +80,7 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     icon = "fa-solid fa-pizza-slice"
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     column_searchable_list = [GlobalProduct.name, GlobalProduct.description]
-    column_filters = [CategoryFilter(column=GlobalProduct.category_id, label="Категория"), GlobalProduct.is_popular]
+    column_filters = [CategoryFilter(column=GlobalProduct.category_id), GlobalProduct.is_popular]
     form_args = {"image": {"base_path": UPLOAD_DIR, "url_prefix": "/media/"}}
     form_columns = [
         GlobalProduct.id, GlobalProduct.name, GlobalProduct.description,
