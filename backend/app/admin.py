@@ -4,8 +4,7 @@ from passlib.context import CryptContext
 from babel.numbers import format_currency
 
 from sqlalchemy import select
-# --- ИЗМЕНЕНИЕ: Используем selectinload вместо joinedload ---
-from sqlalchemy.orm import selectinload 
+from sqlalchemy.orm import selectinload
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.datastructures import UploadFile
@@ -18,7 +17,6 @@ from .models import (
 )
 from fastapi_storages import FileSystemStorage
 
-# ... (Код AdminAuth, storage, pwd_context остается без изменений) ...
 UPLOAD_DIR = "/app/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 storage = FileSystemStorage(path=UPLOAD_DIR)
@@ -73,10 +71,7 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name = "Продукт"; name_plural = "Продукты"; icon = "fa-solid fa-burger"; category = "Каталог"
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     column_searchable_list = [GlobalProduct.name]
-    form_ajax_refs = {
-        "category": {"fields": ("name",), "order_by": "id"},
-        "addon_groups": {"fields": ("name",), "order_by": "id"},
-    }
+    form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
     form_overrides = {'image': FileField}
     form_columns = [
         GlobalProduct.id, GlobalProduct.name, GlobalProduct.description, "image",
@@ -89,6 +84,10 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
             saved_filename = await storage.write(name=file.filename, file=file.file)
             data["image"] = saved_filename
         else: data.pop("image", None)
+    
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == pk).options(selectinload(self.model.category), selectinload(self.model.addon_groups))
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name = "Позиция Меню"; name_plural = "Цены и Наличие"; icon = "fa-solid fa-dollar-sign"; category = "Управление"
@@ -96,23 +95,16 @@ class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     column_list = [VenueMenuItem.venue, VenueMenuItem.variant, "price", VenueMenuItem.is_available]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"}, "variant": {"fields": ("name", "id"), "order_by": "id"}}
     def list_query(self, request: Request):
-        return select(self.model).options(
-            selectinload(self.model.variant).selectinload(GlobalProductVariant.product),
-            selectinload(self.model.venue)
-        )
+        return select(self.model).options(selectinload(self.model.variant).selectinload(GlobalProductVariant.product), selectinload(self.model.venue))
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == int(pk)).options(selectinload(self.model.variant).selectinload(GlobalProductVariant.product), selectinload(self.model.venue))
 
 class OrderAdmin(ModelView, model=Order):
     name = "Заказ"; name_plural = "Заказы"; icon = "fa-solid fa-receipt"; category = "Управление"
     can_create = False; can_delete = True
-    column_labels = {
-        Order.id: "ID", Order.cafe: "Заведение", Order.created_at: "Дата",
-        Order.total_amount: "Сумма", Order.status: "Статус",
-        Order.order_type: "Тип", Order.payment_method: "Оплата"
-    }
-    column_formatters = {
-        "total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'),
-        "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M") if m.created_at else ""
-    }
+    column_labels = {"id": "ID", "cafe": "Заведение", "created_at": "Дата", "total_amount": "Сумма", "status": "Статус", "order_type": "Тип", "payment_method": "Оплата"}
+    column_formatters = {"total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'), "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M") if m.created_at else ""}
     column_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status, Order.order_type, Order.payment_method]
     column_default_sort = ("created_at", True)
     form_columns = [Order.status]
@@ -123,6 +115,9 @@ class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
     def list_query(self, request: Request):
         return select(self.model).options(selectinload(self.model.product))
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == pk).options(selectinload(self.model.product))
 
 class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
     name = "Группа Добавок"; name_plural = "Группы Добавок"; icon = "fa-solid fa-layer-group"; category = "Каталог"
@@ -134,6 +129,9 @@ class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
     form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
     def list_query(self, request: Request):
         return select(self.model).options(selectinload(self.model.group))
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == pk).options(selectinload(self.model.group))
 
 class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     name = "Цена Добавки"; name_plural = "Цены на Добавки"; icon = "fa-solid fa-money-bill-wave"; category = "Управление"
@@ -141,10 +139,10 @@ class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     column_list = [VenueAddonItem.venue, VenueAddonItem.addon, "price", VenueAddonItem.is_available]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"},"addon": {"fields": ("name", "id"), "order_by": "id"}}
     def list_query(self, request: Request):
-        return select(self.model).options(
-            selectinload(self.model.addon).selectinload(GlobalAddonItem.group),
-            selectinload(self.model.venue)
-        )
+        return select(self.model).options(selectinload(self.model.addon).selectinload(GlobalAddonItem.group), selectinload(self.model.venue))
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == int(pk)).options(selectinload(self.model.addon).selectinload(GlobalAddonItem.group), selectinload(self.model.venue))
 
 def register_all_views(admin: Admin):
     admin.add_view(CafeAdmin); admin.add_view(VenueMenuItemAdmin); admin.add_view(VenueAddonItemAdmin)
