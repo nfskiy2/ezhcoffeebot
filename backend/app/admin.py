@@ -87,7 +87,6 @@ class CafeAdmin(ModelView, model=Cafe):
         else:
             data.pop("logo_image", None)
 
-# --- ВОТ ПРОПУЩЕННЫЙ КЛАСС ---
 class CategoryAdmin(ModelView, model=Category):
     name = "Категория"
     name_plural = "Категории"
