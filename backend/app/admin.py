@@ -1,11 +1,12 @@
 # backend/app/admin.py
 import os
 from passlib.context import CryptContext
-from typing import Optional
 
+# ИСПРАВЛЕННЫЕ ИМПОРТЫ
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
-from sqladmin.fields import FileUpload
+from sqladmin.fields import ImageUploadField  # <-- Вот правильный класс
+
 from starlette.requests import Request
 
 from .models import (
@@ -15,8 +16,6 @@ from .models import (
 from fastapi_storages import FileSystemStorage
 
 # --- Настройка для загрузки файлов ---
-# Файлы будут загружаться в папку /app/uploads/ (внутри контейнера)
-# и будут доступны по URL /media/
 UPLOAD_DIR = "/app/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 storage = FileSystemStorage(path=UPLOAD_DIR)
@@ -30,7 +29,6 @@ class AdminAuth(AuthenticationBackend):
         form = await request.form()
         username, password = form.get("username"), form.get("password")
 
-        # Получаем учетные данные из переменных окружения
         ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
         ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")
 
@@ -41,7 +39,6 @@ class AdminAuth(AuthenticationBackend):
         if username == ADMIN_USERNAME and pwd_context.verify(password, ADMIN_PASSWORD_HASH):
             request.session.update({"token": "admin_token"})
             return True
-
         return False
 
     async def logout(self, request: Request) -> bool:
@@ -64,40 +61,36 @@ class CafeAdmin(ModelView, model=Cafe):
     column_list = [Cafe.id, Cafe.name, Cafe.status, Cafe.opening_hours]
     column_searchable_list = [Cafe.name, Cafe.id]
     column_sortable_list = [Cafe.id, Cafe.name]
-    
-    # Используем FileUpload для удобной загрузки картинок
+
+    # --- ИСПРАВЛЕННАЯ НАСТРОЙКА ЗАГРУЗКИ ФАЙЛОВ ---
     form_overrides = {
-        'cover_image': FileUpload.image(storage=storage),
-        'logo_image': FileUpload.image(storage=storage),
+        'cover_image': ImageUploadField,
+        'logo_image': ImageUploadField,
     }
-    
+    # Используем form_args, чтобы передать 'storage' в конструктор поля
+    form_args = {
+        'cover_image': {'storage': storage},
+        'logo_image': {'storage': storage},
+    }
+
     form_columns = [
-        Cafe.id,
-        Cafe.name,
-        Cafe.status,
-        "cover_image",
-        "logo_image",
-        Cafe.kitchen_categories,
-        Cafe.rating,
-        Cafe.cooking_time,
-        Cafe.opening_hours,
-        Cafe.min_order_amount,
+        Cafe.id, Cafe.name, Cafe.status, "cover_image", "logo_image",
+        Cafe.kitchen_categories, Cafe.rating, Cafe.cooking_time,
+        Cafe.opening_hours, Cafe.min_order_amount,
     ]
     
-    # Чтобы SQLAlchemy event listener сработал, нам нужно
-    # сохранять только имя файла, а не полный путь
+    # Этот метод теперь правильно обрабатывает загруженный файл
     async def on_model_change(self, data, model, is_created, request):
-        if data.get("cover_image"):
-            data["cover_image"] = data["cover_image"].name
-        if data.get("logo_image"):
-            data["logo_image"] = data["logo_image"].name
+        if data.get("cover_image") and hasattr(data["cover_image"], "file"):
+            data["cover_image"] = data["cover_image"].filename
+        if data.get("logo_image") and hasattr(data["logo_image"], "file"):
+            data["logo_image"] = data["logo_image"].filename
 
 class CategoryAdmin(ModelView, model=Category):
     name = "Категория"
     name_plural = "Категории"
     icon = "fa-solid fa-list"
     category = "Каталог"
-
     column_list = [Category.id, Category.name, Category.background_color]
     form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
     column_searchable_list = [Category.name]
@@ -107,53 +100,40 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name_plural = "Продукты (глобально)"
     icon = "fa-solid fa-burger"
     category = "Каталог"
-    
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     column_searchable_list = [GlobalProduct.name]
-
-    # Ajax-загрузка для связанных моделей, чтобы не загружать тысячи записей
     form_ajax_refs = {
         "category": {"fields": ("name",), "order_by": "id"},
         "addon_groups": {"fields": ("name",), "order_by": "id"},
     }
     
-    form_overrides = {
-        'image': FileUpload.image(storage=storage),
-    }
+    form_overrides = {'image': ImageUploadField}
+    form_args = {'image': {'storage': storage}}
 
     form_columns = [
-        GlobalProduct.id,
-        GlobalProduct.name,
-        GlobalProduct.description,
-        "image", # Поле для загрузки
-        GlobalProduct.category,
-        GlobalProduct.sub_category,
-        GlobalProduct.is_popular,
+        GlobalProduct.id, GlobalProduct.name, GlobalProduct.description, "image",
+        GlobalProduct.category, GlobalProduct.sub_category, GlobalProduct.is_popular,
         GlobalProduct.addon_groups
     ]
     
     async def on_model_change(self, data, model, is_created, request):
-        if data.get("image"):
-            data["image"] = data["image"].name
+        if data.get("image") and hasattr(data["image"], "file"):
+            data["image"] = data["image"].filename
 
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     name = "Вариант Продукта"
     name_plural = "Варианты Продуктов"
     icon = "fa-solid fa-tags"
     category = "Каталог"
-
     column_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.product]
-    form_ajax_refs = { "product": { "fields": ("name",), "order_by": "id" } }
+    form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name = "Позиция Меню"
     name_plural = "Позиции Меню (цены/наличие)"
     icon = "fa-solid fa-dollar-sign"
     category = "Управление"
-    
     column_list = [VenueMenuItem.venue, VenueMenuItem.variant, VenueMenuItem.price, VenueMenuItem.is_available]
-    
-    # Ajax-загрузка для удобного выбора
     form_ajax_refs = {
         "venue": {"fields": ("name",), "order_by": "id"},
         "variant": {"fields": ("name", "id"), "order_by": "id"},
@@ -172,7 +152,7 @@ class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
     icon = "fa-solid fa-plus"
     category = "Каталог"
     column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
-    form_ajax_refs = { "group": { "fields": ("name",), "order_by": "id" } }
+    form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
 
 class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     name = "Цена Добавки"
@@ -190,19 +170,12 @@ class OrderAdmin(ModelView, model=Order):
     name_plural = "Заказы"
     icon = "fa-solid fa-receipt"
     category = "Управление"
-    
-    can_create = False
-    can_delete = True
-    
+    can_create, can_delete = False, True
     column_list = [Order.id, Order.cafe, Order.created_at, Order.total_amount, Order.status, Order.order_type, Order.payment_method]
     column_sortable_list = [Order.created_at]
-    column_default_sort = ("created_at", True) # Сначала новые
-    
-    # В форме заказа позволяем менять только статус
+    column_default_sort = ("created_at", True)
     form_columns = [Order.status]
 
-
-# Функция для регистрации всех представлений
 def register_all_views(admin: Admin):
     admin.add_view(CafeAdmin)
     admin.add_view(VenueMenuItemAdmin)
