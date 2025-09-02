@@ -1,112 +1,241 @@
 # backend/app/admin.py
 
 import os
+import json
+from typing import Any
+
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
-from sqladmin.fields import SelectField
-from markupsafe import Markup
+from sqladmin.fields import ImageUploadField
 from starlette.requests import Request
+from markupsafe import Markup
 
 from .models import (
-    Cafe, Category, GlobalProduct, GlobalAddonGroup, GlobalAddonItem, Order
+    Cafe,
+    Category,
+    GlobalProduct,
+    GlobalProductVariant,
+    VenueMenuItem,
+    GlobalAddonGroup,
+    GlobalAddonItem,
+    VenueAddonItem,
+    Order,
 )
 
-# --- ПУТИ ДЛЯ ФАЙЛОВ ---
+# --- Конфигурация ---
+# Директория для загрузки файлов в контейнере.
 UPLOAD_DIR = "/app/uploads"
-ICON_DIR = "/app/public_media/icons/category"
 
-def get_icon_choices():
-    choices = [("", "Нет")]
-    if not os.path.exists(ICON_DIR):
-        print(f"ПРЕДУПРЕЖДЕНИЕ: Директория с иконками не найдена: {ICON_DIR}")
-        return choices
-    for filename in sorted(os.listdir(ICON_DIR)):
-        if filename.endswith(".svg"):
-            icon_path = f"/icons/category/{filename}"
-            choices.append((icon_path, filename))
-    return choices
+
+def _pretty_json_formatter(value: Any) -> Markup:
+    """Вспомогательная функция для красивого отображения JSON в админке."""
+    if not value:
+        return Markup("&lt;пусто&gt;")
+    # `indent=2` для отступов, `ensure_ascii=False` для кириллицы.
+    pretty_json = json.dumps(value, indent=2, ensure_ascii=False)
+    return Markup(f"<pre><code>{pretty_json}</code></pre>")
+
 
 # --- Аутентификация ---
+
 class BasicAuth(AuthenticationBackend):
+    """
+    Реализует базовую аутентификацию по логину и паролю.
+    Учетные данные безопасно считываются из переменных окружения.
+    """
     async def login(self, request: Request) -> bool:
         form = await request.form()
-        username, password = form["username"], form["password"]
-        admin_user = os.getenv("ADMIN_USER", "admin")
-        admin_pass = os.getenv("ADMIN_PASS", "secret")
-        if username == admin_user and password == admin_pass:
-            request.session.update({"token": "..."})
+        username, password = form.get("username"), form.get("password")
+
+        ADMIN_USER = os.getenv("ADMIN_USER", "admin")
+        ADMIN_PASS = os.getenv("ADMIN_PASS", "secret")
+
+        if username == ADMIN_USER and password == ADMIN_PASS:
+            request.session.update({"token": "admin_logged_in"})
             return True
         return False
+
     async def logout(self, request: Request) -> bool:
         request.session.clear()
         return True
+
     async def authenticate(self, request: Request) -> bool:
         return "token" in request.session
 
 authentication_backend = BasicAuth(secret_key=os.getenv("SECRET_KEY", "a_very_secret_key"))
 
+
 # --- Представления Моделей ---
+
+class CafeAdmin(ModelView, model=Cafe):
+    name = "Заведение"
+    name_plural = "Заведения (Кофейни и Доставка)"
+    icon = "fa-solid fa-store"
+    category = "Заведения и Меню"
+
+    column_list = [Cafe.id, Cafe.name, Cafe.status, Cafe.min_order_amount]
+    column_details_exclude_list = [Cafe.orders]
+    form_columns = [
+        Cafe.id,
+        Cafe.name,
+        Cafe.status,
+        "cover_image",
+        "logo_image",
+        Cafe.kitchen_categories,
+        Cafe.rating,
+        Cafe.cooking_time,
+        Cafe.opening_hours,
+        Cafe.min_order_amount,
+    ]
+    # Используем современный ImageUploadField для загрузки изображений.
+    form_overrides = {
+        "cover_image": ImageUploadField,
+        "logo_image": ImageUploadField,
+    }
+    # Указываем директорию для загрузки.
+    form_args = {
+        "cover_image": {"upload_dir": UPLOAD_DIR},
+        "logo_image": {"upload_dir": UPLOAD_DIR},
+    }
 
 class CategoryAdmin(ModelView, model=Category):
     name = "Категория"
     name_plural = "Категории"
     icon = "fa-solid fa-tags"
-    column_list = [Category.id, Category.name, Category.icon, Category.background_color]
-    form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
-    form_overrides = {"icon": SelectField}
-    form_args = {"icon": {'label': 'Иконка', 'choices': get_icon_choices(), 'allow_blank': True}}
+    category = "Глобальный Каталог"
+
+    column_list = [Category.id, Category.name, Category.icon]
+    column_searchable_list = [Category.name]
+    form_include_pk = True
+    form_columns = [
+        Category.id,
+        Category.name,
+        "icon",
+        Category.background_color,
+    ]
+    # Иконка категории также сделана полем для загрузки изображений.
+    form_overrides = {"icon": ImageUploadField}
+    form_args = {"icon": {"upload_dir": UPLOAD_DIR}}
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name = "Продукт"
-    name_plural = "Продукты (Глобально)"
-    icon = "fa-solid fa-pizza-slice"
+    name_plural = "Продукты"
+    icon = "fa-solid fa-cart-shopping"
+    category = "Глобальный Каталог"
+
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
-    form_args = {"image": {"base_path": UPLOAD_DIR, "url_prefix": "/media/"}}
-    form_columns = [
-        GlobalProduct.id, GlobalProduct.name, GlobalProduct.description,
-        GlobalProduct.image, GlobalProduct.category, GlobalProduct.sub_category,
-        GlobalProduct.is_popular, GlobalProduct.variants, GlobalProduct.addon_groups,
-    ]
-
-class CafeAdmin(ModelView, model=Cafe):
-    name = "Кофейня"
-    name_plural = "Кофейни и Доставка"
-    icon = "fa-solid fa-store"
-    column_list = [Cafe.id, Cafe.name, Cafe.status]
-    form_args = {
-        "cover_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" },
-        "logo_image": { "base_path": UPLOAD_DIR, "url_prefix": "/media/" }
-    }
-    column_details_list = [
-        Cafe.id, Cafe.name, Cafe.cover_image, Cafe.logo_image,
-        Cafe.kitchen_categories, Cafe.opening_hours, Cafe.min_order_amount,
-        Cafe.menu_items, Cafe.addon_items
-    ]
-
-class OrderAdmin(ModelView, model=Order):
-    can_create = False
-    name = "Заказ"
-    name_plural = "Заказы"
-    icon = "fa-solid fa-receipt"
-
-# <<< ИСПРАВЛЕНИЕ: СОЗДАЕМ КЛАССЫ-ПРЕДСТАВЛЕНИЯ ДЛЯ ДОБАВОК >>>
-class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
-    name = "Группа добавок"
-    name_plural = "Группы добавок"
-    icon = "fa-solid fa-layer-group"
+    column_searchable_list = [GlobalProduct.name, GlobalProduct.description]
+    column_sortable_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.is_popular]
     form_include_pk = True
-    form_columns = [GlobalAddonGroup.id, GlobalAddonGroup.name, GlobalAddonGroup.items]
+    form_columns = [
+        GlobalProduct.id,
+        GlobalProduct.name,
+        GlobalProduct.category,
+        GlobalProduct.description,
+        "image",
+        GlobalProduct.sub_category,
+        GlobalProduct.is_popular,
+        GlobalProduct.addon_groups, # Связь "многие-ко-многим"
+    ]
+    form_overrides = {"image": ImageUploadField}
+    form_args = {"image": {"upload_dir": UPLOAD_DIR}}
+    # На странице деталей продукта показываем связанные с ним варианты.
+    column_details_list = form_columns + [GlobalProduct.variants]
+
+class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
+    name = "Вариант Продукта"
+    name_plural = "Варианты Продуктов"
+    icon = "fa-solid fa-cubes"
+    category = "Глобальный Каталог"
+    
+    column_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.product]
+    column_searchable_list = [GlobalProductVariant.name]
+    form_include_pk = True
+
+class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
+    name = "Группа Добавок"
+    name_plural = "Группы Добавок"
+    icon = "fa-solid fa-layer-group"
+    category = "Глобальный Каталог"
+    
+    column_list = [GlobalAddonGroup.id, GlobalAddonGroup.name]
+    column_searchable_list = [GlobalAddonGroup.name]
+    form_include_pk = True
+    # На странице деталей группы показываем связанные добавки.
+    column_details_list = [GlobalAddonGroup.id, GlobalAddonGroup.name, GlobalAddonGroup.items]
 
 class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
     name = "Добавка"
-    name_plural = "Все добавки"
-    icon = "fa-solid fa-plus"
+    name_plural = "Добавки"
+    icon = "fa-solid fa-plus-square"
+    category = "Глобальный Каталог"
+    
+    column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
+    column_searchable_list = [GlobalAddonItem.name]
+    form_include_pk = True
 
-# <<< ИСПРАВЛЕНИЕ: ЧИСТАЯ И ПРАВИЛЬНАЯ РЕГИСТРАЦИЯ >>>
+class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
+    name = "Пункт Меню (Цена)"
+    name_plural = "Пункты Меню (Цены)"
+    icon = "fa-solid fa-dollar-sign"
+    category = "Заведения и Меню"
+    can_create = False
+    
+    column_list = [VenueMenuItem.venue, VenueMenuItem.variant, VenueMenuItem.price, VenueMenuItem.is_available]
+    column_searchable_list = [VenueMenuItem.venue.name, VenueMenuItem.variant.name]
+
+class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
+    name = "Добавка (Цена)"
+    name_plural = "Добавки (Цены)"
+    icon = "fa-solid fa-money-bill-wave"
+    category = "Заведения и Меню"
+    can_create = False
+    
+    column_list = [VenueAddonItem.venue, VenueAddonItem.addon, VenueAddonItem.price, VenueAddonItem.is_available]
+    column_searchable_list = [VenueAddonItem.venue.name, VenueAddonItem.addon.name]
+
+class OrderAdmin(ModelView, model=Order):
+    name = "Заказ"
+    name_plural = "Заказы"
+    icon = "fa-solid fa-receipt"
+    category = "Операции"
+
+    # Заказы должны быть только для чтения.
+    can_create = False
+    can_edit = False
+    can_delete = False
+
+    column_list = [Order.id, Order.cafe, Order.status, Order.total_amount, Order.created_at]
+    column_details_list = [
+        Order.id, Order.status, Order.order_type, Order.payment_method, Order.total_amount,
+        Order.created_at, Order.cafe, "user_info", "cart_items", Order.telegram_payment_charge_id,
+    ]
+    
+    # Применяем форматирование для JSON полей на странице деталей.
+    column_formatters_detail = {
+        "user_info": lambda model, attr: _pretty_json_formatter(getattr(model, attr)),
+        "cart_items": lambda model, attr: _pretty_json_formatter(getattr(model, attr)),
+    }
+    
+    column_sortable_list = [Order.created_at, Order.status, Order.total_amount]
+    column_filters = [Order.status, Order.order_type, Order.cafe]
+
+# --- Регистрация ---
+
 def register_all_views(admin: Admin):
+    """Добавляет все представления ModelView в экземпляр Admin."""
+    
+    # Группа "Заведения и Меню"
+    admin.add_view(CafeAdmin)
+    admin.add_view(VenueMenuItemAdmin)
+    admin.add_view(VenueAddonItemAdmin)
+    
+    # Группа "Глобальный Каталог"
     admin.add_view(CategoryAdmin)
     admin.add_view(GlobalProductAdmin)
-    admin.add_view(GlobalAddonGroupAdmin) # Регистрируем новый класс
-    admin.add_view(GlobalAddonItemAdmin)  # Регистрируем новый класс
-    admin.add_view(CafeAdmin)
+    admin.add_view(GlobalProductVariantAdmin)
+    admin.add_view(GlobalAddonGroupAdmin)
+    admin.add_view(GlobalAddonItemAdmin)
+    
+    # Группа "Операции"
     admin.add_view(OrderAdmin)

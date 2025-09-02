@@ -18,6 +18,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY entrypoint.sh .
 RUN chmod +x /app/entrypoint.sh
 
+RUN mkdir /app/uploads
+
+
 COPY set_webhook.py .
 
 # Копируем остальной код приложения (папки app и data)
