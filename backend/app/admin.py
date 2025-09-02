@@ -1,7 +1,9 @@
 # backend/app/admin.py
 import os
+import json
 from passlib.context import CryptContext
 from babel.numbers import format_currency
+from jinja2 import Markup
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -22,6 +24,12 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 storage = FileSystemStorage(path=UPLOAD_DIR)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+# --- Функция-помощник для отображения иконок Да/Нет ---
+def bool_icon(value: bool) -> Markup:
+    if value:
+        return Markup('<i class="fa-solid fa-check-circle text-success"></i>')
+    return Markup('<i class="fa-solid fa-times-circle text-danger"></i>')
+
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
         form = await request.form()
@@ -33,21 +41,21 @@ class AdminAuth(AuthenticationBackend):
             request.session.update({"token": "admin_token"})
             return True
         return False
-
     async def logout(self, request: Request) -> bool:
-        request.session.clear()
-        return True
-
+        request.session.clear(); return True
     async def authenticate(self, request: Request) -> bool:
         return "token" in request.session
 
 authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-super-secret-key-for-sessions"))
 
-# --- ФИНАЛЬНЫЕ, ИСПРАВЛЕННЫЕ КЛАССЫ АДМИНКИ ---
-
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"; name_plural = "Заведения"; icon = "fa-solid fa-store"; category = "Управление"
-    column_list = [Cafe.id, Cafe.name, Cafe.status, Cafe.opening_hours]
+    column_list = [Cafe.id, Cafe.name, Cafe.status]
+    column_details_list = [
+        Cafe.id, Cafe.name, Cafe.status, Cafe.kitchen_categories, 
+        Cafe.rating, Cafe.cooking_time, Cafe.opening_hours, 
+        'min_order_amount', 'menu_items', 'addon_items'
+    ]
     column_searchable_list = [Cafe.name, Cafe.id]
     form_overrides = {'cover_image': FileField, 'logo_image': FileField}
     form_columns = [
@@ -55,23 +63,51 @@ class CafeAdmin(ModelView, model=Cafe):
         Cafe.kitchen_categories, Cafe.rating, Cafe.cooking_time,
         Cafe.opening_hours, Cafe.min_order_amount,
     ]
+
+    column_formatters = { "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU') }
+    column_formatters_detail = {
+        'min_order_amount': lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
+        'menu_items': lambda m, a: Markup("<br>".join(
+            [
+                f"<b>{item.variant.product.name} - {item.variant.name}</b> ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
+                for item in sorted(m.menu_items, key=lambda x: x.variant.product.name if x.variant and x.variant.product else "")
+                if item.variant and item.variant.product
+            ]
+        )),
+        'addon_items': lambda m, a: ", ".join(
+            [
+                f"{item.addon.name} ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
+                for item in sorted(m.addon_items, key=lambda x: x.addon.name if x.addon else "")
+                if item.addon
+            ]
+        )
+    }
+
     async def on_model_change(self, data, model, is_created, request):
         for field in ["cover_image", "logo_image"]:
             file = data.get(field)
             if file and isinstance(file, UploadFile) and file.filename:
-                saved_filename = await storage.write(name=file.filename, file=file.file)
-                data[field] = saved_filename
+                data[field] = await storage.write(name=file.filename, file=file.file)
             else: data.pop(field, None)
+
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == pk).options(
+            selectinload(self.model.menu_items).selectinload(VenueMenuItem.variant).selectinload(GlobalProductVariant.product),
+            selectinload(self.model.addon_items).selectinload(VenueAddonItem.addon)
+        )
 
 class CategoryAdmin(ModelView, model=Category):
     name = "Категория"; name_plural = "Категории"; icon = "fa-solid fa-list"; category = "Каталог"
+    column_formatters = { "background_color": lambda m, a: Markup(f'<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background-color: {m.background_color}; margin-right: 5px;"></span> {m.background_color}') }
     column_list = [Category.id, Category.name, Category.background_color]
     form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
     column_searchable_list = [Category.name]
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name = "Продукт"; name_plural = "Продукты"; icon = "fa-solid fa-burger"; category = "Каталог"
-    column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
+    column_formatters = { "is_popular": bool_icon }
+    column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, "is_popular"]
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
     form_overrides = {'image': FileField}
@@ -83,17 +119,17 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     async def on_model_change(self, data, model, is_created, request):
         file = data.get("image")
         if file and isinstance(file, UploadFile) and file.filename:
-            saved_filename = await storage.write(name=file.filename, file=file.file)
-            data["image"] = saved_filename
+            data["image"] = await storage.write(name=file.filename, file=file.file)
         else: data.pop("image", None)
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name = "Позиция Меню"; name_plural = "Цены и Наличие"; icon = "fa-solid fa-dollar-sign"; category = "Управление"
     column_formatters = {
         "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU'),
-        "variant": lambda m, a: str(m.variant.product) + " - " + str(m.variant) if m.variant and m.variant.product else ""
+        "variant": lambda m, a: str(m.variant.product) + " - " + str(m.variant) if m.variant and m.variant.product else "",
+        "is_available": bool_icon
     }
-    column_list = [VenueMenuItem.venue, "variant", "price", VenueMenuItem.is_available]
+    column_list = [VenueMenuItem.venue, "variant", "price", "is_available"]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"}, "variant": {"fields": ("name", "id"), "order_by": "id"}}
     def list_query(self, request: Request):
         return select(self.model).options(selectinload(self.model.variant).selectinload(GlobalProductVariant.product), selectinload(self.model.venue))
@@ -101,9 +137,66 @@ class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
 class OrderAdmin(ModelView, model=Order):
     name = "Заказ"; name_plural = "Заказы"; icon = "fa-solid fa-receipt"; category = "Управление"
     can_create = False; can_delete = True
-    column_labels = {"id": "ID", "cafe": "Заведение", "created_at": "Дата", "total_amount": "Сумма", "status": "Статус", "order_type": "Тип", "payment_method": "Оплата"}
-    column_formatters = {"total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'), "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M") if m.created_at else ""}
-    column_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status, Order.order_type, Order.payment_method]
+    
+    # --- СЛОВАРЬ ДЛЯ СТАТУСОВ ---
+    _status_map = {
+        'pending': Markup('<span class="badge bg-yellow-lt">🟡 Ожидает</span>'),
+        'paid': Markup('<span class="badge bg-green-lt">🟢 Оплачен</span>'),
+        'awaiting_payment': Markup('<span class="badge bg-blue-lt">🔵 Ждет оплаты</span>'),
+        'completed': Markup('<span class="badge bg-muted-lt">⚪️ Выполнен</span>'),
+        'cancelled': Markup('<span class="badge bg-red-lt">🔴 Отменен</span>'),
+    }
+    
+    column_labels = {"id": "ID", "cafe": "Заведение", "created_at": "Дата", "total_amount": "Сумма", "status": "Статус", "order_type": "Тип", "payment_method": "Оплата", "cart_items": "Состав Заказа", "user_info": "Клиент"}
+    column_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status]
+    column_details_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status, Order.order_type, Order.payment_method, "user_info", "cart_items"]
+    
+    column_formatters = {
+        "total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'),
+        "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M") if m.created_at else "",
+        "status": lambda m, a: self._status_map.get(m.status, m.status.capitalize()),
+    }
+    
+    def _format_cart_items(model, attribute):
+        items_html = "<ul>"
+        for item in model.cart_items:
+            name = item.get('cafe_item', {}).get('name', '?')
+            variant = item.get('variant', {}).get('name', '?')
+            quantity = item.get('quantity', 0)
+            items_html += f"<li><b>{name} ({variant})</b> x {quantity}</li>"
+            addons = item.get('selected_addons', [])
+            if addons:
+                items_html += "<ul>"
+                for addon in addons:
+                    addon_name = addon.get('name', '?')
+                    items_html += f"<li>+ {addon_name}</li>"
+                items_html += "</ul>"
+        items_html += "</ul>"
+        return Markup(items_html)
+
+    def _format_user_info(model, attribute):
+        user = model.user_info or {}
+        address = user.get('shipping_address', {})
+        
+        name = user.get('first_name', 'N/A')
+        username = f"@{user.get('username', 'N/A')}"
+        
+        info = [f"<b>Имя:</b> {name}", f"<b>Telegram:</b> {username}"]
+        
+        if address:
+            addr_str = f"{address.get('city', '')}, {address.get('street', '')}, д.{address.get('house', '')}, кв.{address.get('apartment', '')}"
+            info.append(f"<b>Адрес:</b> {addr_str}")
+            if comment := address.get('comment'):
+                info.append(f"<b>Комментарий:</b> {comment}")
+        
+        return Markup("<br>".join(info))
+
+    column_formatters_detail = {
+        "status": lambda m, a: self._status_map.get(m.status, m.status.capitalize()),
+        "cart_items": _format_cart_items,
+        "user_info": _format_user_info
+    }
+    
     column_default_sort = ("created_at", True)
     form_columns = [Order.status]
 
@@ -130,9 +223,10 @@ class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
     name = "Цена Добавки"; name_plural = "Цены на Добавки"; icon = "fa-solid fa-money-bill-wave"; category = "Управление"
     column_formatters = {
         "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU'),
-        "addon": lambda m, a: str(m.addon) if m.addon else ""
+        "addon": lambda m, a: str(m.addon) if m.addon else "",
+        "is_available": bool_icon
     }
-    column_list = [VenueAddonItem.venue, "addon", "price", VenueAddonItem.is_available]
+    column_list = [VenueAddonItem.venue, "addon", "price", "is_available"]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"},"addon": {"fields": ("name", "id"), "order_by": "id"}}
     def list_query(self, request: Request):
         return select(self.model).options(selectinload(self.model.addon), selectinload(self.model.venue))
