@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.models import (
     Base, Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
-    GlobalAddonGroup, GlobalAddonItem, VenueAddonItem, product_addon_groups_association
+    GlobalAddonGroup, GlobalAddonItem, VenueAddonItem
 )
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -27,8 +27,6 @@ def migrate():
         db.query(Order).delete()
         db.query(VenueMenuItem).delete()
         db.query(VenueAddonItem).delete()
-        db.execute(product_addon_groups_association.delete())
-
         # Затем из тех, на которые ссылаются
         # Ассоциативная таблица очистится каскадом при удалении продуктов/групп
         db.query(GlobalProductVariant).delete()
