@@ -1,6 +1,8 @@
 # backend/app/admin.py
 import os
 from passlib.context import CryptContext
+from babel.numbers import format_currency
+from datetime import datetime
 
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
@@ -14,27 +16,20 @@ from .models import (
 )
 from fastapi_storages import FileSystemStorage
 
-# --- Настройка для загрузки файлов ---
+# ... (код для storage, pwd_context и AdminAuth остается без изменений) ...
+
 UPLOAD_DIR = "/app/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 storage = FileSystemStorage(path=UPLOAD_DIR)
-
-# --- Настройка для хеширования паролей ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# --- Безопасная аутентификация для админ-панели ---
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
         form = await request.form()
         username, password = form.get("username"), form.get("password")
-
         ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
         ADMIN_PASSWORD_HASH = os.getenv("ADMIN_PASSWORD_HASH")
-
-        if not ADMIN_USERNAME or not ADMIN_PASSWORD_HASH:
-            print("ERROR: ADMIN_USERNAME or ADMIN_PASSWORD_HASH not set!")
-            return False
-
+        if not ADMIN_USERNAME or not ADMIN_PASSWORD_HASH: return False
         if username == ADMIN_USERNAME and pwd_context.verify(password, ADMIN_PASSWORD_HASH):
             request.session.update({"token": "admin_token"})
             return True
@@ -49,7 +44,7 @@ class AdminAuth(AuthenticationBackend):
 
 authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-super-secret-key-for-sessions"))
 
-# --- Представления моделей для админ-панели ---
+# --- УЛУЧШЕННЫЕ ПРЕДСТАВЛЕНИЯ МОДЕЛЕЙ ---
 
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"
@@ -60,11 +55,7 @@ class CafeAdmin(ModelView, model=Cafe):
     column_list = [Cafe.id, Cafe.name, Cafe.status, Cafe.opening_hours]
     column_searchable_list = [Cafe.name, Cafe.id]
     
-    form_overrides = {
-        'cover_image': FileField,
-        'logo_image': FileField,
-    }
-
+    form_overrides = {'cover_image': FileField, 'logo_image': FileField}
     form_columns = [
         Cafe.id, Cafe.name, Cafe.status, "cover_image", "logo_image",
         Cafe.kitchen_categories, Cafe.rating, Cafe.cooking_time,
@@ -72,20 +63,13 @@ class CafeAdmin(ModelView, model=Cafe):
     ]
     
     async def on_model_change(self, data, model, is_created, request):
-        cover_image_file = data.get("cover_image")
-        logo_image_file = data.get("logo_image")
-
-        if cover_image_file and isinstance(cover_image_file, UploadFile) and cover_image_file.filename:
-            saved_filename = await storage.write(name=cover_image_file.filename, file=cover_image_file.file)
-            data["cover_image"] = saved_filename
-        else:
-            data.pop("cover_image", None)
-
-        if logo_image_file and isinstance(logo_image_file, UploadFile) and logo_image_file.filename:
-            saved_filename = await storage.write(name=logo_image_file.filename, file=logo_image_file.file)
-            data["logo_image"] = saved_filename
-        else:
-            data.pop("logo_image", None)
+        for field in ["cover_image", "logo_image"]:
+            file = data.get(field)
+            if file and isinstance(file, UploadFile) and file.filename:
+                saved_filename = await storage.write(name=file.filename, file=file.file)
+                data[field] = saved_filename
+            else:
+                data.pop(field, None)
 
 class CategoryAdmin(ModelView, model=Category):
     name = "Категория"
@@ -95,11 +79,10 @@ class CategoryAdmin(ModelView, model=Category):
     column_list = [Category.id, Category.name, Category.background_color]
     form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
     column_searchable_list = [Category.name]
-# -----------------------------
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name = "Продукт"
-    name_plural = "Продукты (глобально)"
+    name_plural = "Продукты"
     icon = "fa-solid fa-burger"
     category = "Каталог"
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
@@ -108,9 +91,7 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         "category": {"fields": ("name",), "order_by": "id"},
         "addon_groups": {"fields": ("name",), "order_by": "id"},
     }
-    
     form_overrides = {'image': FileField}
-
     form_columns = [
         GlobalProduct.id, GlobalProduct.name, GlobalProduct.description, "image",
         GlobalProduct.category, GlobalProduct.sub_category, GlobalProduct.is_popular,
@@ -118,56 +99,28 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     ]
     
     async def on_model_change(self, data, model, is_created, request):
-        image_file = data.get("image")
-        if image_file and isinstance(image_file, UploadFile) and image_file.filename:
-            saved_filename = await storage.write(name=image_file.filename, file=image_file.file)
+        file = data.get("image")
+        if file and isinstance(file, UploadFile) and file.filename:
+            saved_filename = await storage.write(name=file.filename, file=file.file)
             data["image"] = saved_filename
         else:
             data.pop("image", None)
 
-class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
-    name = "Вариант Продукта"
-    name_plural = "Варианты Продуктов"
-    icon = "fa-solid fa-tags"
-    category = "Каталог"
-    column_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.product]
-    form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
-
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name = "Позиция Меню"
-    name_plural = "Позиции Меню (цены/наличие)"
+    name_plural = "Цены и Наличие"
     icon = "fa-solid fa-dollar-sign"
     category = "Управление"
-    column_list = [VenueMenuItem.venue, VenueMenuItem.variant, VenueMenuItem.price, VenueMenuItem.is_available]
+    
+    # Форматтеры для красивого отображения цены
+    column_formatters = {
+        "price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')
+    }
+    
+    column_list = [VenueMenuItem.venue, VenueMenuItem.variant, "price", VenueMenuItem.is_available]
     form_ajax_refs = {
         "venue": {"fields": ("name",), "order_by": "id"},
         "variant": {"fields": ("name", "id"), "order_by": "id"},
-    }
-
-class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
-    name = "Группа Добавок"
-    name_plural = "Группы Добавок"
-    icon = "fa-solid fa-layer-group"
-    category = "Каталог"
-    column_list = [GlobalAddonGroup.id, GlobalAddonGroup.name]
-
-class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
-    name = "Добавка"
-    name_plural = "Добавки (глобально)"
-    icon = "fa-solid fa-plus"
-    category = "Каталог"
-    column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
-    form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
-
-class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
-    name = "Цена Добавки"
-    name_plural = "Цены на Добавки"
-    icon = "fa-solid fa-money-bill-wave"
-    category = "Управление"
-    column_list = [VenueAddonItem.venue, VenueAddonItem.addon, VenueAddonItem.price, VenueAddonItem.is_available]
-    form_ajax_refs = {
-        "venue": {"fields": ("name",), "order_by": "id"},
-        "addon": {"fields": ("name", "id"), "order_by": "id"},
     }
     
 class OrderAdmin(ModelView, model=Order):
@@ -176,10 +129,41 @@ class OrderAdmin(ModelView, model=Order):
     icon = "fa-solid fa-receipt"
     category = "Управление"
     can_create, can_delete = False, True
-    column_list = [Order.id, Order.cafe, Order.created_at, Order.total_amount, Order.status, Order.order_type, Order.payment_method]
-    column_sortable_list = [Order.created_at]
+    
+    # Русские названия для колонок
+    column_labels = {
+        Order.id: "ID", Order.cafe: "Заведение", Order.created_at: "Дата",
+        Order.total_amount: "Сумма", Order.status: "Статус",
+        Order.order_type: "Тип", Order.payment_method: "Оплата"
+    }
+    
+    # Форматтеры для красивого отображения даты и суммы
+    column_formatters = {
+        "total_amount": lambda m, a: format_currency(m.total_amount / 100, 'RUB', locale='ru_RU'),
+        "created_at": lambda m, a: m.created_at.strftime("%d.%m.%Y %H:%M")
+    }
+    
+    column_list = [Order.id, Order.cafe, "created_at", "total_amount", Order.status, Order.order_type, Order.payment_method]
     column_default_sort = ("created_at", True)
     form_columns = [Order.status]
+
+# ... (Остальные классы Admin остаются без изменений) ...
+class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
+    name = "Вариант Продукта", "Варианты Продуктов", icon = "fa-solid fa-tags", category = "Каталог"
+    column_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.product]
+    form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
+class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
+    name="Группа Добавок", name_plural="Группы Добавок", icon="fa-solid fa-layer-group", category="Каталог"
+    column_list = [GlobalAddonGroup.id, GlobalAddonGroup.name]
+class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
+    name="Добавка", name_plural="Добавки", icon="fa-solid fa-plus", category="Каталог"
+    column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
+    form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
+class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
+    name="Цена Добавки", name_plural="Цены на Добавки", icon="fa-solid fa-money-bill-wave", category="Управление"
+    column_formatters = {"price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')}
+    column_list = [VenueAddonItem.venue, VenueAddonItem.addon, "price", VenueAddonItem.is_available]
+    form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"},"addon": {"fields": ("name", "id"), "order_by": "id"}}
 
 def register_all_views(admin: Admin):
     admin.add_view(CafeAdmin)

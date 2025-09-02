@@ -11,7 +11,7 @@ from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, joinedload, selectinload
-from telegram import Update, Bot
+from telegram import Update, Bot, LabeledPrice
 from telegram.ext import Application
 from urllib.parse import parse_qs
 from starlette.middleware.sessions import SessionMiddleware
@@ -81,9 +81,23 @@ admin = Admin(app, engine, authentication_backend=authentication_backend)
 register_all_views(admin)
 # -------------------------
 
-origins = [APP_URL] if APP_URL else []
-if os.getenv('DEV_MODE') and os.getenv('DEV_APP_URL'): origins.append(os.getenv('DEV_APP_URL'))
-app.add_middleware(CORSMiddleware, allow_origins=origins or ["*"], allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+origins = []
+if app_url := os.getenv("APP_URL"):
+    origins.append(app_url)
+if dev_app_url := os.getenv("DEV_APP_URL"):
+    origins.append(dev_app_url)
+
+# Убедимся, что origins не пустой, или разрешаем все для локальной разработки
+if not origins and os.getenv('DEV_MODE'):
+    origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_db_session(): db = SessionLocal(); yield db; db.close()
 def get_bot_instance() -> Bot:
