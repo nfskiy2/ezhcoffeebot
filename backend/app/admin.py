@@ -44,10 +44,7 @@ class AdminAuth(AuthenticationBackend):
 authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-super-secret-key-for-sessions"))
 
 class CafeAdmin(ModelView, model=Cafe):
-    name = "Заведение"
-    name_plural = "Заведения"
-    icon = "fa-solid fa-store"
-    category = "Управление"
+    name = "Заведение"; name_plural = "Заведения"; icon = "fa-solid fa-store"; category = "Управление"
     column_list = [Cafe.id, Cafe.name, Cafe.status, Cafe.opening_hours]
     column_searchable_list = [Cafe.name, Cafe.id]
     form_overrides = {'cover_image': FileField, 'logo_image': FileField}
@@ -67,19 +64,13 @@ class CafeAdmin(ModelView, model=Cafe):
                 data.pop(field, None)
 
 class CategoryAdmin(ModelView, model=Category):
-    name = "Категория"
-    name_plural = "Категории"
-    icon = "fa-solid fa-list"
-    category = "Каталог"
+    name = "Категория"; name_plural = "Категории"; icon = "fa-solid fa-list"; category = "Каталог"
     column_list = [Category.id, Category.name, Category.background_color]
     form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
     column_searchable_list = [Category.name]
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
-    name = "Продукт"
-    name_plural = "Продукты"
-    icon = "fa-solid fa-burger"
-    category = "Каталог"
+    name = "Продукт"; name_plural = "Продукты"; icon = "fa-solid fa-burger"; category = "Каталог"
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {
@@ -102,11 +93,7 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
             data.pop("image", None)
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
-    name = "Позиция Меню"
-    name_plural = "Цены и Наличие"
-    icon = "fa-solid fa-dollar-sign"
-    category = "Управление"
-    
+    name = "Позиция Меню"; name_plural = "Цены и Наличие"; icon = "fa-solid fa-dollar-sign"; category = "Управление"
     column_formatters = {"price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')}
     column_list = [VenueMenuItem.venue, VenueMenuItem.variant, "price", VenueMenuItem.is_available]
     form_ajax_refs = {
@@ -121,12 +108,8 @@ class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
         )
 
 class OrderAdmin(ModelView, model=Order):
-    name = "Заказ"
-    name_plural = "Заказы"
-    icon = "fa-solid fa-receipt"
-    category = "Управление"
-    can_create = False
-    can_delete = True
+    name = "Заказ"; name_plural = "Заказы"; icon = "fa-solid fa-receipt"; category = "Управление"
+    can_create = False; can_delete = True
     column_labels = {
         Order.id: "ID", Order.cafe: "Заведение", Order.created_at: "Дата",
         Order.total_amount: "Сумма", Order.status: "Статус",
@@ -141,10 +124,7 @@ class OrderAdmin(ModelView, model=Order):
     form_columns = [Order.status]
 
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
-    name = "Вариант Продукта"
-    name_plural = "Варианты Продуктов"
-    icon = "fa-solid fa-tags"
-    category = "Каталог"
+    name = "Вариант Продукта"; name_plural = "Варианты Продуктов"; icon = "fa-solid fa-tags"; category = "Каталог"
     column_list = [GlobalProductVariant.id, GlobalProductVariant.name, GlobalProductVariant.product]
     form_ajax_refs = {"product": {"fields": ("name",), "order_by": "id"}}
     
@@ -152,17 +132,11 @@ class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
         return select(self.model).options(joinedload(self.model.product))
 
 class GlobalAddonGroupAdmin(ModelView, model=GlobalAddonGroup):
-    name = "Группа Добавок"
-    name_plural = "Группы Добавок"
-    icon = "fa-solid fa-layer-group"
-    category = "Каталог"
+    name = "Группа Добавок"; name_plural = "Группы Добавок"; icon = "fa-solid fa-layer-group"; category = "Каталог"
     column_list = [GlobalAddonGroup.id, GlobalAddonGroup.name]
 
 class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
-    name = "Добавка"
-    name_plural = "Добавки"
-    icon = "fa-solid fa-plus"
-    category = "Каталог"
+    name = "Добавка"; name_plural = "Добавки"; icon = "fa-solid fa-plus"; category = "Каталог"
     column_list = [GlobalAddonItem.id, GlobalAddonItem.name, GlobalAddonItem.group]
     form_ajax_refs = {"group": {"fields": ("name",), "order_by": "id"}}
     
@@ -170,10 +144,7 @@ class GlobalAddonItemAdmin(ModelView, model=GlobalAddonItem):
         return select(self.model).options(joinedload(self.model.group))
 
 class VenueAddonItemAdmin(ModelView, model=VenueAddonItem):
-    name = "Цена Добавки"
-    name_plural = "Цены на Добавки"
-    icon = "fa-solid fa-money-bill-wave"
-    category = "Управление"
+    name = "Цена Добавки"; name_plural = "Цены на Добавки"; icon = "fa-solid fa-money-bill-wave"; category = "Управление"
     column_formatters = {"price": lambda m, a: format_currency(m.price / 100, 'RUB', locale='ru_RU')}
     column_list = [VenueAddonItem.venue, VenueAddonItem.addon, "price", VenueAddonItem.is_available]
     form_ajax_refs = {"venue": {"fields": ("name",), "order_by": "id"},"addon": {"fields": ("name", "id"), "order_by": "id"}}
