@@ -76,12 +76,10 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     column_searchable_list = [GlobalProduct.name, GlobalProduct.description]
     
-    # Используем `in_` для фильтрации по связанной таблице
-    column_filters = [
-        GlobalProduct.category_id.in_(("Category", "name")),
-        GlobalProduct.is_popular
-    ]
-    column_labels = {GlobalProduct.category_id: "Категория"}
+    # ИЗМЕНЕНИЕ: Упрощаем фильтр до прямого поля, чтобы избежать ошибки.
+    # Это должно работать со старыми версиями sqladmin.
+    column_filters = [GlobalProduct.category_id, GlobalProduct.is_popular]
+    column_labels = {GlobalProduct.category_id: "ID Категории"}
 
     form_args = {"image": {"base_path": UPLOAD_DIR, "url_prefix": "/media/"}}
     form_columns = [
