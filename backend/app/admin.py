@@ -6,7 +6,7 @@ from typing import Any
 
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
-from sqladmin.fields import ImageUploadField
+from sqladmin_file_upload.fields import ImageUploadField
 from starlette.requests import Request
 from markupsafe import Markup
 

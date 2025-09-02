@@ -32,7 +32,7 @@ from .schemas import (
 
 load_dotenv()
 BOT_TOKEN, APP_URL, STAFF_GROUP_ID = os.getenv('BOT_TOKEN'), os.getenv('APP_URL'), os.getenv('STAFF_GROUP_ID')
-WEBHOOK_URL, DADATA_API_KEY = os.getenv('DADATA_API_KEY'), os.getenv('DADATA_API_KEY')
+WEBHOOK_URL, DADATA_API_KEY = os.getenv('WEBHOOK_URL'), os.getenv('DADATA_API_KEY')
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
