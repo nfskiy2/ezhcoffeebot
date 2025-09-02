@@ -5,9 +5,9 @@ from passlib.context import CryptContext
 # ИСПРАВЛЕННЫЕ ИМПОРТЫ
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
-from sqladmin.fields import ImageUploadField  # <-- Вот правильный класс
-
+from starlette.datastructures import UploadFile
 from starlette.requests import Request
+from wtforms import FileField # <-- Импортируем стандартное поле из WTForms
 
 from .models import (
     Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
@@ -60,18 +60,15 @@ class CafeAdmin(ModelView, model=Cafe):
 
     column_list = [Cafe.id, Cafe.name, Cafe.status, Cafe.opening_hours]
     column_searchable_list = [Cafe.name, Cafe.id]
-    column_sortable_list = [Cafe.id, Cafe.name]
-
-    # --- ИСПРАВЛЕННАЯ НАСТРОЙКА ЗАГРУЗКИ ФАЙЛОВ ---
+    
+    # --- ОКОНЧАТЕЛЬНОЕ ИСПРАВЛЕНИЕ ЗАГРУЗКИ ФАЙЛОВ ---
+    # Мы говорим, что для этих полей в форме нужно использовать
+    # стандартное поле для загрузки файлов из WTForms.
     form_overrides = {
-        'cover_image': ImageUploadField,
-        'logo_image': ImageUploadField,
+        'cover_image': FileField,
+        'logo_image': FileField,
     }
-    # Используем form_args, чтобы передать 'storage' в конструктор поля
-    form_args = {
-        'cover_image': {'storage': storage},
-        'logo_image': {'storage': storage},
-    }
+    # form_args больше не нужен.
 
     form_columns = [
         Cafe.id, Cafe.name, Cafe.status, "cover_image", "logo_image",
@@ -79,21 +76,29 @@ class CafeAdmin(ModelView, model=Cafe):
         Cafe.opening_hours, Cafe.min_order_amount,
     ]
     
-    # Этот метод теперь правильно обрабатывает загруженный файл
+    # Этот метод теперь должен вручную обрабатывать загрузку файла.
     async def on_model_change(self, data, model, is_created, request):
-        if data.get("cover_image") and hasattr(data["cover_image"], "file"):
-            data["cover_image"] = data["cover_image"].filename
-        if data.get("logo_image") and hasattr(data["logo_image"], "file"):
-            data["logo_image"] = data["logo_image"].filename
+        cover_image_file = data.get("cover_image")
+        logo_image_file = data.get("logo_image")
 
-class CategoryAdmin(ModelView, model=Category):
-    name = "Категория"
-    name_plural = "Категории"
-    icon = "fa-solid fa-list"
-    category = "Каталог"
-    column_list = [Category.id, Category.name, Category.background_color]
-    form_columns = [Category.id, Category.name, Category.icon, Category.background_color]
-    column_searchable_list = [Category.name]
+        # Проверяем, был ли загружен новый файл для cover_image
+        if cover_image_file and isinstance(cover_image_file, UploadFile) and cover_image_file.filename:
+            # Сохраняем файл и получаем его имя
+            saved_filename = await storage.write(name=cover_image_file.filename, file=cover_image_file.file)
+            # Обновляем данные для сохранения в БД только именем файла
+            data["cover_image"] = saved_filename
+        else:
+            # Если файл не меняли (или удалили), убираем ключ из данных,
+            # чтобы не затереть старое значение в БД пустым значением.
+            data.pop("cover_image", None)
+
+        # Аналогично для logo_image
+        if logo_image_file and isinstance(logo_image_file, UploadFile) and logo_image_file.filename:
+            saved_filename = await storage.write(name=logo_image_file.filename, file=logo_image_file.file)
+            data["logo_image"] = saved_filename
+        else:
+            data.pop("logo_image", None)
+
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name = "Продукт"
@@ -107,8 +112,7 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         "addon_groups": {"fields": ("name",), "order_by": "id"},
     }
     
-    form_overrides = {'image': ImageUploadField}
-    form_args = {'image': {'storage': storage}}
+    form_overrides = {'image': FileField}
 
     form_columns = [
         GlobalProduct.id, GlobalProduct.name, GlobalProduct.description, "image",
@@ -117,8 +121,14 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     ]
     
     async def on_model_change(self, data, model, is_created, request):
-        if data.get("image") and hasattr(data["image"], "file"):
-            data["image"] = data["image"].filename
+        image_file = data.get("image")
+        if image_file and isinstance(image_file, UploadFile) and image_file.filename:
+            saved_filename = await storage.write(name=image_file.filename, file=image_file.file)
+            data["image"] = saved_filename
+        else:
+            data.pop("image", None)
+
+# ... (Остальная часть файла остается без изменений) ...
 
 class GlobalProductVariantAdmin(ModelView, model=GlobalProductVariant):
     name = "Вариант Продукта"
