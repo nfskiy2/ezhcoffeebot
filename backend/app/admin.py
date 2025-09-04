@@ -4,7 +4,7 @@ import json
 from passlib.context import CryptContext
 from babel.numbers import format_currency
 from markupsafe import Markup
-from typing import Dict, Any
+from typing import Dict, List, Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload, joinedload
@@ -13,7 +13,6 @@ from sqladmin.authentication import AuthenticationBackend
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
 from wtforms import FileField
-
 
 
 from .models import (
@@ -53,44 +52,50 @@ authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-supe
 
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"; name_plural = "Заведения"; icon = "fa-solid fa-store"; category = "Управление"
-    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image"]
-    column_details_list = ['id', 'name', 'status', 'cover_image', 'logo_image', 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
+    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image"] # Добавил logo_image для наглядности
+    column_details_list = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
     column_searchable_list = [Cafe.name, Cafe.id]
-    
-    form_overrides = {'cover_image': FileField}
-    form_columns = [
-        'id', 'name', 'status', 'cover_image', 'kitchen_categories', 
-        'rating', 'cooking_time', 'opening_hours', 'min_order_amount'
-    ]
-    
-    column_searchable_list = [Cafe.name, Cafe.id]
-
+    form_overrides = {'cover_image': FileField, 'logo_image': FileField}
+    form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
     column_formatters = {
         "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
         "logo_image": lambda m, a: Markup(f'<img src="{API_URL}{m.logo_image}" width="40" style="border-radius: 4px;">') if m.logo_image else "",
-        "cover_image": lambda m, a: Markup(f'<img src="{API_URL}{m.cover_image}" width="150" style="border-radius: 4px;">') if m.cover_image else ""
+        "cover_image": lambda m, a: Markup(f'<img src="{API_URL}{m.cover_image}" width="100" style="border-radius: 4px;">') if m.cover_image else ""
+    }
+    column_formatters_detail = {
+        'min_order_amount': lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
+        'menu_items': lambda m, a: Markup("<br>".join(
+            [f"<b>{item.variant.product.name} - {item.variant.name}</b> ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
+             for item in sorted(m.menu_items, key=lambda x: x.variant.product.name if x.variant and x.variant.product else "")
+             if item.variant and item.variant.product]
+        )),
+        'addon_items': lambda m, a: ", ".join(
+            [f"{item.addon.name} ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
+             for item in sorted(m.addon_items, key=lambda x: x.addon.name if x.addon else "")
+             if item.addon]
+        )
     }
 
-    # --- ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ ---
-    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
-        # Этот метод вызывается перед сохранением в базу.
-        # Мы вручную проверим каждое поле для загрузки.
-        
-        form = await request.form()
-        
-        for field_name in ["cover_image", "logo_image"]:
-            file = form.get(field_name)
+    # --- ИСПРАВЛЕННЫЙ МЕТОД ---
+    async def on_model_change(self, data: Dict, model: Any, is_created: bool, request: Request) -> None:
+        """
+        Обрабатывает загрузку файлов перед сохранением модели.
+        """
+        for field in ["cover_image", "logo_image"]:
+            file = data.get(field)
 
             # Случай 1: Загружен новый файл.
             if isinstance(file, UploadFile) and file.filename:
-                # Сохраняем его и записываем новое имя в данные для сохранения.
+                # Сохраняем файл и обновляем путь в данных для сохранения.
                 full_path = storage.write(name=file.filename, file=file.file)
-                data[field_name] = os.path.basename(full_path)
+                data[field] = os.path.basename(full_path)
             
-            # Случай 2: Файл не менялся, но в форме пришло его старое имя (текст).
-            # В этом случае мы просто оставляем старое значение, которое уже есть в `model`.
-            elif isinstance(file, str) and file:
-                data[field_name] = model.__dict__.get(field_name)
+            # Случай 2: Файл не менялся (пришло строковое значение старого пути) или поле пустое.
+            # В этой ситуации мы ничего не делаем, чтобы не затереть существующий путь
+            # или не вызвать ошибку. SQLAlchemy сам разберется со строкой.
+            # Если же пришел пустой UploadFile (файл удалили через форму), его нужно убрать.
+            elif isinstance(file, UploadFile) and not file.filename:
+                data.pop(field, None)
 
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
@@ -111,41 +116,37 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
-    
-    # Возвращаем обычный FileField
     form_overrides = {'image': FileField}
+    form_columns = ["id", "name", "description", "image", "category", "sub_category", "is_popular", "addon_groups"]
     
     column_formatters = {
         "is_popular": lambda m, a: bool_icon(m.is_popular),
-        "image": lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="100" style="border-radius: 4px;">') if m.image else ""
+        "image": lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="100" style="border-radius: 4px;">') if m.image and not m.image.startswith('http') else (Markup(f'<img src="{m.image}" width="100" style="border-radius: 4px;">') if m.image else "")
     }
     column_formatters_detail = {
-        'image': lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="200" style="border-radius: 4px;">') if m.image else ""
+        'image': lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="200" style="border-radius: 4px;">') if m.image and not m.image.startswith('http') else (Markup(f'<img src="{m.image}" width="200" style="border-radius: 4px;">') if m.image else "")
     }
+
     form_columns = [
         GlobalProduct.id, GlobalProduct.name, GlobalProduct.description, "image",
         GlobalProduct.category, GlobalProduct.sub_category, GlobalProduct.is_popular,
         GlobalProduct.addon_groups
     ]
-    
-    # --- ИСПРАВЛЕННЫЙ МЕТОД on_model_change ---
     async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
-        field = "cover_image"
-        file = data.get(field)
-        
-        if isinstance(file, UploadFile) and file.filename:
+        file = data.get("image")
+        if file and file.filename:
+            saved_filename = storage.write(name=file.filename, file=file.file)
             full_path = storage.write(name=file.filename, file=file.file)
-            data[field] = os.path.basename(full_path)
-        elif isinstance(file, UploadFile) and not file.filename:
-            data.pop(field, None)
-        elif isinstance(file, str):
-            pass # Если пришла строка (старый путь), ничего не делаем
-
+            data["image"] = os.path.basename(full_path) 
+        else: data.pop("image", None)
+    
+    # --- ИЗМЕНЕННЫЙ МЕТОД ---
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
         return select(self.model).where(self.model.id == pk).options(
             selectinload(self.model.category), 
             selectinload(self.model.addon_groups),
+            # Используем joinedload для вариантов, чтобы решить проблему
             joinedload(self.model.variants) 
         )
 
