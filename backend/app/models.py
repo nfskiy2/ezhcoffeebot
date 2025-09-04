@@ -20,7 +20,6 @@ class Cafe(Base):
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False)
     cover_image = Column(String)
-    logo_image = Column(String)
     kitchen_categories = Column(String)
     rating = Column(String)
     cooking_time = Column(String)
@@ -42,8 +41,6 @@ def prepend_media_prefix_to_cafe_images(mapper, connection, target):
     # Добавляем префикс, только если это не полный URL и префикса еще нет
     if target.cover_image and not target.cover_image.startswith(('http', '/media/')):
         target.cover_image = f'/media/{target.cover_image}'
-    if target.logo_image and not target.logo_image.startswith(('http', '/media/')):
-        target.logo_image = f'/media/{target.logo_image}'
 
 class Category(Base):
     __tablename__ = 'categories'

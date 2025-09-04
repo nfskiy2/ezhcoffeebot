@@ -20,7 +20,6 @@ class CafeSchema(CustomBaseModel):
     id: str
     name: str
     cover_image: Optional[str] = None
-    logo_image: Optional[str] = None
     kitchen_categories: Optional[str] = None
     rating: Optional[str] = None
     cooking_time: Optional[str] = None

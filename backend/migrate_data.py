@@ -106,7 +106,6 @@ def migrate():
             venue_data_for_db = {k: v for k, v in venue_data.items() if k in Cafe.__table__.columns.keys()}
             # Ручное переименование ключей, если они не совпадают
             if 'coverImage' in venue_data: venue_data_for_db['cover_image'] = venue_data['coverImage']
-            if 'logoImage' in venue_data: venue_data_for_db['logo_image'] = venue_data['logoImage']
             if 'kitchenCategories' in venue_data: venue_data_for_db['kitchen_categories'] = venue_data['kitchenCategories']
             if 'cookingTime' in venue_data: venue_data_for_db['cooking_time'] = venue_data['cookingTime']
             if 'openingHours' in venue_data: venue_data_for_db['opening_hours'] = venue_data['openingHours']

@@ -39,7 +39,6 @@ export interface CafeSchema {
     id: string;
     name: string;
     coverImage?: string;
-    logoImage?: string;
     kitchenCategories?: string;
     rating?: string;
     cookingTime?: string;

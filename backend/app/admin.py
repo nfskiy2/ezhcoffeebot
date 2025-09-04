@@ -52,14 +52,14 @@ authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-supe
 
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"; name_plural = "Заведения"; icon = "fa-solid fa-store"; category = "Управление"
-    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image"] # Добавил logo_image для наглядности
-    column_details_list = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
+    column_list = [Cafe.id, Cafe.name, Cafe.status, "cover_image"] # <-- ИЗМЕНЕНО: убрал logo_image
+    column_details_list = ['id', 'name', 'status', "cover_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items'] # <-- ИЗМЕНЕНО: убрал logo_image
     column_searchable_list = [Cafe.name, Cafe.id]
-    form_overrides = {'cover_image': FileField, 'logo_image': FileField}
-    form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
+    form_overrides = {'cover_image': FileField} # <-- ИЗМЕНЕНО: убрал logo_image
+    form_columns = ['id', 'name', 'status', "cover_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount'] # <-- ИЗМЕНЕНО: убрал logo_image
     column_formatters = {
         "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
-        "logo_image": lambda m, a: Markup(f'<img src="{API_URL}{m.logo_image}" width="40" style="border-radius: 4px;">') if m.logo_image else "",
+        # "logo_image": lambda m, a: Markup(f'<img src="{API_URL}{m.logo_image}" width="40" style="border-radius: 4px;">') if m.logo_image else "", # <-- УДАЛИТЕ ЭТУ СТРОКУ
         "cover_image": lambda m, a: Markup(f'<img src="{API_URL}{m.cover_image}" width="100" style="border-radius: 4px;">') if m.cover_image else ""
     }
     column_formatters_detail = {
@@ -81,7 +81,7 @@ class CafeAdmin(ModelView, model=Cafe):
         """
         Обрабатывает загрузку файлов перед сохранением модели.
         """
-        for field in ["cover_image", "logo_image"]:
+        for field in ["cover_image"]:
             file = data.get(field)
 
             # Случай 1: Загружен новый файл.

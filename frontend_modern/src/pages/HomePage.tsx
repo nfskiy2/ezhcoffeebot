@@ -113,7 +113,7 @@ const HomePage: React.FC = () => {
         <section>
             <div className="cafe-logo-container" onClick={() => navigate('/select-location')} style={{ cursor: 'pointer' }}>
                 {/* 2. Используйте getImageUrl для логотипа */}
-                <img id="cafe-logo" className="cafe-logo" src={getImageUrl(cafeToDisplay.logoImage)} alt="Логотип кафе"/>
+                <img id="cafe-logo" className="cafe-logo" src="/icons/logo-laurel.svg" alt="Логотип кафе"/>
             </div>
             {/* 3. Используйте getImageUrl для обложки */}
             <img id="cafe-cover" className="cover" src={getImageUrl(cafeToDisplay.coverImage)} alt="Обложка кафе"/>
