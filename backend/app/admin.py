@@ -53,18 +53,22 @@ authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-supe
 
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"; name_plural = "Заведения"; icon = "fa-solid fa-store"; category = "Управление"
-    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image", "cover_image"]
+    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image"]
     column_details_list = ['id', 'name', 'status', 'cover_image', 'logo_image', 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
     column_searchable_list = [Cafe.name, Cafe.id]
     
-    form_overrides = {'cover_image': FileField, 'logo_image': FileField}
+    form_overrides = {'cover_image': FileField}
+    form_columns = [
+        'id', 'name', 'status', 'cover_image', 'kitchen_categories', 
+        'rating', 'cooking_time', 'opening_hours', 'min_order_amount'
+    ]
     
-    form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
-    
+    column_searchable_list = [Cafe.name, Cafe.id]
+
     column_formatters = {
         "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
         "logo_image": lambda m, a: Markup(f'<img src="{API_URL}{m.logo_image}" width="40" style="border-radius: 4px;">') if m.logo_image else "",
-        "cover_image": lambda m, a: Markup(f'<img src="{API_URL}{m.cover_image}" width="100" style="border-radius: 4px;">') if m.cover_image else ""
+        "cover_image": lambda m, a: Markup(f'<img src="{API_URL}{m.cover_image}" width="150" style="border-radius: 4px;">') if m.cover_image else ""
     }
 
     # --- ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ ---
@@ -126,15 +130,16 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     
     # --- ИСПРАВЛЕННЫЙ МЕТОД on_model_change ---
     async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
-        field = "image"
+        field = "cover_image"
         file = data.get(field)
+        
         if isinstance(file, UploadFile) and file.filename:
             full_path = storage.write(name=file.filename, file=file.file)
             data[field] = os.path.basename(full_path)
         elif isinstance(file, UploadFile) and not file.filename:
-            data.pop(field, None) # Удаляем, если файл был очищен в форме
+            data.pop(field, None)
         elif isinstance(file, str):
-            pass # Если это строка (старый путь), ничего не делаем
+            pass # Если пришла строка (старый путь), ничего не делаем
 
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
