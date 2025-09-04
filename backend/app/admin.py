@@ -134,11 +134,15 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     ]
     async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
         file = data.get("image")
-        if file and file.filename:
-            saved_filename = storage.write(name=file.filename, file=file.file)
+
+        if isinstance(file, UploadFile) and file.filename:
+            # Сохраняем файл и обновляем путь в данных для сохранения.
             full_path = storage.write(name=file.filename, file=file.file)
-            data["image"] = os.path.basename(full_path) 
-        else: data.pop("image", None)
+            data["image"] = os.path.basename(full_path)
+        
+        # Случай 2: Файл удалили в форме, пришел пустой UploadFile.
+        elif isinstance(file, UploadFile) and not file.filename:
+            data.pop("image", None)
     
     # --- ИЗМЕНЕННЫЙ МЕТОД ---
     def details_query(self, request: Request):
