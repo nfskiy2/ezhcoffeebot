@@ -17,7 +17,7 @@ from wtforms import FileField
 
 from .models import (
     Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
-    GlobalAddonGroup, GlobalAddonItem, VenueAddonItem
+    GlobalAddonGroup, GlobalAddonItem, VenueAddonItem, AppSetting
 )
 from fastapi_storages import FileSystemStorage
 
@@ -103,6 +103,39 @@ class CafeAdmin(ModelView, model=Cafe):
             selectinload(self.model.menu_items).selectinload(VenueMenuItem.variant).selectinload(GlobalProductVariant.product),
             selectinload(self.model.addon_items).selectinload(VenueAddonItem.addon)
         )
+
+class AppSettingAdmin(ModelView, model=AppSetting):
+    name = "Настройка"; name_plural = "Настройки"; icon = "fa-solid fa-cog"; category = "Управление"
+    
+    # Запрещаем создавать и удалять настройки, только редактировать
+    can_create = False
+    can_delete = False
+    
+    # Настраиваем форму редактирования
+    form_columns = ['value']
+    form_overrides = {'value': FileField}
+    form_args = {
+        'value': {
+            'label': 'Логотип приложения'
+        }
+    }
+    
+    # Настраиваем отображение в списке
+    column_list = [AppSetting.key, AppSetting.value]
+    column_labels = {"key": "Настройка", "value": "Значение"}
+    column_formatters = {
+        "value": lambda m, a: Markup(f'<img src="{API_URL}{m.value}" width="40" style="border-radius: 4px;">') if m.key == 'logo_path' and m.value else m.value
+    }
+    
+    # Логика загрузки файла
+    async def on_model_change(self, data: Dict, model: Any, is_created: bool, request: Request) -> None:
+        file = data.get("value")
+        if isinstance(file, UploadFile) and file.filename:
+            full_path = storage.write(name=file.filename, file=file.file)
+            data["value"] = os.path.basename(full_path)
+        elif isinstance(file, UploadFile) and not file.filename:
+            # Если файл удалили через форму, не меняем значение
+            data.pop("value", None)
 
 class CategoryAdmin(ModelView, model=Category):
     name = "Категория"; name_plural = "Категории"; icon = "fa-solid fa-list"; category = "Каталог"
@@ -229,3 +262,4 @@ def register_all_views(admin: Admin):
     admin.add_view(CafeAdmin); admin.add_view(VenueMenuItemAdmin); admin.add_view(VenueAddonItemAdmin)
     admin.add_view(OrderAdmin); admin.add_view(CategoryAdmin); admin.add_view(GlobalProductAdmin)
     admin.add_view(GlobalProductVariantAdmin); admin.add_view(GlobalAddonGroupAdmin); admin.add_view(GlobalAddonItemAdmin)
+    admin.add_view(AppSettingAdmin)

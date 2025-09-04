@@ -6,7 +6,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.models import (
     Base, Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
-    GlobalAddonGroup, GlobalAddonItem, VenueAddonItem, product_addon_groups_association
+    GlobalAddonGroup, GlobalAddonItem, VenueAddonItem, product_addon_groups_association,
+    AppSetting
 )
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -38,6 +39,15 @@ def migrate():
         db.query(Category).delete()
         db.query(Cafe).delete()
         db.commit()
+        
+        print("-> Seeding App Settings...")
+        logo_setting = db.query(AppSetting).filter_by(key='logo_path').first()
+        if not logo_setting:
+            db.add(AppSetting(key='logo_path', value='/icons/logo-laurel.svg'))
+            db.commit()
+            print("  -> 'logo_path' setting initialized.")
+        else:
+            print("  -> 'logo_path' setting already exists.")
 
         # 2. Загрузка глобального каталога
         print("-> Migrating Global Catalog...")

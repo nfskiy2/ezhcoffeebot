@@ -42,6 +42,23 @@ def prepend_media_prefix_to_cafe_images(mapper, connection, target):
     if target.cover_image and not target.cover_image.startswith(('http', '/media/')):
         target.cover_image = f'/media/{target.cover_image}'
 
+class AppSetting(Base):
+    __tablename__ = 'app_settings'
+    key = Column(String, primary_key=True, index=True)
+    value = Column(String, nullable=True)
+
+    def __str__(self):
+        return self.key
+
+# Добавляем обработчик для загрузки файлов, как и для других моделей
+@event.listens_for(AppSetting, 'before_insert')
+@event.listens_for(AppSetting, 'before_update')
+def prepend_media_prefix_to_setting_value(mapper, connection, target):
+    # Эта логика сработает только если ключ - это путь к логотипу
+    if target.key == 'logo_path' and target.value and not target.value.startswith(('http', '/media/', '/icons/')):
+        target.value = f'/media/{target.value}'
+
+
 class Category(Base):
     __tablename__ = 'categories'
     id = Column(String, primary_key=True, index=True)

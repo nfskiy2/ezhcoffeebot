@@ -1,12 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { CafeSchema } from '../api/types';
 import { logger } from '../utils/logger';
-import { getAllCafes } from '../api';
+import { getAllCafes, getAppLogoUrl } from '../api';
 
 // --- ИЗМЕНЕНИЕ: Добавляем getCafeById в тип ---
 interface CafeContextType {
     selectedCafe: CafeSchema | null;
     cafes: CafeSchema[];
+    logoUrl: string; 
     setSelectedCafeId: (cafeId: string | null) => void;
     isLoading: boolean;
     error: string | null;
@@ -27,6 +28,7 @@ export const useCafe = () => {
 export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [selectedCafe, setSelectedCafe] = useState<CafeSchema | null>(null);
     const [cafes, setCafes] = useState<CafeSchema[]>([]);
+    const [logoUrl, setLogoUrl] = useState<string>('/icons/logo-laurel.svg');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -34,16 +36,22 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoading(true);
         setError(null);
         try {
-            const data: CafeSchema[] = await getAllCafes();
-            setCafes(data);
+            const [cafesData, logoData] = await Promise.all([
+                getAllCafes(),
+                getAppLogoUrl()
+            ]);
+            
+            setCafes(cafesData);
+            setLogoUrl(logoData);
+
             const savedCafeId = localStorage.getItem('selectedCafeId');
             if (savedCafeId) {
-                const savedCafe = data.find(c => c.id === savedCafeId);
+                const savedCafe = cafesData.find(c => c.id === savedCafeId);
                 setSelectedCafe(savedCafe || null);
             }
         } catch (err: any) {
-            logger.error('Failed to load cafes:', err);
-            setError(err.message || 'Failed to load cafes.');
+            logger.error('Failed to load initial app data:', err);
+            setError(err.message || 'Failed to load data.');
         } finally {
             setIsLoading(false);
         }
@@ -76,6 +84,7 @@ export const CafeProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const contextValue: CafeContextType = {
         selectedCafe,
         cafes,
+        logoUrl,
         setSelectedCafeId,
         isLoading,
         error,

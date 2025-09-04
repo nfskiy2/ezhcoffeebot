@@ -27,7 +27,7 @@ from .bot import initialize_bot_app, create_invoice_link, WEBHOOK_PATH, send_new
 from .database import engine, SessionLocal
 from .models import (
     Base, Cafe, Category, GlobalProduct, GlobalProductVariant,
-    VenueMenuItem, Order, GlobalAddonGroup, GlobalAddonItem, VenueAddonItem
+    VenueMenuItem, Order, GlobalAddonGroup, GlobalAddonItem, VenueAddonItem, AppSetting 
 )
 from .schemas import (
     CategorySchema, MenuItemSchema, OrderRequest, CafeSettingsSchema, CafeSchema,
@@ -142,6 +142,14 @@ async def bot_webhook(request: Request, application_instance: Application = Depe
     try: await application_instance.process_update(Update.de_json(await request.json(), application_instance.bot))
     except Exception as e: logger.error(f"Error in webhook: {e}", exc_info=True); raise HTTPException(500, "Error processing update.")
     return {"message": "OK"}
+
+@app.get("/settings/logo", response_model=str)
+def get_app_logo(db: Session = Depends(get_db_session)):
+    setting = db.query(AppSetting).filter_by(key='logo_path').first()
+    if not setting or not setting.value:
+        # Возвращаем путь по умолчанию, если настройка не найдена
+        return "/icons/logo-laurel.svg"
+    return setting.value
 
 @app.get("/cafes", response_model=List[CafeSchema])
 def get_all_cafes(db: Session = Depends(get_db_session)): return db.query(Cafe).all()

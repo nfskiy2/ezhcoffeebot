@@ -140,3 +140,14 @@ export const getCafePromotions = async (cafeId: string): Promise<PromotionSchema
     throw error;
   }
 };
+
+export const getAppLogoUrl = async (): Promise<string> => {
+  try {
+    const response = await apiClient.get<string>('/settings/logo');
+    return response.data;
+  } catch (error) {
+    logger.error("Error fetching app logo:", error);
+    // Возвращаем путь по умолчанию в случае ошибки
+    return "/icons/logo-laurel.svg";
+  }
+};
