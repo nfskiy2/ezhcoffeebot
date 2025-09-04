@@ -13,6 +13,7 @@ from sqladmin.authentication import AuthenticationBackend
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
 from wtforms import FileField
+from sqladmin.fields import ImageUploadField
 
 
 from .models import (
@@ -55,7 +56,13 @@ class CafeAdmin(ModelView, model=Cafe):
     column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image"]
     column_details_list = ['id', 'name', 'status', 'cover_image', 'logo_image', 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
     column_searchable_list = [Cafe.name, Cafe.id]
-    form_overrides = {'cover_image': FileField, 'logo_image': FileField}
+    
+    # --- ИЗМЕНЕНИЕ ЗДЕСЬ: Используем ImageUploadField ---
+    form_overrides = {
+        "cover_image": ImageUploadField(storage=storage),
+        "logo_image": ImageUploadField(storage=storage),
+    }
+    
     form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
     column_formatters = {
         "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
@@ -75,28 +82,8 @@ class CafeAdmin(ModelView, model=Cafe):
              if item.addon]
         )
     }
-
-    # --- УНИФИЦИРОВАННЫЙ И ИСПРАВЛЕННЫЙ МЕТОД ---
-    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
-        for field in ["cover_image", "logo_image"]:
-            file = data.get(field)
-            # Случай 1: Загружен новый файл
-            if isinstance(file, UploadFile) and file.filename:
-                full_path = storage.write(name=file.filename, file=file.file)
-                data[field] = os.path.basename(full_path)
-            # Случай 2: Файл удалили в форме
-            elif isinstance(file, UploadFile) and not file.filename:
-                data[field] = None
-            # Случай 3: Файл не менялся (пришла строка) - ничего не делаем
-            elif isinstance(file, str):
-                pass
-
-    def details_query(self, request: Request):
-        pk = request.path_params["pk"]
-        return select(self.model).where(self.model.id == pk).options(
-            selectinload(self.model.menu_items).selectinload(VenueMenuItem.variant).selectinload(GlobalProductVariant.product),
-            selectinload(self.model.addon_items).selectinload(VenueAddonItem.addon)
-        )
+    
+    # Метод on_model_change больше не нужен, его можно удалить.
 
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
@@ -117,9 +104,12 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
-    form_overrides = {'image': FileField}
-    form_columns = ["id", "name", "description", "image", "category", "sub_category", "is_popular", "addon_groups"]
     
+    # --- ИЗМЕНЕНИЕ ЗДЕСЬ: Используем ImageUploadField ---
+    form_overrides = {
+        "image": ImageUploadField(storage=storage),
+    }
+
     column_formatters = {
         "is_popular": lambda m, a: bool_icon(m.is_popular),
         "image": lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="100" style="border-radius: 4px;">') if m.image else ""
@@ -133,28 +123,13 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         GlobalProduct.addon_groups
     ]
     
-    # --- УНИФИЦИРОВАННЫЙ И ИСПРАВЛЕННЫЙ МЕТОД ---
-    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
-        field = "image"
-        file = data.get(field)
-        # Случай 1: Загружен новый файл
-        if isinstance(file, UploadFile) and file.filename:
-            full_path = storage.write(name=file.filename, file=file.file)
-            data[field] = os.path.basename(full_path)
-        # Случай 2: Файл удалили в форме
-        elif isinstance(file, UploadFile) and not file.filename:
-            data[field] = None
-        # Случай 3: Файл не менялся (пришла строка) - ничего не делаем
-        elif isinstance(file, str):
-            pass
+    # Метод on_model_change больше не нужен, его можно удалить.
 
-    # --- ИЗМЕНЕННЫЙ МЕТОД ---
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
         return select(self.model).where(self.model.id == pk).options(
             selectinload(self.model.category), 
             selectinload(self.model.addon_groups),
-            # Используем joinedload для вариантов, чтобы решить проблему
             joinedload(self.model.variants) 
         )
 
