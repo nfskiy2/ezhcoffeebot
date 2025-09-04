@@ -11,6 +11,8 @@ import { useSnackbar } from '../components/Snackbar';
 import { useCafe } from '../store/cafe';
 import { logger } from '../utils/logger';
 import { useDelivery } from '../store/delivery';
+import { getImageUrl } from '../utils/url'; // <-- 1. Импортируйте утилиту
+
 
 type PackagingType = 'dine-in' | 'take-away';
 type PaymentMethod = 'online' | 'card_on_delivery' | 'cash_on_delivery';
@@ -189,7 +191,7 @@ const CartPage: React.FC = () => {
                         <div key={item.cartItemId} className="cart-item-container">
                             <img 
                                 className="cart-item-image" 
-                                src={item.cafeItem.image || "/icons/icon-transparent.svg"} 
+                                src={getImageUrl(item.cafeItem.image)} 
                                 alt={item.cafeItem.name}
                             />
                             <div className="cart-item-info-container">

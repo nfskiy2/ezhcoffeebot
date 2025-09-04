@@ -9,6 +9,8 @@ import { TelegramSDK } from '../telegram/telegram';
 import { useCafe } from '../store/cafe';
 import { logger } from '../utils/logger';
 import Accordion from '../components/Accordion';
+import { getImageUrl } from '../utils/url'; // <-- 1. Импортируйте утилиту
+
 
 const DetailsPage: React.FC = () => {
     const { cafeId, itemId } = useParams<{ cafeId: string; itemId: string }>();
@@ -155,7 +157,7 @@ const DetailsPage: React.FC = () => {
         <section className="cafe-item-details-container">
             {/* ... JSX остается без изменений ... */}
             <div className="cafe-item-details-content">
-                <img className="cover" src={menuItem.image || "/icons/icon-transparent.svg"} alt={menuItem.name || 'Товар'}/>
+                <img className="cover" src={getImageUrl(menuItem.image)} alt={menuItem.name || 'Товар'}/>
                 <div className="cafe-item-details-title-container">
                     <h1 id="cafe-item-details-name">{menuItem.name}</h1>
                 </div>

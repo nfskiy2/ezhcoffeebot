@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { MenuItemSchema } from '../api/types';
+import { getImageUrl } from '../utils/url'; // <-- 1. Импортируйте утилиту
 
 interface MenuItemCardProps {
     item: MenuItemSchema;
@@ -17,7 +18,7 @@ const MenuItemCard: React.FC<MenuItemCardProps> = ({ item, cafeId }) => {
                 navigate(`/cafe/${cafeId}/details/${item.id}`);
             }}
         >
-            <img className="cafe-item-image" src={item.image || "/icons/icon-transparent.svg"} alt={item.name}/>
+            <img className="cafe-item-image" src={getImageUrl(item.image)} alt={item.name}/>
             <h6 className="cafe-item-name">{item.name}</h6>
             <p className="small cafe-item-description">{item.description}</p>
         </button>

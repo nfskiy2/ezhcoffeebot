@@ -52,16 +52,16 @@ authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-supe
 
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"; name_plural = "Заведения"; icon = "fa-solid fa-store"; category = "Управление"
-    column_list = [Cafe.id, Cafe.name, Cafe.status]
-    column_details_list = ['id', 'name', 'status', 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
+    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image"] # Добавил logo_image для наглядности
+    column_details_list = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
     column_searchable_list = [Cafe.name, Cafe.id]
     form_overrides = {'cover_image': FileField, 'logo_image': FileField}
     form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
     column_formatters = {
         "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
-        "logo_image": lambda m, a: Markup(f'<img src="{API_URL}{m.logo_image}" width="40">') if m.logo_image else "",
-        "cover_image": lambda m, a: Markup(f'<img src="{API_URL}{m.cover_image}" width="100">') if m.cover_image else ""
-        }
+        "logo_image": lambda m, a: Markup(f'<img src="{API_URL}{m.logo_image}" width="40" style="border-radius: 4px;">') if m.logo_image else "",
+        "cover_image": lambda m, a: Markup(f'<img src="{API_URL}{m.cover_image}" width="100" style="border-radius: 4px;">') if m.cover_image else ""
+    }
     column_formatters_detail = {
         'min_order_amount': lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
         'menu_items': lambda m, a: Markup("<br>".join(
@@ -76,13 +76,26 @@ class CafeAdmin(ModelView, model=Cafe):
         )
     }
 
-    # --- ИСПРАВЛЕНИЕ: Убрали async/await ---
-    def on_model_change(self, data, model, is_created, request):
+    # --- ИСПРАВЛЕННЫЙ МЕТОД ---
+    async def on_model_change(self, data: Dict, model: Any, is_created: bool, request: Request) -> None:
+        """
+        Обрабатывает загрузку файлов перед сохранением модели.
+        """
         for field in ["cover_image", "logo_image"]:
-            if (file := data.get(field)) and isinstance(file, UploadFile) and file.filename:
+            file = data.get(field)
+
+            # Случай 1: Загружен новый файл.
+            if isinstance(file, UploadFile) and file.filename:
+                # Сохраняем файл и обновляем путь в данных для сохранения.
                 full_path = storage.write(name=file.filename, file=file.file)
                 data[field] = os.path.basename(full_path)
-            else: data.pop(field, None)
+            
+            # Случай 2: Файл не менялся (пришло строковое значение старого пути) или поле пустое.
+            # В этой ситуации мы ничего не делаем, чтобы не затереть существующий путь
+            # или не вызвать ошибку. SQLAlchemy сам разберется со строкой.
+            # Если же пришел пустой UploadFile (файл удалили через форму), его нужно убрать.
+            elif isinstance(file, UploadFile) and not file.filename:
+                data.pop(field, None)
 
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
