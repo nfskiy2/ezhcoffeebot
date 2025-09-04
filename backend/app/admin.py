@@ -53,44 +53,40 @@ authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-supe
 
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"; name_plural = "Заведения"; icon = "fa-solid fa-store"; category = "Управление"
-    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image"]
-    column_details_list = ['id', 'name', 'status', 'cover_image', 'logo_image', 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
+    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image", "cover_image"]
+    column_details_list = ['id', 'name', 'status', 'cover_image', 'logo_image', 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
     column_searchable_list = [Cafe.name, Cafe.id]
     
-    # Возвращаем обычный FileField
     form_overrides = {'cover_image': FileField, 'logo_image': FileField}
     
     form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
+    
     column_formatters = {
         "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
         "logo_image": lambda m, a: Markup(f'<img src="{API_URL}{m.logo_image}" width="40" style="border-radius: 4px;">') if m.logo_image else "",
         "cover_image": lambda m, a: Markup(f'<img src="{API_URL}{m.cover_image}" width="100" style="border-radius: 4px;">') if m.cover_image else ""
     }
-    column_formatters_detail = {
-        'min_order_amount': lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
-        'menu_items': lambda m, a: Markup("<br>".join(
-            [f"<b>{item.variant.product.name} - {item.variant.name}</b> ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
-             for item in sorted(m.menu_items, key=lambda x: x.variant.product.name if x.variant and x.variant.product else "")
-             if item.variant and item.variant.product]
-        )),
-        'addon_items': lambda m, a: ", ".join(
-            [f"{item.addon.name} ({format_currency(item.price / 100, 'RUB', locale='ru_RU')})"
-             for item in sorted(m.addon_items, key=lambda x: x.addon.name if x.addon else "")
-             if item.addon]
-        )
-    }
 
-    # --- ИСПРАВЛЕННЫЙ МЕТОД on_model_change ---
+    # --- ФИНАЛЬНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ ---
     async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
-        for field in ["cover_image", "logo_image"]:
-            file = data.get(field)
+        # Этот метод вызывается перед сохранением в базу.
+        # Мы вручную проверим каждое поле для загрузки.
+        
+        form = await request.form()
+        
+        for field_name in ["cover_image", "logo_image"]:
+            file = form.get(field_name)
+
+            # Случай 1: Загружен новый файл.
             if isinstance(file, UploadFile) and file.filename:
+                # Сохраняем его и записываем новое имя в данные для сохранения.
                 full_path = storage.write(name=file.filename, file=file.file)
-                data[field] = os.path.basename(full_path)
-            elif isinstance(file, UploadFile) and not file.filename:
-                data.pop(field, None) # Удаляем, если файл был очищен в форме
-            elif isinstance(file, str):
-                pass # Если это строка (старый путь), ничего не делаем
+                data[field_name] = os.path.basename(full_path)
+            
+            # Случай 2: Файл не менялся, но в форме пришло его старое имя (текст).
+            # В этом случае мы просто оставляем старое значение, которое уже есть в `model`.
+            elif isinstance(file, str) and file:
+                data[field_name] = model.__dict__.get(field_name)
 
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
