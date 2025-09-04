@@ -1,7 +1,9 @@
 # backend/app/schemas.py
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_serializer
 from pydantic.alias_generators import to_camel
 from typing import List, Optional
+from .main import create_full_image_url # <-- ИМПОРТИРУЕМ ПОМОЩНИКА
+
 
 # ---
 # ГЛАВНОЕ ИЗМЕНЕНИЕ: Базовая модель для автоматической конвертации
@@ -26,6 +28,11 @@ class CafeSchema(CustomBaseModel):
     status: Optional[str] = None
     opening_hours: Optional[str] = None
     min_order_amount: Optional[int] = None
+
+    @field_serializer('cover_image')
+    def serialize_cover_image(self, value: Optional[str]) -> Optional[str]:
+        return create_full_image_url(value)
+
 
 class CategorySchema(CustomBaseModel):
     id: str
@@ -58,6 +65,11 @@ class MenuItemSchema(CustomBaseModel):
     variants: List[MenuItemVariantSchema]
     addons: Optional[List[AddonGroupSchema]] = []
     sub_category: Optional[str] = None
+    
+    @field_serializer('image')
+    def serialize_image(self, value: Optional[str]) -> Optional[str]:
+        return create_full_image_url(value)
+
 
 class CafeSettingsSchema(CustomBaseModel):
     min_order_amount: Optional[int] = None

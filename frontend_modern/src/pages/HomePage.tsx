@@ -11,7 +11,6 @@ import ErrorState from '../components/ErrorState';
 import { getCafeStatus, formatOpeningHours } from '../utils/timeUtils';
 import { useDelivery } from '../store/delivery';
 import PromotionalBanner from '../components/PromotionalBanner';
-import { getImageUrl } from '../utils/url';
 
 
 const HomePage: React.FC = () => {
@@ -113,10 +112,10 @@ const HomePage: React.FC = () => {
         <section>
             <div className="cafe-logo-container" onClick={() => navigate('/select-location')} style={{ cursor: 'pointer' }}>
                 {/* 2. Используйте getImageUrl для логотипа */}
-                <img id="cafe-logo" className="cafe-logo" src={getImageUrl(logoUrl)} alt="Логотип кафе"/>
+                <img id="cafe-logo" className="cafe-logo" src={logoUrl} alt="Логотип кафе"/>
             </div>
             {/* 3. Используйте getImageUrl для обложки */}
-            <img id="cafe-cover" className="cover" src={getImageUrl(cafeToDisplay.coverImage)} alt="Обложка кафе"/>
+            <img id="cafe-cover" className="cover" src={cafeToDisplay.coverImage} alt="Обложка кафе"/>
 
             <div id="cafe-info" className="cafe-info-container">
                 <button

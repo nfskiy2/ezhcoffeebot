@@ -42,6 +42,18 @@ logger = logging.getLogger(__name__)
 
 # Путь для загруженных файлов из админки
 UPLOAD_DIR = "/app/uploads"
+API_URL = os.getenv("API_URL", "")
+
+def create_full_image_url(path: Optional[str]) -> Optional[str]:
+    """Преобразует относительный путь к медиа-файлу в абсолютный URL."""
+    if not path or path.startswith('http'):
+        return path
+    if path.startswith('/media/'):
+        if API_URL:
+            return f"{API_URL.rstrip('/')}{path}"
+        else:
+            logger.warning(f"API_URL is not set. Returning relative path: {path}")
+    return path
 
 def _truncate_label(base: str, suffix: str) -> str:
     max_base_len = 32 - len(suffix)
