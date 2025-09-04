@@ -2,7 +2,7 @@
 from pydantic import BaseModel, ConfigDict, field_serializer
 from pydantic.alias_generators import to_camel
 from typing import List, Optional
-from .main import create_full_image_url # <-- ИМПОРТИРУЕМ ПОМОЩНИКА
+from .utils import create_full_image_url 
 
 
 # ---
@@ -65,7 +65,7 @@ class MenuItemSchema(CustomBaseModel):
     variants: List[MenuItemVariantSchema]
     addons: Optional[List[AddonGroupSchema]] = []
     sub_category: Optional[str] = None
-    
+
     @field_serializer('image')
     def serialize_image(self, value: Optional[str]) -> Optional[str]:
         return create_full_image_url(value)
