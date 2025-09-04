@@ -1,151 +1,212 @@
 {
   "categories": [
-    { "id": "coffee", "name": "Кофе", "icon": "icons/icon-coffee.svg", "backgroundColor": "#D2B48C" },
-    { "id": "burgers", "name": "Бургеры", "icon": "icons/icon-burger.svg", "backgroundColor": "#F79683" },
-    { "id": "desserts", "name": "Десерты", "icon": "icons/icon-icecream.svg", "backgroundColor": "#E6E6FA" }
+    {
+      "id": "beverages",
+      "name": "Напитки",
+      "icon": "icons/icon-drinks.svg",
+      "backgroundColor": "#A7C7E7"
+    },
+    {
+      "id": "food",
+      "name": "Еда",
+      "icon": "icons/icon-food.svg",
+      "backgroundColor": "#F5DEB3"
+    }
   ],
   "addons": {
     "groups": [
-      { "id": "syrups", "name": "Сиропы" },
-      { "id": "milk", "name": "Альтернативное молоко" },
-      { "id": "burger-addons", "name": "Добавки к бургеру" }
+      {
+        "id": "syrups",
+        "name": "Сиропы"
+      },
+      {
+        "id": "milk",
+        "name": "Молоко"
+      },
+      {
+        "id": "sweet-toppings",
+        "name": "Сладкие топпинги"
+      },
+      {
+        "id": "savory-sauces",
+        "name": "Соусы"
+      }
     ],
     "items": [
-      { "id": "syrup-vanilla", "group_id": "syrups", "name": "Ванильный" },
-      { "id": "syrup-caramel", "group_id": "syrups", "name": "Карамельный" },
-      { "id": "milk-oat", "group_id": "milk", "name": "Овсяное" },
-      { "id": "milk-coconut", "group_id": "milk", "name": "Кокосовое" },
-      { "id": "burger-extra-cheese", "group_id": "burger-addons", "name": "Доп. сыр" },
-      { "id": "burger-jalapeno", "group_id": "burger-addons", "name": "Халапеньо" }
+      {
+        "id": "syrup-standard",
+        "group_id": "syrups",
+        "name": "Сироп в ассортименте"
+      },
+      {
+        "id": "honey",
+        "group_id": "sweet-toppings",
+        "name": "Мед"
+      },
+      {
+        "id": "plant-based-milk",
+        "group_id": "milk",
+        "name": "Растительное молоко"
+      },
+      {
+        "id": "topping-sweet",
+        "group_id": "sweet-toppings",
+        "name": "Топпинг"
+      },
+      {
+        "id": "sour-cream",
+        "group_id": "savory-sauces",
+        "name": "Сметана"
+      },
+      {
+        "id": "cheese-sauce",
+        "group_id": "savory-sauces",
+        "name": "Сырный соус"
+      },
+      {
+        "id": "tartar-sauce",
+        "group_id": "savory-sauces",
+        "name": "Соус Тар-тар"
+      },
+      {
+        "id": "tomato-sauce",
+        "group_id": "savory-sauces",
+        "name": "Томатный соус"
+      },
+      {
+        "id": "garlic-sauce",
+        "group_id": "savory-sauces",
+        "name": "Чесночный соус"
+      },
+      {
+        "id": "condensed-milk",
+        "group_id": "sweet-toppings",
+        "name": "Сгущёнка"
+      }
     ]
   },
   "products": [
     {
-      "id": "cappuccino",
-      "category_id": "coffee",
-      "name": "Капучино",
-      "sub_category": "Раф",
-      "description": "Двойной шот эспрессо с равными частями вспененного молока и пены.",
-      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
+      "id": "strawberry-matcha-tonic",
+      "category_id": "beverages",
+      "name": "Strawberry matcha tonic",
+      "sub_category": "Сезонные новинки",
+      "description": "Сочетание лёгкой горчинки матча, которая мгновенно сменяется игривой кислинкой тоника и послевкусием клубники.",
+      "image": "https://ezh-coffee.qr-cafe.ru/images/good-no-image-2.svg",
+      "is_popular": true,
       "variants": [
-        { "id": "cappuccino-s", "name": "Маленький", "weight": "150мл" },
-        { "id": "cappuccino-m", "name": "Средний", "weight": "250мл" }
+        {
+          "id": "strawberry-matcha-tonic-400",
+          "name": "Стандарт",
+          "weight": "400 мл"
+        }
+      ],
+      "addon_group_ids": []
+    },
+    {
+      "id": "dark-orange",
+      "category_id": "beverages",
+      "name": "Dark orange",
+      "sub_category": "Сезонные новинки",
+      "description": "Напиток, где горечь эспрессо танцует в объятьях сочной сладости апельсина и соблазнительной терпкости шоколада.",
+      "image": "https://ezh-coffee.qr-cafe.ru/images/good-no-image-2.svg",
+      "is_popular": true,
+      "variants": [
+        {
+          "id": "dark-orange-400",
+          "name": "Стандарт",
+          "weight": "400 мл"
+        }
+      ],
+      "addon_group_ids": []
+    },
+    {
+      "id": "klassika-raf",
+      "category_id": "beverages",
+      "name": "Классика Раф",
+      "sub_category": "Раф-кофе",
+      "description": "Нежный сливочный кофе с ванильным сахаром.",
+      "image": "https://ezh-coffee.qr-cafe.ru/images/good-no-image-2.svg",
+      "variants": [
+        { "id": "klassika-raf-380", "name": "Стандарт", "weight": "380 мл" },
+        { "id": "klassika-raf-480", "name": "Большой", "weight": "480 мл" }
+      ],
+      "addon_group_ids": ["milk"]
+    },
+    {
+      "id": "sibirskij-latte",
+      "category_id": "beverages",
+      "name": "Сибирский Латте",
+      "sub_category": "Авторские напитки",
+      "description": "Согревающий латте с нотками таежных ягод и кедрового ореха.",
+      "image": "https://ezh-coffee.qr-cafe.ru/imagebase/8972664b5a6a2c6b2126e7ee2c027eba.jpeg",
+      "variants": [
+        { "id": "sibirskij-latte-380", "name": "Стандарт", "weight": "380 мл" },
+        { "id": "sibirskij-latte-480", "name": "Большой", "weight": "480 мл" }
       ],
       "addon_group_ids": ["syrups", "milk"]
     },
     {
-      "id": "iced-coffee",
-      "category_id": "coffee",
-      "name": "Айс Кофе",
-      "sub_category": "Раф",
-      "description": "Свежий эспрессо с молоком, ванильным мороженым и взбитыми сливками.",
-      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
+      "id": "kakao",
+      "category_id": "beverages",
+      "name": "Какао",
+      "sub_category": "Горячие напитки",
+      "description": "Классический какао на молоке, который вернет вас в детство.",
+      "image": "https://ezh-coffee.qr-cafe.ru/images/good-no-image-2.svg",
       "variants": [
-        { "id": "iced-coffee-m", "name": "Средний", "weight": "300мл" }
-      ]
-    },
-    {
-      "id": "snow-hot-chocolate",
-      "category_id": "coffee",
-      "name": "Snow Hot Chocolate",
-      "sub_category": "Классика",
-      "description": "Насыщенный шоколад со вспененным молоком и легкой пенкой.",
-      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
-      "variants": [
-        { "id": "snow-hot-chocolate-m", "name": "Средний", "weight": "250мл" }
-      ]
-    },
-    {
-      "id": "chai-latte",
-      "category_id": "coffee",
-      "name": "Чай Латте",
-      "sub_category": "Классика",
-      "description": "Чайный сироп с вспененным молоком и легкой пенкой.",
-      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
-      "variants": [
-        { "id": "chai-latte-m", "name": "Средний", "weight": "250мл" }
-      ]
-    },
-    {
-      "id": "latte",
-      "category_id": "coffee",
-      "name": "Латте",
-      "sub_category": "классика",
-      "description": "Нежный молочный напиток на основе эспрессо.",
-      "image": "https://images.unsplash.com/photo-1481455473976-c280ae7c10f9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
-      "variants": [
-        { "id": "latte-m", "name": "Средний", "weight": "250мл" },
-        { "id": "latte-l", "name": "Большой", "weight": "350мл" }
+        { "id": "kakao-380", "name": "Стандарт", "weight": "380 мл" },
+        { "id": "kakao-480", "name": "Большой", "weight": "480 мл" }
       ],
-      "addon_group_ids": ["syrups"]
+      "addon_group_ids": ["sweet-toppings", "milk"]
     },
     {
-      "id": "americano",
-      "category_id": "coffee",
-      "name": "Американо",
-      "sub_category": "классика",
-      "description": "Эспрессо, разбавленный горячей водой для более мягкого вкуса.",
-      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
+      "id": "sendvich-s-kurochkoj",
+      "category_id": "food",
+      "name": "Сэндвич с курочкой",
+      "sub_category": "Сэндвичи",
+      "description": "Цыпленок, помидор, огурец, салат, сыр, соус.",
+      "image": "https://ezh-coffee.qr-cafe.ru/images/good-no-image-2.svg",
+      "is_popular": true,
       "variants": [
-        { "id": "americano-m", "name": "Стандарт", "weight": "200мл" }
-      ]
-    },
-    {
-      "id": "flat-white",
-      "category_id": "coffee",
-      "name": "Флэт Уайт",
-      "sub_category": "классика",
-      "description": "Двойной эспрессо с тонким слоем бархатистой молочной пены.",
-      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
-      "variants": [
-        { "id": "flat-white-m", "name": "Стандарт", "weight": "180мл" }
+        {
+          "id": "sendvich-s-kurochkoj-std",
+          "name": "Стандарт",
+          "weight": "1 шт"
+        }
       ],
-       "addon_group_ids": ["milk"]
+      "addon_group_ids": ["savory-sauces"]
     },
     {
-      "id": "raf-coffee",
-      "category_id": "coffee",
-      "name": "Раф",
-      "sub_category": "Раф",
-      "description": "Сливочный кофейный напиток с ванильным сахаром.",
-      "image": "https://images.unsplash.com/photo-1557094005-1e1610437487?auto=format&fit=crop&q=80&w=1974",
+      "id": "syrniki",
+      "category_id": "food",
+      "name": "Сырники",
+      "sub_category": "Завтраки",
+      "description": "Нежные творожные сырники, подаются со сметаной или сладким топпингом.",
+      "image": "https://ezh-coffee.qr-cafe.ru/images/good-no-image-2.svg",
       "variants": [
-        { "id": "raf-m", "name": "Стандарт", "weight": "250мл" }
-      ]
-    },
-    {
-      "id": "mocha",
-      "category_id": "coffee",
-      "name": "Мокка",
-      "sub_category": "Раф",
-      "description": "Латте с добавлением горячего шоколада и взбитых сливок.",
-      "image": "https://images.unsplash.com/photo-1541167760496-1628856ab772?auto=format&fit=crop&q=80&w=2070",
-      "variants": [
-        { "id": "mocha-m", "name": "Стандарт", "weight": "300мл" }
+        {
+          "id": "syrniki-std",
+          "name": "Стандарт",
+          "weight": "1 порц."
+        }
       ],
-      "addon_group_ids": ["syrups"]
+      "addon_group_ids": ["sweet-toppings", "savory-sauces"]
     },
     {
-      "id": "classic-burger",
-      "category_id": "burgers",
-      "name": "Классический Бургер",
-      "sub_category": "Раф",
-      "description": "Котлета из говядины, свежие овощи, фирменный соус.",
-      "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
+      "id": "anglijskij-zavtrak",
+      "category_id": "food",
+      "name": "Английский завтрак",
+      "sub_category": "Завтраки",
+      "description": "Яйцо, тост, сосиски, бекон, помидор, огурец, салат.",
+      "image": "https://ezh-coffee.qr-cafe.ru/images/good-no-image-2.svg",
       "variants": [
-        { "id": "classic-burger-s", "name": "Стандарт", "weight": "280г" }
+        {
+          "id": "anglijskij-zavtrak-std",
+          "name": "Стандарт",
+          "weight": "365 гр"
+        }
       ],
-      "addon_group_ids": ["burger-addons"]
-    },
-    {
-      "id": "cheesecake",
-      "category_id": "desserts",
-      "name": "Чизкейк Нью-Йорк",
-      "description": "Классический чизкейк на песочной основе.",
-      "image": "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=center&w=1920&q=80",
-      "variants": [
-        { "id": "cheesecake-slice", "name": "Кусочек", "weight": "120г" }
-      ]
+      "addon_group_ids": []
     }
   ]
 }

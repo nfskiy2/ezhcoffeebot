@@ -1,32 +1,56 @@
 [
     {
-        "id": "coffee",
-        "icon": "icons/icon-coffee.svg",
-        "name": "Кофе",
-        "backgroundColor": "#D2B48C"
+    "id": "drinks",
+    "icon": "icons/icon-coffee.svg",
+    "name": "Напитки",
+    "backgroundColor": "#D2B48C"
     },
     {
-        "id": "burgers",
-        "icon": "icons/icon-burger.svg",  
-        "name": "Бургеры",
-        "backgroundColor": "#F79683"
+    "id": "seasonal-new",
+    "icon": "icons/icon-seasonal.svg",
+    "name": "Сезонные новинки",
+    "backgroundColor": "#FFDAB9"
     },
     {
-        "id": "pizza",
-        "icon": "icons/icon-pizza.svg",
-        "name": "Пицца",
-        "backgroundColor": "#F5DEB3"
+    "id": "new",
+    "icon": "icons/icon-burger.svg",  
+    "name": "New",
+    "backgroundColor": "#D2B48C"
     },
     {
-        "id": "pasta",
-        "icon": "icons/icon-pasta.svg",
-        "name": "Паста",
-        "backgroundColor": "#8FBC8F"
+    "id": "pasta",
+    "icon": "icons/icon-pasta.svg",
+    "name": "Паста",
+    "backgroundColor": "#8FBC8F"
     },
     {
-        "id": "ice-cream",
-        "icon": "icons/icon-icecream.svg", 
-        "name": "Мороженое",
-        "backgroundColor": "#E6E6FA"
+    "id": "wok",
+    "icon": "icons/icon-burger.svg",  
+    "name": "Wok",
+    "backgroundColor": "#8FBC8F"
+    },
+    {
+    "id": "neapolitan-pizza",
+    "icon": "icons/icon-pizza.svg",
+    "name": "Пицца неаполитано",
+    "backgroundColor": "#F5DEB3"
+    },
+    {
+    "id": "snacks",
+    "icon": "icons/icon-burger.svg",  
+    "name": "Закуски",
+    "backgroundColor": "#F79683"
+    },
+    {
+    "id": "add-ons",
+    "icon": "icons/icon-burger.svg",  
+    "name": "Добавки",
+    "backgroundColor": "#E6E6FA"
+    },
+    {
+    "id": "extra",
+    "icon": "icons/icon-icecream.svg", 
+    "name": "Extra",
+    "backgroundColor": "#F5DEB3"
     }
 ]

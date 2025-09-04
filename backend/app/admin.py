@@ -6,12 +6,13 @@ from babel.numbers import format_currency
 from markupsafe import Markup
 
 from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
 from wtforms import FileField
+
 
 from .models import (
     Cafe, Category, GlobalProduct, GlobalProductVariant, VenueMenuItem, Order,
@@ -91,18 +92,32 @@ class CategoryAdmin(ModelView, model=Category):
 
 class GlobalProductAdmin(ModelView, model=GlobalProduct):
     name = "Продукт"; name_plural = "Продукты"; icon = "fa-solid fa-burger"; category = "Каталог"
-    column_formatters = {"is_popular": lambda m, a: bool_icon(m.is_popular)}
-    column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, "is_popular"]
+    column_list = [GlobalProduct.id, GlobalProduct.name, GlobalProduct.category, GlobalProduct.is_popular]
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
     form_overrides = {'image': FileField}
-    form_columns = ["id", "name", "description", "image", "category", "sub_category", "is_popular", "addon_groups"]
-    
-    # --- ИСПРАВЛЕНИЕ: Убрали async/await ---
-    def on_model_change(self, data, model, is_created, request):
-        if (file := data.get("image")) and isinstance(file, UploadFile) and file.filename:
-            data["image"] = storage.write(name=file.filename, file=file.file)
+    form_columns = [
+        GlobalProduct.id, GlobalProduct.name, GlobalProduct.description, "image",
+        GlobalProduct.category, GlobalProduct.sub_category, GlobalProduct.is_popular,
+        GlobalProduct.addon_groups
+    ]
+    async def on_model_change(self, data, model, is_created, request):
+        file = data.get("image")
+        if file and isinstance(file, UploadFile) and file.filename:
+            saved_filename = await storage.write(name=file.filename, file=file.file)
+            data["image"] = saved_filename
         else: data.pop("image", None)
+    
+    # --- ИЗМЕНЕННЫЙ МЕТОД ---
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == pk).options(
+            selectinload(self.model.category), 
+            selectinload(self.model.addon_groups),
+            # Используем joinedload для вариантов, чтобы решить проблему
+            joinedload(self.model.variants) 
+        )
+
 
 class VenueMenuItemAdmin(ModelView, model=VenueMenuItem):
     name = "Позиция Меню"; name_plural = "Цены и Наличие"; icon = "fa-solid fa-dollar-sign"; category = "Управление"

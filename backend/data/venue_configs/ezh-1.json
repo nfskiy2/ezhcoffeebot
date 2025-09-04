@@ -1,25 +1,27 @@
 {
   "variants": [
-    { "variant_id": "cappuccino-s", "price": 15000 },
-    { "variant_id": "cappuccino-m", "price": 18000 },
-    { "variant_id": "latte-m", "price": 16000 },
-    { "variant_id": "latte-l", "price": 19000 },
-    { "variant_id": "classic-burger-s", "price": 32000 },
-    { "variant_id": "cheesecake-slice", "price": 25000 },
-    { "variant_id": "iced-coffee-m", "price": 22000 },
-    { "variant_id": "snow-hot-chocolate-m", "price": 20000 },
-    { "variant_id": "chai-latte-m", "price": 19000 },
-    { "variant_id": "americano-m", "price": 12000 },
-    { "variant_id": "flat-white-m", "price": 17000 },
-    { "variant_id": "raf-m", "price": 21000 },
-    { "variant_id": "mocha-m", "price": 23000 }
+    { "variant_id": "strawberry-matcha-tonic-400", "price": 32000, "is_available": true },
+    { "variant_id": "dark-orange-400", "price": 32000, "is_available": true },
+    { "variant_id": "klassika-raf-380", "price": 28000, "is_available": true },
+    { "variant_id": "klassika-raf-480", "price": 33000, "is_available": true },
+    { "variant_id": "sibirskij-latte-380", "price": 30000, "is_available": true },
+    { "variant_id": "sibirskij-latte-480", "price": 35000, "is_available": true },
+    { "variant_id": "kakao-380", "price": 18500, "is_available": true },
+    { "variant_id": "kakao-480", "price": 23000, "is_available": true },
+    { "variant_id": "sendvich-s-kurochkoj-std", "price": 21000, "is_available": true },
+    { "variant_id": "syrniki-std", "price": 19000, "is_available": true },
+    { "variant_id": "anglijskij-zavtrak-std", "price": 31000, "is_available": true }
   ],
   "addons": [
-    { "addon_id": "syrup-vanilla", "price": 5000 },
-    { "addon_id": "syrup-caramel", "price": 5000 },
-    { "addon_id": "milk-oat", "price": 7000 },
-    { "addon_id": "milk-coconut", "price": 7000 },
-    { "addon_id": "burger-extra-cheese", "price": 6000 },
-    { "addon_id": "burger-jalapeno", "price": 4000, "is_available": false }
+    { "addon_id": "syrup-standard", "price": 5000, "is_available": true },
+    { "addon_id": "honey", "price": 5000, "is_available": true },
+    { "addon_id": "plant-based-milk", "price": 8000, "is_available": true },
+    { "addon_id": "topping-sweet", "price": 5500, "is_available": true },
+    { "addon_id": "sour-cream", "price": 5000, "is_available": true },
+    { "addon_id": "cheese-sauce", "price": 5000, "is_available": true },
+    { "addon_id": "tartar-sauce", "price": 5000, "is_available": true },
+    { "addon_id": "tomato-sauce", "price": 5000, "is_available": true },
+    { "addon_id": "garlic-sauce", "price": 5000, "is_available": true },
+    { "addon_id": "condensed-milk", "price": 5000, "is_available": true }
   ]
 }
