@@ -50,14 +50,6 @@ class AppSetting(Base):
     def __str__(self):
         return self.key
 
-# Добавляем обработчик для загрузки файлов, как и для других моделей
-@event.listens_for(AppSetting, 'before_insert')
-@event.listens_for(AppSetting, 'before_update')
-def prepend_media_prefix_to_setting_value(mapper, connection, target):
-    # Эта логика сработает только если ключ - это путь к логотипу
-    if target.key == 'logo_path' and target.value and not target.value.startswith(('http', '/media/', '/icons/')):
-        target.value = f'/media/{target.value}'
-
 
 class Category(Base):
     __tablename__ = 'categories'

@@ -111,12 +111,15 @@ class AppSettingAdmin(ModelView, model=AppSetting):
     can_create = False
     can_delete = False
     
-    # Настраиваем форму редактирования
+    # --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
+    # Указываем, что value - это простое текстовое поле
     form_columns = ['value']
-    form_overrides = {'value': FileField}
+    # Убираем form_overrides, который делал поле файловым
+    # form_overrides = {'value': FileField} # <-- УДАЛИТЕ ИЛИ ЗАКОММЕНТИРУЙТЕ
     form_args = {
         'value': {
-            'label': 'Логотип приложения'
+            'label': 'Путь к логотипу',
+            'description': 'Укажите относительный путь (например, /icons/logo.svg) или полный URL (https://...)'
         }
     }
     
@@ -124,7 +127,7 @@ class AppSettingAdmin(ModelView, model=AppSetting):
     column_list = [AppSetting.key, AppSetting.value]
     column_labels = {"key": "Настройка", "value": "Значение"}
     column_formatters = {
-        "value": lambda m, a: Markup(f'<img src="{API_URL}{m.value}" width="40" style="border-radius: 4px;">') if m.key == 'logo_path' and m.value else m.value
+        "value": lambda m, a: Markup(f'<img src="{m.value}" width="40" style="border-radius: 4px;">') if m.key == 'logo_path' and m.value and m.value.startswith(('http', '/')) else m.value
     }
     
     # Логика загрузки файла
@@ -165,13 +168,6 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         GlobalProduct.category, GlobalProduct.sub_category, GlobalProduct.is_popular,
         GlobalProduct.addon_groups
     ]
-    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
-        file = data.get("image")
-        if file and file.filename:
-            saved_filename = storage.write(name=file.filename, file=file.file)
-            full_path = storage.write(name=file.filename, file=file.file)
-            data["image"] = os.path.basename(full_path) 
-        else: data.pop("image", None)
     
     # --- ИЗМЕНЕННЫЙ МЕТОД ---
     def details_query(self, request: Request):
