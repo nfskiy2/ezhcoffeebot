@@ -4,7 +4,7 @@ import json
 from passlib.context import CryptContext
 from babel.numbers import format_currency
 from markupsafe import Markup
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload, joinedload
@@ -52,8 +52,8 @@ authentication_backend = AdminAuth(secret_key=os.getenv("SECRET_KEY", "your-supe
 
 class CafeAdmin(ModelView, model=Cafe):
     name = "Заведение"; name_plural = "Заведения"; icon = "fa-solid fa-store"; category = "Управление"
-    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image"] # Добавил logo_image для наглядности
-    column_details_list = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
+    column_list = [Cafe.id, Cafe.name, Cafe.status, "logo_image"]
+    column_details_list = ['id', 'name', 'status', 'cover_image', 'logo_image', 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
     column_searchable_list = [Cafe.name, Cafe.id]
     form_overrides = {'cover_image': FileField, 'logo_image': FileField}
     form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
@@ -76,26 +76,27 @@ class CafeAdmin(ModelView, model=Cafe):
         )
     }
 
-    # --- ИСПРАВЛЕННЫЙ МЕТОД ---
-    async def on_model_change(self, data: Dict, model: Any, is_created: bool, request: Request) -> None:
-        """
-        Обрабатывает загрузку файлов перед сохранением модели.
-        """
+    # --- УНИФИЦИРОВАННЫЙ И ИСПРАВЛЕННЫЙ МЕТОД ---
+    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
         for field in ["cover_image", "logo_image"]:
             file = data.get(field)
-
-            # Случай 1: Загружен новый файл.
+            # Случай 1: Загружен новый файл
             if isinstance(file, UploadFile) and file.filename:
-                # Сохраняем файл и обновляем путь в данных для сохранения.
                 full_path = storage.write(name=file.filename, file=file.file)
                 data[field] = os.path.basename(full_path)
-            
-            # Случай 2: Файл не менялся (пришло строковое значение старого пути) или поле пустое.
-            # В этой ситуации мы ничего не делаем, чтобы не затереть существующий путь
-            # или не вызвать ошибку. SQLAlchemy сам разберется со строкой.
-            # Если же пришел пустой UploadFile (файл удалили через форму), его нужно убрать.
+            # Случай 2: Файл удалили в форме
             elif isinstance(file, UploadFile) and not file.filename:
-                data.pop(field, None)
+                data[field] = None
+            # Случай 3: Файл не менялся (пришла строка) - ничего не делаем
+            elif isinstance(file, str):
+                pass
+
+    def details_query(self, request: Request):
+        pk = request.path_params["pk"]
+        return select(self.model).where(self.model.id == pk).options(
+            selectinload(self.model.menu_items).selectinload(VenueMenuItem.variant).selectinload(GlobalProductVariant.product),
+            selectinload(self.model.addon_items).selectinload(VenueAddonItem.addon)
+        )
 
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
@@ -121,29 +122,32 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     
     column_formatters = {
         "is_popular": lambda m, a: bool_icon(m.is_popular),
-        "image": lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="100" style="border-radius: 4px;">') if m.image and not m.image.startswith('http') else (Markup(f'<img src="{m.image}" width="100" style="border-radius: 4px;">') if m.image else "")
+        "image": lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="100" style="border-radius: 4px;">') if m.image else ""
     }
     column_formatters_detail = {
-        'image': lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="200" style="border-radius: 4px;">') if m.image and not m.image.startswith('http') else (Markup(f'<img src="{m.image}" width="200" style="border-radius: 4px;">') if m.image else "")
+        'image': lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="200" style="border-radius: 4px;">') if m.image else ""
     }
-
     form_columns = [
         GlobalProduct.id, GlobalProduct.name, GlobalProduct.description, "image",
         GlobalProduct.category, GlobalProduct.sub_category, GlobalProduct.is_popular,
         GlobalProduct.addon_groups
     ]
-    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
-        file = data.get("image")
-
-        if isinstance(file, UploadFile) and file.filename:
-            # Сохраняем файл и обновляем путь в данных для сохранения.
-            full_path = storage.write(name=file.filename, file=file.file)
-            data["image"] = os.path.basename(full_path)
-        
-        # Случай 2: Файл удалили в форме, пришел пустой UploadFile.
-        elif isinstance(file, UploadFile) and not file.filename:
-            data.pop("image", None)
     
+    # --- УНИФИЦИРОВАННЫЙ И ИСПРАВЛЕННЫЙ МЕТОД ---
+    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
+        field = "image"
+        file = data.get(field)
+        # Случай 1: Загружен новый файл
+        if isinstance(file, UploadFile) and file.filename:
+            full_path = storage.write(name=file.filename, file=file.file)
+            data[field] = os.path.basename(full_path)
+        # Случай 2: Файл удалили в форме
+        elif isinstance(file, UploadFile) and not file.filename:
+            data[field] = None
+        # Случай 3: Файл не менялся (пришла строка) - ничего не делаем
+        elif isinstance(file, str):
+            pass
+
     # --- ИЗМЕНЕННЫЙ МЕТОД ---
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
