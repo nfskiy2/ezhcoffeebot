@@ -21,6 +21,8 @@ from .models import (
 )
 from fastapi_storages import FileSystemStorage
 
+API_URL = os.getenv("API_URL", "") # https://api.ezhcoffee.ru
+
 UPLOAD_DIR = "/app/uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 storage = FileSystemStorage(path=UPLOAD_DIR)
@@ -55,7 +57,11 @@ class CafeAdmin(ModelView, model=Cafe):
     column_searchable_list = [Cafe.name, Cafe.id]
     form_overrides = {'cover_image': FileField, 'logo_image': FileField}
     form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
-    column_formatters = {"min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU')}
+    column_formatters = {
+        "min_order_amount": lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
+        "logo_image": lambda m, a: Markup(f'<img src="{API_URL}{m.logo_image}" width="40">') if m.logo_image else "",
+        "cover_image": lambda m, a: Markup(f'<img src="{API_URL}{m.cover_image}" width="100">') if m.cover_image else ""
+        }
     column_formatters_detail = {
         'min_order_amount': lambda m, a: format_currency(m.min_order_amount / 100, 'RUB', locale='ru_RU'),
         'menu_items': lambda m, a: Markup("<br>".join(
@@ -74,7 +80,8 @@ class CafeAdmin(ModelView, model=Cafe):
     def on_model_change(self, data, model, is_created, request):
         for field in ["cover_image", "logo_image"]:
             if (file := data.get(field)) and isinstance(file, UploadFile) and file.filename:
-                data[field] = storage.write(name=file.filename, file=file.file)
+                full_path = storage.write(name=file.filename, file=file.file)
+                data[field] = os.path.basename(full_path)
             else: data.pop(field, None)
 
     def details_query(self, request: Request):
@@ -97,6 +104,16 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
     form_overrides = {'image': FileField}
+    form_columns = ["id", "name", "description", "image", "category", "sub_category", "is_popular", "addon_groups"]
+    
+    column_formatters = {
+        "is_popular": lambda m, a: bool_icon(m.is_popular),
+        "image": lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="100" style="border-radius: 4px;">') if m.image and not m.image.startswith('http') else (Markup(f'<img src="{m.image}" width="100" style="border-radius: 4px;">') if m.image else "")
+    }
+    column_formatters_detail = {
+        'image': lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="200" style="border-radius: 4px;">') if m.image and not m.image.startswith('http') else (Markup(f'<img src="{m.image}" width="200" style="border-radius: 4px;">') if m.image else "")
+    }
+
     form_columns = [
         GlobalProduct.id, GlobalProduct.name, GlobalProduct.description, "image",
         GlobalProduct.category, GlobalProduct.sub_category, GlobalProduct.is_popular,
@@ -106,7 +123,8 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         file = data.get("image")
         if file and file.filename:
             saved_filename = storage.write(name=file.filename, file=file.file)
-            data["image"] = saved_filename
+            full_path = storage.write(name=file.filename, file=file.file)
+            data["image"] = os.path.basename(full_path) 
         else: data.pop("image", None)
     
     # --- ИЗМЕНЕННЫЙ МЕТОД ---
