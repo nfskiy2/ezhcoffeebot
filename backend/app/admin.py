@@ -13,7 +13,7 @@ from sqladmin.authentication import AuthenticationBackend
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
 from wtforms import FileField
-from sqladmin.fields import ImageUploadField
+
 
 
 from .models import (
@@ -57,11 +57,8 @@ class CafeAdmin(ModelView, model=Cafe):
     column_details_list = ['id', 'name', 'status', 'cover_image', 'logo_image', 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount', 'menu_items', 'addon_items']
     column_searchable_list = [Cafe.name, Cafe.id]
     
-    # --- ИЗМЕНЕНИЕ ЗДЕСЬ: Используем ImageUploadField ---
-    form_overrides = {
-        "cover_image": ImageUploadField(storage=storage),
-        "logo_image": ImageUploadField(storage=storage),
-    }
+    # Возвращаем обычный FileField
+    form_overrides = {'cover_image': FileField, 'logo_image': FileField}
     
     form_columns = ['id', 'name', 'status', "cover_image", "logo_image", 'kitchen_categories', 'rating', 'cooking_time', 'opening_hours', 'min_order_amount']
     column_formatters = {
@@ -82,8 +79,18 @@ class CafeAdmin(ModelView, model=Cafe):
              if item.addon]
         )
     }
-    
-    # Метод on_model_change больше не нужен, его можно удалить.
+
+    # --- ИСПРАВЛЕННЫЙ МЕТОД on_model_change ---
+    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
+        for field in ["cover_image", "logo_image"]:
+            file = data.get(field)
+            if isinstance(file, UploadFile) and file.filename:
+                full_path = storage.write(name=file.filename, file=file.file)
+                data[field] = os.path.basename(full_path)
+            elif isinstance(file, UploadFile) and not file.filename:
+                data.pop(field, None) # Удаляем, если файл был очищен в форме
+            elif isinstance(file, str):
+                pass # Если это строка (старый путь), ничего не делаем
 
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
@@ -105,11 +112,9 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
     column_searchable_list = [GlobalProduct.name]
     form_ajax_refs = {"category": {"fields": ("name",), "order_by": "id"}, "addon_groups": {"fields": ("name",), "order_by": "id"}}
     
-    # --- ИЗМЕНЕНИЕ ЗДЕСЬ: Используем ImageUploadField ---
-    form_overrides = {
-        "image": ImageUploadField(storage=storage),
-    }
-
+    # Возвращаем обычный FileField
+    form_overrides = {'image': FileField}
+    
     column_formatters = {
         "is_popular": lambda m, a: bool_icon(m.is_popular),
         "image": lambda m, a: Markup(f'<img src="{API_URL}{m.image}" width="100" style="border-radius: 4px;">') if m.image else ""
@@ -123,7 +128,17 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         GlobalProduct.addon_groups
     ]
     
-    # Метод on_model_change больше не нужен, его можно удалить.
+    # --- ИСПРАВЛЕННЫЙ МЕТОД on_model_change ---
+    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
+        field = "image"
+        file = data.get(field)
+        if isinstance(file, UploadFile) and file.filename:
+            full_path = storage.write(name=file.filename, file=file.file)
+            data[field] = os.path.basename(full_path)
+        elif isinstance(file, UploadFile) and not file.filename:
+            data.pop(field, None) # Удаляем, если файл был очищен в форме
+        elif isinstance(file, str):
+            pass # Если это строка (старый путь), ничего не делаем
 
     def details_query(self, request: Request):
         pk = request.path_params["pk"]
