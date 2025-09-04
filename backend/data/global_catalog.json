@@ -71,6 +71,56 @@
       "addon_group_ids": []
     },
     {
+      "id": "cappuccino",
+      "category_id": "beverages",
+      "name": "Капучино",
+      "sub_category": "Классика",
+      "description": "Классический капучино на основе эспрессо и взбитого молока.",
+      "image": "https://.../cappuccino.jpg",
+      "variants": [
+        { "id": "cappuccino-s", "name": "Маленький", "weight": "200 мл" },
+        { "id": "cappuccino-m", "name": "Средний", "weight": "300 мл" }
+      ],
+      "addon_group_ids": ["syrups", "milk"]
+    },
+    {
+      "id": "latte",
+      "category_id": "beverages",
+      "name": "Латте",
+      "sub_category": "Классика",
+      "description": "Нежный молочный напиток на основе эспрессо.",
+      "image": "https://.../latte.jpg",
+      "variants": [
+        { "id": "latte-m", "name": "Средний", "weight": "300 мл" },
+        { "id": "latte-l", "name": "Большой", "weight": "400 мл" }
+      ],
+      "addon_group_ids": ["syrups", "milk"]
+    },
+    {
+      "id": "classic-burger",
+      "category_id": "food",
+      "name": "Классический бургер",
+      "sub_category": "Сэндвичи",
+      "description": "Сочная котлета, свежие овощи и фирменный соус.",
+      "image": "https://.../burger.jpg",
+      "variants": [
+        { "id": "classic-burger-s", "name": "Стандарт", "weight": "250 г" }
+      ],
+      "addon_group_ids": ["savory-sauces"]
+    },
+    {
+      "id": "cheesecake",
+      "category_id": "food",
+      "name": "Чизкейк",
+      "sub_category": "Десерты",
+      "description": "Классический чизкейк Нью-Йорк.",
+      "image": "https://.../cheesecake.jpg",
+      "variants": [
+        { "id": "cheesecake-slice", "name": "Кусочек", "weight": "120 г" }
+      ],
+      "addon_group_ids": ["sweet-toppings"]
+    },
+    {
       "id": "dark-orange",
       "category_id": "beverages",
       "name": "Dark orange",
