@@ -4,6 +4,7 @@ import json
 from passlib.context import CryptContext
 from babel.numbers import format_currency
 from markupsafe import Markup
+from typing import Dict, List, Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload, joinedload
@@ -101,10 +102,10 @@ class GlobalProductAdmin(ModelView, model=GlobalProduct):
         GlobalProduct.category, GlobalProduct.sub_category, GlobalProduct.is_popular,
         GlobalProduct.addon_groups
     ]
-    async def on_model_change(self, data, model, is_created, request):
+    async def on_model_change(self, data: dict, model: Any, is_created: bool, request: Request) -> None:
         file = data.get("image")
-        if file and isinstance(file, UploadFile) and file.filename:
-            saved_filename = await storage.write(name=file.filename, file=file.file)
+        if file and file.filename:
+            saved_filename = storage.write(name=file.filename, file=file.file)
             data["image"] = saved_filename
         else: data.pop("image", None)
     
