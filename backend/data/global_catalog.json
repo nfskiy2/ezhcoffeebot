@@ -33,56 +33,23 @@
       }
     ],
     "items": [
-      {
-        "id": "syrup-standard",
-        "group_id": "syrups",
-        "name": "Сироп в ассортименте"
-      },
-      {
-        "id": "honey",
-        "group_id": "sweet-toppings",
-        "name": "Мед"
-      },
-      {
-        "id": "plant-based-milk",
-        "group_id": "milk",
-        "name": "Растительное молоко"
-      },
-      {
-        "id": "topping-sweet",
-        "group_id": "sweet-toppings",
-        "name": "Топпинг"
-      },
-      {
-        "id": "sour-cream",
-        "group_id": "savory-sauces",
-        "name": "Сметана"
-      },
-      {
-        "id": "cheese-sauce",
-        "group_id": "savory-sauces",
-        "name": "Сырный соус"
-      },
-      {
-        "id": "tartar-sauce",
-        "group_id": "savory-sauces",
-        "name": "Соус Тар-тар"
-      },
-      {
-        "id": "tomato-sauce",
-        "group_id": "savory-sauces",
-        "name": "Томатный соус"
-      },
-      {
-        "id": "garlic-sauce",
-        "group_id": "savory-sauces",
-        "name": "Чесночный соус"
-      },
-      {
-        "id": "condensed-milk",
-        "group_id": "sweet-toppings",
-        "name": "Сгущёнка"
-      }
+      { "id": "syrup-standard", "group_id": "syrups", "name": "Сироп в ассортименте" },
+      { "id": "honey", "group_id": "sweet-toppings", "name": "Мед" },
+      { "id": "plant-based-milk", "group_id": "milk", "name": "Растительное молоко" },
+      { "id": "topping-sweet", "group_id": "sweet-toppings", "name": "Топпинг" },
+      { "id": "sour-cream", "group_id": "savory-sauces", "name": "Сметана" },
+      { "id": "cheese-sauce", "group_id": "savory-sauces", "name": "Сырный соус" },
+      { "id": "tartar-sauce", "group_id": "savory-sauces", "name": "Соус Тар-тар" },
+      { "id": "tomato-sauce", "group_id": "savory-sauces", "name": "Томатный соус" },
+      { "id": "garlic-sauce", "group_id": "savory-sauces", "name": "Чесночный соус" },
+      { "id": "condensed-milk", "group_id": "sweet-toppings", "name": "Сгущёнка" },
+
+      { "id": "syrup-vanilla", "group_id": "syrups", "name": "Ванильный сироп" },
+      { "id": "syrup-caramel", "group_id": "syrups", "name": "Карамельный сироп" },
+      { "id": "milk-oat", "group_id": "milk", "name": "Овсяное молоко" },
+      { "id": "milk-coconut", "group_id": "milk", "name": "Кокосовое молоко" },
+      { "id": "burger-extra-cheese", "group_id": "savory-sauces", "name": "Дополнительный сыр" },
+      { "id": "burger-jalapeno", "group_id": "savory-sauces", "name": "Халапеньо" }
     ]
   },
   "products": [
